@@ -1,0 +1,32 @@
+// Every structural rule in the app, exactly once. Nothing here names a colour
+// or a font directly — it all reads the CSS custom properties a theme file
+// defines, which is why adding a theme costs one small file instead of a
+// duplicate copy of this whole stylesheet.
+@use "base/reset";
+@use "base/typography";
+@use "base/utilities";
+@use "base/forms";
+
+@use "layout/header";
+@use "layout/page";
+@use "layout/tabs";
+@use "layout/grid";
+
+@use "components/button";
+@use "components/password-field";
+@use "components/card";
+@use "components/badge";
+@use "components/table";
+@use "components/modal";
+@use "components/drawer";
+@use "components/toast";
+@use "components/empty-state";
+@use "components/theme-selector";
+@use "components/autocomplete";
+@use "components/checklist-item";
+@use "components/timeline";
+@use "components/budget-chart";
+
+@use "pages/login";
+@use "pages/trips";
+@use "pages/trip";

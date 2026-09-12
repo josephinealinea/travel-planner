@@ -1,0 +1,67 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+// The checklist detail lives in a side drawer: it is a working surface people
+// keep open while editing, not a dialog they dismiss.
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: t.$z-drawer;
+  display: flex;
+  justify-content: flex-end;
+  background: var(--tp-backdrop);
+}
+
+.drawer {
+  width: 100%;
+  max-width: 520px;
+  height: 100%;
+  padding: t.$space-5;
+  overflow-y: auto;
+  background: var(--tp-surface);
+  border-left: 1px solid var(--tp-border);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.18);
+}
+
+.drawer-header {
+  display: flex;
+  gap: t.$space-3;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: t.$space-4;
+  padding-bottom: t.$space-3;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.drawer-title { margin: 0; font-size: 1.1rem; }
+.drawer-eyebrow { font-size: 0.75rem; color: var(--tp-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.drawer-section { margin-bottom: t.$space-5; }
+
+.drawer-section-title {
+  margin: 0 0 t.$space-2;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--tp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.drawer-footer {
+  display: flex;
+  gap: t.$space-2;
+  flex-wrap: wrap;
+  padding-top: t.$space-4;
+  border-top: 1px solid var(--tp-border);
+}
+
+@include m.mobile {
+  .drawer-backdrop { align-items: flex-end; }
+  .drawer {
+    max-width: none;
+    height: 94vh;
+    padding: t.$space-4;
+    border-left: 0;
+    border-radius: var(--tp-radius) var(--tp-radius) 0 0;
+  }
+}

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account — Travel Planner</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/minima.css?v=1"     id="minima-css">
+<link rel="stylesheet" href="assets/css/retro-game.css?v=1" id="retro-game-css" disabled>
+<link rel="stylesheet" href="assets/css/y2k.css?v=1"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/manila.css?v=1"     id="manila-css"     disabled>
+<script>
+  // Enable the remembered theme's stylesheet before first paint, so the page
+  // never flashes the default theme first.
+  (function () {
+    var registry = { minima: 'minima-css', 'retro-game': 'retro-game-css', y2k: 'y2k-css', manila: 'manila-css' };
+    var theme = 'minima';
+    try { if (registry[localStorage.getItem('selectedTheme')]) theme = localStorage.getItem('selectedTheme'); } catch (e) {}
+    Object.keys(registry).forEach(function (name) {
+      var link = document.getElementById(registry[name]);
+      if (link) link.disabled = name !== theme;
+    });
+    document.documentElement.className = 'theme-' + theme;
+  })();
+</script>
+</head>
+<body>
+<header id="site-header"></header>
+
+<main class="page-narrow">
+  <h1 class="page-title">Account</h1>
+
+  <div class="stack-lg">
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">Profile</h2></div>
+      <div id="profile-alert" class="alert" hidden></div>
+
+      <form id="profile-form" novalidate>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" disabled>
+          <p class="field-hint">Your email address cannot be changed here.</p>
+        </div>
+        <div class="field">
+          <label for="screenName">Screen name</label>
+          <input id="screenName" type="text" maxlength="60" autocomplete="nickname">
+          <p class="field-hint">
+            What other trip members see. Without one they see your email address instead.
+          </p>
+        </div>
+        <button type="submit" class="btn btn-primary" id="save-profile">Save screen name</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">Password</h2></div>
+      <div id="password-alert" class="alert" hidden></div>
+
+      <form id="password-form" novalidate>
+        <div class="field">
+          <label for="current">Current password</label>
+          <div class="password-field">
+            <input id="current" type="password" autocomplete="current-password" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="next">New password</label>
+          <div class="password-field">
+            <input id="next" type="password" autocomplete="new-password" minlength="8" required>
+          </div>
+          <div class="password-strength" id="strength" data-score="0" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <p class="field-hint">At least 8 characters.</p>
+        </div>
+        <div class="field">
+          <label for="confirm">Confirm new password</label>
+          <div class="password-field">
+            <input id="confirm" type="password" autocomplete="new-password" required>
+          </div>
+          <p class="field-error" id="mismatch" hidden>Those two passwords do not match.</p>
+        </div>
+        <button type="submit" class="btn btn-primary" id="save-password">Change password</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">Appearance</h2></div>
+      <p class="small muted">Your theme is remembered in this browser.</p>
+      <div id="theme-radios" class="stack-sm"></div>
+    </section>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script type="module">
+  import { api } from './js/api.js';
+  import { renderChrome, escapeHtml } from './js/chrome.js';
+  import { requireUser, clearCachedUser } from './js/session.js';
+  import { passwordScore } from './js/password-toggle.js';
+  import { THEME_REGISTRY, THEME_NAMES, applyTheme, savedTheme } from './js/theme-selector.js';
+  import { toast } from './js/toast.js';
+
+  await api.initCsrf();
+  const user = await requireUser();
+  if (!user) throw new Error('redirecting');
+
+  renderChrome({ user, active: 'account' });
+
+  document.querySelector('#email').value = user.email;
+  document.querySelector('#screenName').value = user.screenName || '';
+
+  function alertIn(selector, message, variant) {
+    const box = document.querySelector(selector);
+    box.className = `alert alert-${variant}`;
+    box.textContent = message;
+    box.hidden = false;
+  }
+
+  // ── profile ───────────────────────────────────────
+  const profileForm = document.querySelector('#profile-form');
+  profileForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = document.querySelector('#save-profile');
+    button.disabled = true;
+    try {
+      const updated = await api.updateProfile({
+        screenName: document.querySelector('#screenName').value.trim(),
+      });
+      clearCachedUser();
+      alertIn('#profile-alert', 'Saved.', 'info');
+      toast.success('Screen name updated');
+      renderChrome({ user: updated, active: 'account' });
+    } catch (error) {
+      alertIn('#profile-alert', error.fullMessage, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  // ── password ──────────────────────────────────────
+  const next = document.querySelector('#next');
+  const confirmField = document.querySelector('#confirm');
+  const strength = document.querySelector('#strength');
+  const mismatch = document.querySelector('#mismatch');
+
+  next.addEventListener('input', () => {
+    strength.dataset.score = String(passwordScore(next.value));
+    mismatch.hidden = !confirmField.value || confirmField.value === next.value;
+  });
+  confirmField.addEventListener('input', () => {
+    mismatch.hidden = !confirmField.value || confirmField.value === next.value;
+  });
+
+  document.querySelector('#password-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (next.value !== confirmField.value) {
+      mismatch.hidden = false;
+      confirmField.focus();
+      return;
+    }
+    const button = document.querySelector('#save-password');
+    button.disabled = true;
+    try {
+      await api.changePassword({
+        currentPassword: document.querySelector('#current').value,
+        newPassword: next.value,
+      });
+      clearCachedUser();
+      document.querySelector('#password-form').reset();
+      strength.dataset.score = '0';
+      alertIn('#password-alert', 'Your password has been changed.', 'info');
+      toast.success('Password changed');
+    } catch (error) {
+      alertIn('#password-alert', error.fullMessage, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  // ── appearance ────────────────────────────────────
+  const radios = document.querySelector('#theme-radios');
+  radios.innerHTML = THEME_NAMES.map((name) => `
+    <label class="checkbox">
+      <input type="radio" name="theme" value="${name}" ${name === savedTheme() ? 'checked' : ''}>
+      <span class="theme-swatch" style="background:${THEME_REGISTRY[name].swatch}"></span>
+      ${escapeHtml(THEME_REGISTRY[name].labelFull)}
+    </label>`).join('');
+
+  radios.addEventListener('change', (event) => {
+    if (event.target.name === 'theme') applyTheme(event.target.value);
+  });
+
+  // Keep the radios in step when the header selector is used instead.
+  document.addEventListener('themechange', (event) => {
+    const radio = radios.querySelector(`input[value="${event.detail.theme}"]`);
+    if (radio) radio.checked = true;
+  });
+</script>
+</body>
+</html>

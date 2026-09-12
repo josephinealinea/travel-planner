@@ -1,0 +1,142 @@
+package com.josephinealinea.planner.checklist.api;
+
+import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
+import com.josephinealinea.planner.checklist.domain.ChecklistItem;
+import com.josephinealinea.planner.checklist.domain.ChecklistStatus;
+import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
+import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.shared.ApiException;
+import com.josephinealinea.planner.shared.Ids;
+import com.josephinealinea.planner.trips.api.TripAccessService;
+import com.josephinealinea.planner.trips.domain.Trip;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class ChecklistService {
+
+    public record Input(ChecklistCategory category,
+                        String description,
+                        String note,
+                        String destinationId) {}
+
+    private final ChecklistRepository checklist;
+    private final DestinationRepository destinations;
+    private final ItineraryRepository itinerary;
+    private final TripAccessService access;
+
+    public ChecklistService(ChecklistRepository checklist,
+                            DestinationRepository destinations,
+                            ItineraryRepository itinerary,
+                            TripAccessService access) {
+        this.checklist = checklist;
+        this.destinations = destinations;
+        this.itinerary = itinerary;
+        this.access = access;
+    }
+
+    public List<ChecklistItem> list(String tripId, String userId) {
+        Trip trip = access.requireMember(tripId, userId);
+        return checklist.findAllOrdered(trip.getSlug());
+    }
+
+    /** Checklist items can be added whether or not any destination exists. */
+    public ChecklistItem create(String tripId, String userId, Input input) {
+        Trip trip = access.requireMember(tripId, userId);
+        requireDescription(input.description());
+
+        ChecklistItem item = new ChecklistItem();
+        item.setId(Ids.newId());
+        item.setTripId(tripId);
+        item.setCategory(input.category() == null ? ChecklistCategory.OTHERS : input.category());
+        item.setDescription(input.description().trim());
+        item.setNote(blankToNull(input.note()));
+        item.setStatus(ChecklistStatus.TODO);
+        item.setSortOrder(checklist.findAll(trip.getSlug()).size());
+        item.setCreatedAt(Instant.now());
+        item.setDestinationId(validDestination(trip, input.destinationId()));
+
+        return checklist.save(trip.getSlug(), item);
+    }
+
+    public ChecklistItem update(String tripId, String userId, String itemId, Input input) {
+        Trip trip = access.requireMember(tripId, userId);
+        ChecklistItem item = require(trip, itemId);
+
+        if (input.description() != null) {
+            requireDescription(input.description());
+            item.setDescription(input.description().trim());
+        }
+        if (input.note() != null) item.setNote(blankToNull(input.note()));
+        if (input.category() != null) item.setCategory(input.category());
+        if (input.destinationId() != null) {
+            // An empty string is how the client clears the link.
+            item.setDestinationId(input.destinationId().isBlank()
+                    ? null
+                    : validDestination(trip, input.destinationId()));
+        }
+        return checklist.save(trip.getSlug(), item);
+    }
+
+    /**
+     * The only way an item becomes COMPLETED. Adding a plan deliberately does
+     * not complete it — that is what "Plan another" is for, so several plans can
+     * be recorded before the member decides the job is done. Completing with no
+     * plan at all is allowed, which is the "force it complete" case.
+     */
+    public ChecklistItem setStatus(String tripId, String userId, String itemId, ChecklistStatus status) {
+        Trip trip = access.requireMember(tripId, userId);
+        ChecklistItem item = require(trip, itemId);
+
+        item.setStatus(status);
+        item.setCompletedAt(status == ChecklistStatus.COMPLETED ? Instant.now() : null);
+        return checklist.save(trip.getSlug(), item);
+    }
+
+    /** Deleting an item unlinks its plans; the itinerary entries themselves stay. */
+    public void delete(String tripId, String userId, String itemId) {
+        Trip trip = access.requireMember(tripId, userId);
+        require(trip, itemId);
+
+        checklist.delete(trip.getSlug(), itemId);
+
+        var plans = new ArrayList<>(itinerary.findAll(trip.getSlug()));
+        boolean touched = false;
+        for (var plan : plans) {
+            if (itemId.equals(plan.getChecklistItemId())) {
+                plan.setChecklistItemId(null);
+                touched = true;
+            }
+        }
+        if (touched) itinerary.replaceAll(trip.getSlug(), plans);
+    }
+
+    public ChecklistItem require(Trip trip, String itemId) {
+        return checklist.findById(trip.getSlug(), itemId)
+                .orElseThrow(() -> ApiException.notFound("Checklist item"));
+    }
+
+    private String validDestination(Trip trip, String destinationId) {
+        if (destinationId == null || destinationId.isBlank()) return null;
+        return destinations.findById(trip.getSlug(), destinationId)
+                .orElseThrow(() -> ApiException.notFound("Destination"))
+                .getId();
+    }
+
+    private static void requireDescription(String description) {
+        if (description == null || description.isBlank()) {
+            throw ApiException.badRequest("A checklist item needs a description.");
+        }
+        if (description.trim().length() > 300) {
+            throw ApiException.badRequest("That description is too long.");
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+}

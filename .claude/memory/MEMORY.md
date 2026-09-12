@@ -1,0 +1,2 @@
+- [Project-scoped Claude config](project-scoped-claude-config.md) — in travel-planner only: plans, skills and commands go in the project's .claude/, not ~/.claude/
+- [Git workflow preference](git-workflow-preference.md) — plain git commands (push/pull), not gh CLI

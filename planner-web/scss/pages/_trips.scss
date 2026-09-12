@@ -1,0 +1,35 @@
+@use "../abstracts/tokens" as t;
+
+.trip-card-title {
+  margin: 0 0 t.$space-1;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.trip-card-dates { font-size: 0.85rem; color: var(--tp-muted); }
+
+.trip-card-badges {
+  display: flex;
+  gap: t.$space-1;
+  flex-wrap: wrap;
+  margin-top: t.$space-2;
+}
+
+.trip-card-progress { margin-top: t.$space-3; }
+
+.trip-card-progress-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  font-size: 0.75rem;
+  color: var(--tp-muted);
+}
+
+.trip-card-footer {
+  display: flex;
+  gap: t.$space-2;
+  flex-wrap: wrap;
+  margin-top: t.$space-3;
+  padding-top: t.$space-3;
+  border-top: 1px solid var(--tp-border);
+}

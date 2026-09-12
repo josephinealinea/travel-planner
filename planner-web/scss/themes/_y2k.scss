@@ -1,0 +1,35 @@
+// Y2K — soft violets, generous rounding, a little glow.
+body.theme-y2k {
+  --tp-bg: #f3e9ff;
+  --tp-surface: #ffffff;
+  --tp-surface-alt: #f8f0ff;
+  --tp-header-bg: rgba(248, 240, 255, 0.92);
+  --tp-input-bg: #ffffff;
+  --tp-backdrop: rgba(42, 26, 74, 0.4);
+  --tp-toast-bg: #7b2ff7;
+
+  --tp-text: #2a1a4a;
+  --tp-muted: #6b5b8c;
+  --tp-border: #dcc4f2;
+
+  --tp-accent: #c026d3;
+  --tp-accent-strong: #a21caf;
+  --tp-on-accent: #ffffff;
+
+  --tp-success: #16a34a;
+  --tp-danger: #e11d48;
+  --tp-danger-bg: #fff1f4;
+  --tp-warning: #d97706;
+  --tp-warning-bg: #fff7ed;
+  --tp-warning-text: #92400e;
+
+  --tp-font-body: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
+  --tp-font-display: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
+  --tp-font-mono: "Lucida Console", Monaco, monospace;
+
+  --tp-radius: 16px;
+  --tp-radius-sm: 10px;
+  --tp-shadow: 0 4px 14px rgba(192, 38, 211, 0.14);
+
+  .btn-primary { box-shadow: 0 2px 10px rgba(192, 38, 211, 0.32); }
+}

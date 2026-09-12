@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Trips — Travel Planner</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/minima.css?v=1"     id="minima-css">
+<link rel="stylesheet" href="assets/css/retro-game.css?v=1" id="retro-game-css" disabled>
+<link rel="stylesheet" href="assets/css/y2k.css?v=1"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/manila.css?v=1"     id="manila-css"     disabled>
+<script>
+  // Enable the remembered theme's stylesheet before first paint, so the page
+  // never flashes the default theme first.
+  (function () {
+    var registry = { minima: 'minima-css', 'retro-game': 'retro-game-css', y2k: 'y2k-css', manila: 'manila-css' };
+    var theme = 'minima';
+    try { if (registry[localStorage.getItem('selectedTheme')]) theme = localStorage.getItem('selectedTheme'); } catch (e) {}
+    Object.keys(registry).forEach(function (name) {
+      var link = document.getElementById(registry[name]);
+      if (link) link.disabled = name !== theme;
+    });
+    document.documentElement.className = 'theme-' + theme;
+  })();
+</script>
+</head>
+<body>
+<header id="site-header"></header>
+
+<main class="page" id="app" x-data="tripsPage()" x-init="load()" x-cloak>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">My Trips</h1>
+      <p class="page-subtitle" x-show="!loading" x-text="subtitle()"></p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-primary" @click="openCreate()">+ New Trip</button>
+    </div>
+  </div>
+
+  <div class="alert alert-error" x-show="error" x-text="error" x-cloak></div>
+  <p class="loading" x-show="loading">Loading your trips…</p>
+
+  <!-- Empty state -->
+  <div class="empty-state" x-show="!loading && !trips.length" x-cloak>
+    <div class="empty-icon">🧭</div>
+    <h2 class="empty-title">No trips yet</h2>
+    <p class="empty-body">
+      A trip holds your destinations, checklist, itinerary and budget —
+      and you can invite the people travelling with you.
+    </p>
+    <button type="button" class="btn btn-primary" @click="openCreate()">Create your first trip</button>
+  </div>
+
+  <!-- Trip cards -->
+  <div class="grid grid-cards" x-show="!loading && trips.length" x-cloak>
+    <template x-for="trip in trips" :key="trip.id">
+      <div class="card">
+        <h2 class="trip-card-title" x-text="trip.title"></h2>
+        <div class="trip-card-dates" x-text="dates(trip)"></div>
+
+        <div class="trip-card-badges">
+          <span class="badge" :class="trip.isOwner ? 'badge-owner' : ''"
+                x-text="trip.isOwner ? 'Owner' : 'Member'"></span>
+          <span class="badge" :class="trip.status === 'PUBLISHED' ? 'badge-published' : 'badge-draft'"
+                x-text="trip.status === 'PUBLISHED' ? 'Published' : 'Draft'"></span>
+          <span class="badge" x-text="memberLabel(trip)"></span>
+          <span class="badge" x-show="countdown(trip)" x-text="countdown(trip)"></span>
+        </div>
+
+        <div class="trip-card-progress" x-show="trip.checklistTotal">
+          <div class="trip-card-progress-label">
+            <span>Checklist</span>
+            <span x-text="`${trip.checklistCompleted} / ${trip.checklistTotal} done`"></span>
+          </div>
+          <div class="progress">
+            <div class="progress-fill" :style="`width:${progress(trip)}%`"></div>
+          </div>
+        </div>
+
+        <div class="trip-card-footer">
+          <a class="btn btn-primary btn-sm" :href="`trip.html?id=${trip.id}`">Open</a>
+          <a class="btn btn-sm" x-show="trip.publicUrl" :href="trip.publicUrl"
+             target="_blank" rel="noopener">View public page</a>
+          <button type="button" class="btn btn-sm btn-danger" x-show="trip.isOwner"
+                  @click="askDelete(trip)">Delete</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Create trip -->
+  <div class="modal-backdrop" x-show="creating" x-cloak @click.self="creating = false"
+       @keydown.escape.window="creating = false">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="create-title">New trip</h2>
+        <button type="button" class="modal-close" @click="creating = false" aria-label="Close">✕</button>
+      </div>
+
+      <div class="alert alert-error" x-show="formError" x-text="formError" x-cloak></div>
+
+      <form @submit.prevent="create()">
+        <div class="field">
+          <label for="title">Title</label>
+          <input id="title" x-model="form.title" required maxlength="120"
+                 placeholder="LATAM Trip 2026" x-ref="titleInput">
+        </div>
+        <div class="field-inline">
+          <div class="field">
+            <label for="startDate">Start date</label>
+            <input id="startDate" type="date" x-model="form.startDate" required>
+          </div>
+          <div class="field">
+            <label for="endDate">End date</label>
+            <input id="endDate" type="date" x-model="form.endDate" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" @click="creating = false">Cancel</button>
+          <button type="submit" class="btn btn-primary" :disabled="busy"
+                  x-text="busy ? 'Creating…' : 'Create trip'"></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete trip: typing the title is the confirmation -->
+  <div class="modal-backdrop" x-show="deleting" x-cloak @click.self="deleting = null"
+       @keydown.escape.window="deleting = null">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="delete-title">Delete this trip?</h2>
+        <button type="button" class="modal-close" @click="deleting = null" aria-label="Close">✕</button>
+      </div>
+      <p class="small">
+        This permanently removes <strong x-text="deleting?.title"></strong> and everything in it —
+        destinations, checklist, itinerary and budget — for every member.
+      </p>
+      <div class="field">
+        <label for="confirm-title">Type the trip title to confirm</label>
+        <input id="confirm-title" x-model="deleteConfirm" :placeholder="deleting?.title">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" @click="deleting = null">Cancel</button>
+        <button type="button" class="btn btn-danger"
+                :disabled="deleteConfirm !== deleting?.title || busy"
+                @click="confirmDelete()" x-text="busy ? 'Deleting…' : 'Delete trip'"></button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<style>[x-cloak] { display: none !important; }</style>
+<script type="module">
+  import { api } from './js/api.js';
+  import { bootPage } from './js/boot.js';
+  import { dateRange, countdownLabel, daysUntil } from './js/format.js';
+  import { toast } from './js/toast.js';
+
+  const tripsPage = () => ({
+    trips: [],
+    loading: true,
+    error: '',
+    creating: false,
+    formError: '',
+    busy: false,
+    deleting: null,
+    deleteConfirm: '',
+    form: { title: '', startDate: '', endDate: '' },
+
+    async load() {
+      try {
+        this.trips = await api.trips();
+      } catch (error) {
+        this.error = error.fullMessage;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    subtitle() {
+      if (!this.trips.length) return '';
+      const published = this.trips.filter((t) => t.status === 'PUBLISHED').length;
+      const count = `${this.trips.length} trip${this.trips.length === 1 ? '' : 's'}`;
+      return published ? `${count} · ${published} published` : count;
+    },
+
+    dates: (trip) => dateRange(trip.startDate, trip.endDate),
+
+    memberLabel(trip) {
+      return `${trip.memberCount} member${trip.memberCount === 1 ? '' : 's'}`;
+    },
+
+    // Only worth showing while the trip is still ahead.
+    countdown(trip) {
+      const days = daysUntil(trip.startDate);
+      return days != null && days >= 0 ? countdownLabel(trip.startDate) : '';
+    },
+
+    progress(trip) {
+      return trip.checklistTotal
+        ? Math.round((trip.checklistCompleted / trip.checklistTotal) * 100)
+        : 0;
+    },
+
+    openCreate() {
+      this.formError = '';
+      this.creating = true;
+      this.$nextTick(() => this.$refs.titleInput?.focus());
+    },
+
+    async create() {
+      this.formError = '';
+      if (this.form.endDate && this.form.startDate && this.form.endDate < this.form.startDate) {
+        this.formError = 'The end date cannot be before the start date.';
+        return;
+      }
+      this.busy = true;
+      try {
+        const trip = await api.createTrip({ ...this.form, title: this.form.title.trim() });
+        location.href = `trip.html?id=${trip.id}`;
+      } catch (error) {
+        this.formError = error.fullMessage;
+      } finally {
+        this.busy = false;
+      }
+    },
+
+    askDelete(trip) {
+      this.deleting = trip;
+      this.deleteConfirm = '';
+    },
+
+    async confirmDelete() {
+      this.busy = true;
+      try {
+        await api.deleteTrip(this.deleting.id);
+        this.trips = this.trips.filter((t) => t.id !== this.deleting.id);
+        toast.success(`"${this.deleting.title}" deleted`);
+        this.deleting = null;
+      } catch (error) {
+        toast.error(error.fullMessage);
+      } finally {
+        this.busy = false;
+      }
+    },
+  });
+
+  await bootPage({ active: 'trips', component: { tripsPage } });
+</script>
+</body>
+</html>

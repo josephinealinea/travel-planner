@@ -1,0 +1,64 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.budget-summary {
+  display: grid;
+  gap: t.$space-4;
+  grid-template-columns: minmax(200px, 260px) 1fr;
+  align-items: start;
+}
+
+.budget-total-value {
+  font-family: var(--tp-font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-total-label { margin-top: 2px; font-size: 0.8rem; color: var(--tp-muted); }
+
+.budget-bars > * + * { margin-top: t.$space-2; }
+
+.budget-bar-head {
+  display: flex;
+  gap: t.$space-3;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  font-size: 0.85rem;
+}
+
+.budget-bar-amount { color: var(--tp-muted); font-variant-numeric: tabular-nums; }
+
+// A ring rather than a pie: the hole carries the total, which is the number
+// people actually look for.
+.budget-donut {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  margin: 0 auto;
+}
+
+.budget-donut-total {
+  font-family: var(--tp-font-display);
+  font-size: 15px;
+  font-weight: 700;
+  fill: var(--tp-text);
+}
+
+.budget-donut-label { font-size: 7px; fill: var(--tp-muted); }
+
+.budget-legend { display: flex; flex-direction: column; gap: 5px; margin-top: t.$space-3; }
+
+.budget-legend-row {
+  display: flex;
+  gap: t.$space-2;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.budget-legend-amount { margin-left: auto; color: var(--tp-muted); font-variant-numeric: tabular-nums; }
+
+@include m.below(t.$page-max) {
+  .budget-summary { grid-template-columns: 1fr; }
+}

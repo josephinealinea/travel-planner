@@ -1,0 +1,45 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+// Tables are the widest thing on these pages, so they always live in their own
+// scroll container rather than making the page scroll sideways.
+.table-wrap {
+  @include m.card-surface;
+  @include m.scroll-x;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.table th,
+.table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--tp-border);
+  white-space: nowrap;
+}
+
+.table thead th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--tp-surface-alt);
+  position: sticky;
+  top: 0;
+}
+
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover { background: var(--tp-surface-alt); }
+
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table .wrap { white-space: normal; min-width: 220px; }
+.table .actions { text-align: right; }
+
+// Rows that open a detail view.
+.table tbody tr.clickable { cursor: pointer; }
+.table tbody tr.clickable:focus-visible { @include m.focus-ring; }

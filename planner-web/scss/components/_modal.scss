@@ -1,0 +1,70 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: t.$z-modal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: t.$space-4;
+  background: var(--tp-backdrop);
+  overflow-y: auto;
+}
+
+.modal {
+  @include m.card-surface;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - #{t.$space-6});
+  padding: t.$space-5;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+}
+
+.modal-wide { max-width: 680px; }
+
+.modal-header {
+  display: flex;
+  gap: t.$space-3;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: t.$space-4;
+}
+
+.modal-title { margin: 0; font-size: 1.15rem; }
+
+.modal-close {
+  padding: 2px 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--tp-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--tp-radius-sm);
+  cursor: pointer;
+}
+
+.modal-close:hover { color: var(--tp-text); background: var(--tp-surface-alt); }
+.modal-close:focus-visible { @include m.focus-ring; }
+
+.modal-footer {
+  display: flex;
+  gap: t.$space-2;
+  justify-content: flex-end;
+  margin-top: t.$space-5;
+  flex-wrap: wrap;
+}
+
+.modal-footer-split { justify-content: space-between; }
+
+@include m.mobile {
+  .modal-backdrop { padding: 0; align-items: flex-end; }
+  .modal {
+    max-width: none;
+    max-height: 92vh;
+    border-radius: var(--tp-radius) var(--tp-radius) 0 0;
+    padding: t.$space-4;
+  }
+}

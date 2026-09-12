@@ -1,0 +1,51 @@
+@use "../abstracts/tokens" as t;
+
+.toast-stack {
+  position: fixed;
+  bottom: t.$space-4;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: t.$z-toast;
+  display: flex;
+  flex-direction: column;
+  gap: t.$space-2;
+  width: max-content;
+  max-width: calc(100vw - #{t.$space-5});
+  pointer-events: none;
+}
+
+.toast {
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  color: var(--tp-on-accent);
+  background: var(--tp-toast-bg);
+  border-radius: var(--tp-radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  animation: toast-in 180ms ease;
+}
+
+.toast-error { background: var(--tp-danger); }
+.toast-success { background: var(--tp-success); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+
+// Inline messages, for form-level failures.
+.alert {
+  padding: 10px 12px;
+  margin-bottom: t.$space-4;
+  font-size: 0.88rem;
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  background: var(--tp-surface-alt);
+}
+
+.alert-error { color: var(--tp-danger); border-color: var(--tp-danger); background: var(--tp-danger-bg); }
+.alert-warning { color: var(--tp-warning-text); border-color: var(--tp-warning); background: var(--tp-warning-bg); }
+.alert-info { color: var(--tp-muted); }

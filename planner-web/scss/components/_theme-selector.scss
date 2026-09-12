@@ -1,0 +1,73 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.theme-selector { position: relative; flex: none; }
+
+.theme-toggle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 11px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--tp-text);
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.theme-toggle:hover { border-color: var(--tp-accent); }
+.theme-toggle:focus-visible { @include m.focus-ring; }
+
+.theme-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: t.$z-dropdown;
+  display: none;
+  min-width: 176px;
+  padding: t.$space-1;
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.theme-dropdown.show { display: block; }
+
+.theme-option {
+  display: flex;
+  gap: t.$space-2;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.87rem;
+  color: var(--tp-text);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--tp-radius-sm);
+  cursor: pointer;
+}
+
+.theme-option:hover { background: var(--tp-surface-alt); }
+.theme-option:focus-visible { @include m.focus-ring; outline-offset: -2px; }
+.theme-option.active { color: var(--tp-accent); font-weight: 600; }
+.theme-option.active::after { content: "✓"; margin-left: auto; }
+
+.theme-swatch {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 3px;
+  border: 1px solid var(--tp-border);
+}
+
+// The toggle shows short labels on narrow screens, matching the main site.
+.label-short { display: none; }
+@include m.mobile {
+  .label-full { display: none; }
+  .label-short { display: inline; }
+}

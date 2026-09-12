@@ -1,0 +1,81 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.field { margin-bottom: t.$space-4; }
+
+.field > label,
+.label {
+  display: block;
+  margin-bottom: t.$space-1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--tp-text);
+}
+
+.field-hint {
+  margin: t.$space-1 0 0;
+  font-size: 0.78rem;
+  color: var(--tp-muted);
+}
+
+.field-error {
+  margin: t.$space-1 0 0;
+  font-size: 0.78rem;
+  color: var(--tp-danger);
+}
+
+input:not([type]),
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="search"],
+select,
+textarea {
+  width: 100%;
+  padding: 9px 11px;
+  font: inherit;
+  color: var(--tp-text);
+  background: var(--tp-input-bg);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  transition: border-color t.$transition, box-shadow t.$transition;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible { @include m.focus-ring; border-color: var(--tp-accent); }
+
+input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--tp-danger); }
+
+input:disabled, select:disabled, textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+textarea { min-height: 76px; resize: vertical; }
+
+// Dates and numbers read better and align when they are not full width.
+.field-inline { display: flex; gap: t.$space-3; flex-wrap: wrap; }
+.field-inline > .field { flex: 1 1 160px; margin-bottom: 0; }
+
+.field-row {
+  display: grid;
+  gap: t.$space-3;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+fieldset { margin: 0 0 t.$space-4; padding: 0; border: 0; }
+legend { padding: 0; font-size: 0.85rem; font-weight: 600; }
+
+.checkbox {
+  display: inline-flex;
+  gap: t.$space-2;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.checkbox input { width: auto; }

@@ -1,0 +1,59 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+// Destination name lookup. Free text is always valid, so this is a suggestion
+// list rather than a required picker.
+.autocomplete { position: relative; }
+
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  z-index: t.$z-dropdown;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: t.$space-1;
+  margin: 0;
+  list-style: none;
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.autocomplete-option {
+  display: flex;
+  gap: t.$space-2;
+  align-items: baseline;
+  width: 100%;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 0.87rem;
+  color: var(--tp-text);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--tp-radius-sm);
+  cursor: pointer;
+}
+
+.autocomplete-option:hover,
+.autocomplete-option[aria-selected="true"] { background: var(--tp-surface-alt); }
+
+.autocomplete-name { font-weight: 500; }
+.autocomplete-meta { margin-left: auto; font-size: 0.75rem; color: var(--tp-muted); white-space: nowrap; }
+
+.autocomplete-status {
+  padding: 9px;
+  font-size: 0.82rem;
+  color: var(--tp-muted);
+}
+
+// Shown when a lookup finds nothing, to make clear that typing it anyway works.
+.autocomplete-freetext {
+  padding: 9px;
+  font-size: 0.8rem;
+  color: var(--tp-muted);
+  border-top: 1px solid var(--tp-border);
+}

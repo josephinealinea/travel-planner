@@ -1,0 +1,306 @@
+/*
+ * Stylesheet for a published trip page. Inlined into index.html at publish
+ * time, so the output file works with nothing behind it.
+ *
+ * Themes are token swaps on :root[data-theme], mirroring the frontend's theme
+ * registry — the trip records which theme it was published in.
+ */
+
+:root {
+  --tp-bg: #f6f8fa;
+  --tp-surface: #ffffff;
+  --tp-surface-alt: #f1f4f7;
+  --tp-text: #24292f;
+  --tp-muted: #5b6570;
+  --tp-accent: #0969da;
+  --tp-border: #d8dee4;
+  --tp-done: #2f9e44;
+  --tp-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tp-font-display: var(--tp-font-body);
+  --tp-radius: 10px;
+  --tp-shadow: 0 1px 3px rgba(27, 31, 36, 0.08);
+  --tp-max: 1080px;
+}
+
+:root[data-theme="retro-game"] {
+  --tp-bg: #0b1020;
+  --tp-surface: rgba(18, 28, 56, 0.92);
+  --tp-surface-alt: rgba(30, 44, 84, 0.85);
+  --tp-text: #e8f0ff;
+  --tp-muted: #93a6cc;
+  --tp-accent: #5ad1ff;
+  --tp-border: #2a3d6e;
+  --tp-done: #7bdc8b;
+  --tp-font-display: "Courier New", Courier, monospace;
+  --tp-shadow: 0 0 0 2px rgba(90, 209, 255, 0.25);
+  --tp-radius: 4px;
+}
+
+:root[data-theme="y2k"] {
+  --tp-bg: #f0e6ff;
+  --tp-surface: #ffffff;
+  --tp-surface-alt: #f7edff;
+  --tp-text: #2a1a4a;
+  --tp-muted: #6b5b8c;
+  --tp-accent: #c026d3;
+  --tp-border: #d8bcf0;
+  --tp-done: #16a34a;
+  --tp-font-display: "Trebuchet MS", "Comic Sans MS", var(--tp-font-body);
+  --tp-radius: 16px;
+  --tp-shadow: 0 4px 12px rgba(192, 38, 211, 0.18);
+}
+
+:root[data-theme="manila"] {
+  --tp-bg: #fdf6e8;
+  --tp-surface: #fffdf7;
+  --tp-surface-alt: #f7eed8;
+  --tp-text: #3a2f1d;
+  --tp-muted: #7a6a4f;
+  --tp-accent: #b45309;
+  --tp-border: #e2d3b0;
+  --tp-done: #4d7c0f;
+  --tp-font-display: Georgia, "Times New Roman", serif;
+  --tp-radius: 6px;
+  --tp-shadow: 0 2px 6px rgba(120, 95, 50, 0.15);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--tp-bg);
+  color: var(--tp-text);
+  font: 16px/1.55 var(--tp-font-body);
+  -webkit-text-size-adjust: 100%;
+}
+
+.page {
+  max-width: var(--tp-max);
+  margin: 0 auto;
+  padding: 32px 20px 72px;
+}
+
+.noscript {
+  padding: 16px 20px;
+  background: #fff3cd;
+  color: #664d03;
+  text-align: center;
+}
+
+/* ── header ─────────────────────────────────────────── */
+
+.trip-header { margin-bottom: 24px; }
+
+.trip-title {
+  margin: 0 0 6px;
+  font: 700 clamp(1.7rem, 4vw, 2.6rem)/1.15 var(--tp-font-display);
+}
+
+.trip-dates { margin: 0 0 10px; color: var(--tp-muted); font-size: 1.05rem; }
+.trip-flags { font-size: 1.5rem; letter-spacing: 4px; margin-bottom: 8px; }
+.trip-route { color: var(--tp-muted); font-size: 0.95rem; }
+.trip-published { margin-top: 10px; color: var(--tp-muted); font-size: 0.8rem; }
+
+/* ── panel toggle ───────────────────────────────────── */
+
+.panel-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  margin-bottom: 24px;
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  box-shadow: var(--tp-shadow);
+}
+
+.panel-toggle-label {
+  color: var(--tp-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+
+.panel-btn {
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--tp-text);
+  background: var(--tp-surface-alt);
+  border: 1px solid var(--tp-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.panel-btn:hover { border-color: var(--tp-accent); }
+
+.panel-btn[aria-pressed="true"] {
+  background: var(--tp-accent);
+  border-color: var(--tp-accent);
+  color: #fff;
+}
+
+/* ── sections ───────────────────────────────────────── */
+
+.panel { margin-bottom: 32px; }
+.panel[hidden] { display: none; }
+
+.panel-heading {
+  margin: 0 0 14px;
+  font: 600 1.3rem/1.3 var(--tp-font-display);
+}
+
+.card {
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  box-shadow: var(--tp-shadow);
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+
+.empty { color: var(--tp-muted); font-style: italic; }
+
+/* ── destinations ───────────────────────────────────── */
+
+.dest-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.dest-name { font-weight: 600; font-size: 1.08rem; margin-bottom: 4px; }
+.dest-meta { color: var(--tp-muted); font-size: 0.88rem; }
+.dest-notes { margin-top: 8px; font-size: 0.9rem; }
+
+.nights-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  background: var(--tp-surface-alt);
+  border: 1px solid var(--tp-border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--tp-muted);
+}
+
+/* ── itinerary ──────────────────────────────────────── */
+
+.day { margin-bottom: 18px; }
+
+.day-date {
+  margin: 0 0 8px;
+  font: 600 1.05rem/1.3 var(--tp-font-display);
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--tp-border);
+}
+
+.entry {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.entry:last-child { border-bottom: 0; }
+.entry-icon { font-size: 1.15rem; line-height: 1.4; flex: none; }
+.entry-body { flex: 1; min-width: 0; }
+.entry-desc { font-weight: 500; }
+.entry-meta { color: var(--tp-muted); font-size: 0.85rem; margin-top: 2px; }
+.entry-cost { flex: none; color: var(--tp-muted); font-size: 0.88rem; white-space: nowrap; }
+
+/* ── checklist ──────────────────────────────────────── */
+
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.check:last-child { border-bottom: 0; }
+.check-icon { flex: none; }
+.check-desc { flex: 1; min-width: 0; }
+.check-done .check-desc { color: var(--tp-muted); text-decoration: line-through; }
+.check-note { display: block; margin-top: 2px; color: var(--tp-muted); font-size: 0.85rem; text-decoration: none; }
+
+.chip {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--tp-surface-alt);
+  border: 1px solid var(--tp-border);
+  font-size: 0.75rem;
+  color: var(--tp-muted);
+  vertical-align: middle;
+}
+
+/* ── budget ─────────────────────────────────────────── */
+
+.budget-total {
+  font: 700 1.6rem/1.2 var(--tp-font-display);
+  margin-bottom: 4px;
+}
+
+.budget-total-label { color: var(--tp-muted); font-size: 0.85rem; margin-bottom: 16px; }
+
+.bar-row { margin-bottom: 10px; }
+
+.bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.bar-track {
+  height: 8px;
+  background: var(--tp-surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill { height: 100%; border-radius: 999px; }
+
+.warn {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fff3cd;
+  border: 1px solid #ffe69c;
+  border-radius: var(--tp-radius);
+  color: #664d03;
+  font-size: 0.88rem;
+}
+
+/* Wide content scrolls inside its own container, never the page. */
+.table-wrap { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--tp-border); white-space: nowrap; }
+th { color: var(--tp-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+td.num, th.num { text-align: right; }
+td.wrap { white-space: normal; min-width: 200px; }
+
+a { color: var(--tp-accent); }
+
+.footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--tp-border);
+  color: var(--tp-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .page { padding: 20px 14px 56px; }
+  .entry { flex-wrap: wrap; }
+  .entry-cost { width: 100%; padding-left: 27px; }
+}

@@ -1,0 +1,45 @@
+@use "breakpoints" as bp;
+
+@mixin below($width) {
+  @media (max-width: $width - 1px) { @content; }
+}
+
+@mixin from($width) {
+  @media (min-width: $width) { @content; }
+}
+
+@mixin mobile { @include below(bp.$bp-md) { @content; } }
+
+// Visible only to assistive technology — used for labels the design carries
+// visually in another way.
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Every interactive element gets the same visible keyboard ring.
+@mixin focus-ring {
+  outline: 2px solid var(--tp-accent);
+  outline-offset: 2px;
+}
+
+@mixin card-surface {
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  box-shadow: var(--tp-shadow);
+}
+
+// Wide content must scroll inside its own box; the page itself never scrolls
+// sideways.
+@mixin scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

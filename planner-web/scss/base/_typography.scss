@@ -1,0 +1,32 @@
+@use "../abstracts/tokens" as t;
+
+h1, h2, h3, h4 {
+  margin: 0 0 t.$space-3;
+  font-family: var(--tp-font-display);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.1rem; }
+h4 { font-size: 0.95rem; }
+
+p { margin: 0 0 t.$space-3; }
+
+a {
+  color: var(--tp-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+a:hover { text-decoration: underline; }
+
+code, kbd, .mono { font-family: var(--tp-font-mono); font-size: 0.9em; }
+
+.muted { color: var(--tp-muted); }
+.small { font-size: 0.875rem; }
+.tiny  { font-size: 0.78rem; }
+.strong { font-weight: 600; }
+.nowrap { white-space: nowrap; }
+.strike { text-decoration: line-through; }

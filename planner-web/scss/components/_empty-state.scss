@@ -1,0 +1,19 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.empty-state {
+  @include m.card-surface;
+  padding: t.$space-6 t.$space-4;
+  text-align: center;
+}
+
+.empty-icon { font-size: 2rem; margin-bottom: t.$space-2; }
+.empty-title { margin: 0 0 t.$space-1; font-size: 1rem; font-weight: 600; }
+.empty-body { margin: 0 auto t.$space-4; max-width: 380px; color: var(--tp-muted); font-size: 0.88rem; }
+
+.loading {
+  padding: t.$space-6;
+  color: var(--tp-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}

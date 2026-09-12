@@ -1,0 +1,42 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.tabs {
+  display: flex;
+  gap: t.$space-1;
+  margin-bottom: t.$space-5;
+  border-bottom: 1px solid var(--tp-border);
+  @include m.scroll-x;
+}
+
+.tab {
+  flex: none;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--tp-muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--tp-text); }
+.tab:focus-visible { @include m.focus-ring; }
+
+.tab[aria-selected="true"] {
+  color: var(--tp-accent);
+  font-weight: 600;
+  border-bottom-color: var(--tp-accent);
+}
+
+.tab-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 0.72rem;
+  color: var(--tp-muted);
+  background: var(--tp-surface-alt);
+  border-radius: 999px;
+}

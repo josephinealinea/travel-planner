@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip — Travel Planner</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/minima.css?v=1"     id="minima-css">
+<link rel="stylesheet" href="assets/css/retro-game.css?v=1" id="retro-game-css" disabled>
+<link rel="stylesheet" href="assets/css/y2k.css?v=1"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/manila.css?v=1"     id="manila-css"     disabled>
+<script>
+  // Enable the remembered theme's stylesheet before first paint, so the page
+  // never flashes the default theme first.
+  (function () {
+    var registry = { minima: 'minima-css', 'retro-game': 'retro-game-css', y2k: 'y2k-css', manila: 'manila-css' };
+    var theme = 'minima';
+    try { if (registry[localStorage.getItem('selectedTheme')]) theme = localStorage.getItem('selectedTheme'); } catch (e) {}
+    Object.keys(registry).forEach(function (name) {
+      var link = document.getElementById(registry[name]);
+      if (link) link.disabled = name !== theme;
+    });
+    document.documentElement.className = 'theme-' + theme;
+  })();
+</script>
+</head>
+<body>
+<header id="site-header"></header>
+
+<main class="page" x-data="tripPage()" x-init="init()" x-cloak>
+  <p class="loading" x-show="loading">Loading the trip…</p>
+  <div class="alert alert-error" x-show="error && !loading" x-text="error" x-cloak></div>
+
+  <template x-if="!loading && !error">
+    <div>
+      <!-- ── header ─────────────────────────────── -->
+      <div class="trip-head">
+        <div>
+          <h1 class="trip-head-title">
+            <span x-text="trip.title"></span>
+            <span class="badge" :class="trip.status === 'PUBLISHED' ? 'badge-published' : 'badge-draft'"
+                  x-text="trip.status === 'PUBLISHED' ? 'Published' : 'Draft'"></span>
+            <span class="badge" :class="isOwner ? 'badge-owner' : ''"
+                  x-text="isOwner ? 'Owner' : 'Member'"></span>
+          </h1>
+          <div class="trip-head-meta">
+            <span x-text="tripDates()"></span>
+            <span x-show="ownerName()"> · owned by <span x-text="ownerName()"></span></span>
+            <span> · <span x-text="members.length"></span>
+              member<span x-show="members.length !== 1">s</span></span>
+          </div>
+        </div>
+        <div class="trip-head-actions">
+          <a class="btn btn-sm" href="trips.html">← All trips</a>
+          <button type="button" class="btn btn-sm" @click="openEdit()">Edit trip</button>
+          <button type="button" class="btn btn-sm btn-danger" x-show="isOwner"
+                  @click="deletingTrip = true; deleteConfirm = ''">Delete trip</button>
+        </div>
+      </div>
+
+      <!-- ── tabs ───────────────────────────────── -->
+      <div class="tabs" role="tablist">
+        <template x-for="t in tabs" :key="t.id">
+          <button type="button" class="tab" role="tab"
+                  :aria-selected="tab === t.id" @click="selectTab(t.id)">
+            <span x-text="t.label"></span>
+            <span class="tab-count" x-show="countFor(t.id)" x-text="countFor(t.id)"></span>
+          </button>
+        </template>
+      </div>
+
+      <!-- ══ OVERVIEW ═══════════════════════════ -->
+      <section x-show="tab === 'overview'">
+        <div class="grid grid-stats" style="margin-bottom:24px">
+          <template x-for="stat in stats()" :key="stat.label">
+            <div class="stat">
+              <div class="stat-value" x-text="stat.value"></div>
+              <div class="stat-label" x-text="stat.label"></div>
+            </div>
+          </template>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header"><h2 class="card-title">Up next</h2></div>
+            <p class="small muted" x-show="!upNext().length">Nothing scheduled yet.</p>
+            <template x-for="item in upNext()" :key="item.id">
+              <div class="needs-planning-row">
+                <span x-text="categoryOf(item.category).icon"></span>
+                <div class="grow">
+                  <div class="small strong" x-text="item.description"></div>
+                  <div class="tiny muted" x-text="planWhen(item)"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Needs planning</h2>
+              <span class="badge" x-text="needsPlanning().length"></span>
+            </div>
+            <p class="small muted" x-show="!needsPlanning().length">
+              Everything on the checklist has a plan against it.
+            </p>
+            <template x-for="item in needsPlanning()" :key="item.id">
+              <div class="needs-planning-row">
+                <span x-text="categoryOf(item.category).icon"></span>
+                <div class="grow">
+                  <div class="small" x-text="item.description"></div>
+                  <div class="tiny muted" x-show="destinationName(item.destinationId)"
+                       x-text="destinationName(item.destinationId)"></div>
+                </div>
+                <button type="button" class="btn btn-sm" @click="planFromOverview(item)">Plan</button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ MEMBERS ════════════════════════════ -->
+      <section x-show="tab === 'members'">
+        <div class="section-head">
+          <h2 class="section-title">Members</h2>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div class="alert alert-error" x-show="memberError" x-text="memberError" x-cloak></div>
+          <form class="field-inline" @submit.prevent="addMember()">
+            <div class="field grow">
+              <label for="member-email">Add a member by email</label>
+              <input id="member-email" type="email" x-model="memberEmail"
+                     placeholder="name@example.com" required>
+              <p class="field-hint">
+                They will get an email with a temporary password. Until they sign in and
+                choose a screen name, this list shows their email address.
+              </p>
+            </div>
+            <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
+              <button type="submit" class="btn btn-primary" :disabled="addingMember"
+                      x-text="addingMember ? 'Sending…' : 'Send invite'"></button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>Added</th><th class="actions"></th></tr>
+            </thead>
+            <tbody>
+              <template x-for="member in members" :key="member.userId">
+                <tr>
+                  <td>
+                    <span class="member-name">
+                      <span :class="member.screenName ? '' : 'member-email-only'"
+                            x-text="member.displayName"></span>
+                      <span class="badge" x-show="!member.hasSignedIn">Not signed in yet</span>
+                      <span class="badge" x-show="member.userId === currentUserId">You</span>
+                    </span>
+                  </td>
+                  <td class="muted" x-text="member.email"></td>
+                  <td><span class="badge" :class="member.role === 'OWNER' ? 'badge-owner' : ''"
+                            x-text="member.role === 'OWNER' ? 'Owner' : 'Member'"></span></td>
+                  <td class="muted tiny"
+                      x-text="member.invitedAt ? new Date(member.invitedAt).toLocaleDateString() : ''"></td>
+                  <td class="actions">
+                    <button type="button" class="btn btn-sm btn-danger"
+                            x-show="member.role !== 'OWNER'"
+                            @click="askRemoveMember(member)"
+                            x-text="isSelf(member) ? 'Leave trip' : 'Remove'"></button>
+                    <span class="tiny muted" x-show="member.role === 'OWNER'"
+                          title="Delete the trip instead">Cannot be removed</span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══ DESTINATIONS ═══════════════════════ -->
+      <section x-show="tab === 'destinations'">
+        <div class="section-head">
+          <h2 class="section-title">Destinations</h2>
+          <button type="button" class="btn btn-primary btn-sm" @click="openAddDestination()">
+            + Add destination
+          </button>
+        </div>
+
+        <div class="empty-state" x-show="!destinations.length">
+          <div class="empty-icon">📍</div>
+          <h3 class="empty-title">No destinations yet</h3>
+          <p class="empty-body">
+            Adding one creates three checklist items for it — transportation,
+            accommodation and activities.
+          </p>
+          <button type="button" class="btn btn-primary" @click="openAddDestination()">
+            Add your first destination
+          </button>
+        </div>
+
+        <div class="table-wrap" x-show="destinations.length">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th><th>Country</th><th>Lat / Lon</th><th>Dates</th>
+                <th class="num">Nights</th><th class="num">Checklist</th><th class="actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="destination in destinations" :key="destination.id">
+                <tr>
+                  <td class="strong" x-text="destination.name"></td>
+                  <td>
+                    <span x-show="destination.countryFlag" x-text="destination.countryFlag"></span>
+                    <span class="muted" x-text="destination.countryName || '—'"></span>
+                  </td>
+                  <td class="mono tiny">
+                    <a x-show="mapUrl(destination)" :href="mapUrl(destination)"
+                       target="_blank" rel="noopener" x-text="coordinates(destination)"></a>
+                    <span x-show="!mapUrl(destination)" class="muted">—</span>
+                  </td>
+                  <td x-text="destinationDates(destination) || '—'"></td>
+                  <td class="num" x-text="nightsOf(destination) ? nightsOf(destination) + 'N' : '—'"></td>
+                  <td class="num" x-text="checklistCountFor(destination)"></td>
+                  <td class="actions">
+                    <span class="btn-row">
+                      <button type="button" class="btn btn-sm"
+                              @click="openEditDestination(destination)">Edit</button>
+                      <button type="button" class="btn btn-sm btn-danger"
+                              @click="askDeleteDestination(destination)">Delete</button>
+                    </span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══ CHECKLIST ══════════════════════════ -->
+      <section x-show="tab === 'checklist'">
+        <div class="section-head">
+          <h2 class="section-title">
+            Travel Checklist
+            <span class="small muted"
+                  x-text="`— ${checkProgress().done} of ${checkProgress().total} done`"></span>
+          </h2>
+          <button type="button" class="btn btn-primary btn-sm" @click="openAddCheck()">
+            + Add checklist item
+          </button>
+        </div>
+
+        <div class="toolbar">
+          <span class="toolbar-label">Status</span>
+          <div class="chip-group">
+            <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
+              <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
+                      @click="checkStatusFilter = option"
+                      x-text="option === 'ALL' ? 'All' : (option === 'TODO' ? 'To do' : 'Completed')"></button>
+            </template>
+          </div>
+
+          <span class="toolbar-label">Category</span>
+          <div class="chip-group">
+            <template x-for="cat in categories" :key="cat.value">
+              <button type="button" class="chip"
+                      :aria-pressed="checkCategoryFilters.includes(cat.value)"
+                      @click="toggleCategoryFilter(cat.value)">
+                <span x-text="cat.icon"></span><span x-text="cat.label"></span>
+              </button>
+            </template>
+          </div>
+
+          <span class="toolbar-label">Group by</span>
+          <select x-model="checkGroupBy">
+            <option value="destination">Destination</option>
+            <option value="category">Category</option>
+            <option value="none">Nothing</option>
+          </select>
+        </div>
+
+        <div class="empty-state" x-show="!checklist.length">
+          <div class="empty-icon">🧳</div>
+          <h3 class="empty-title">Nothing on the checklist yet</h3>
+          <p class="empty-body">
+            Add a destination to have its items created for you, or add one here directly.
+          </p>
+          <button type="button" class="btn btn-primary" @click="openAddCheck()">Add an item</button>
+        </div>
+
+        <p class="small muted" x-show="checklist.length && !filteredChecklist.length">
+          Nothing matches those filters.
+        </p>
+
+        <template x-for="group in checklistGroups" :key="group.title || 'all'">
+          <div class="checklist" style="margin-bottom:16px">
+            <div class="checklist-group-title" x-show="group.title" x-text="group.title"></div>
+            <template x-for="item in group.items" :key="item.id">
+              <button type="button" class="check-row" :class="item.status === 'COMPLETED' ? 'is-done' : ''"
+                      @click="openChecklistItem(item)">
+                <span class="check-status" @click="quickToggle(item, $event)"
+                      :title="item.status === 'COMPLETED' ? 'Mark as to do' : 'Mark complete'"
+                      x-text="item.status === 'COMPLETED' ? '✔️' : '▫️'"></span>
+                <span class="check-main">
+                  <span class="check-text" x-text="item.description"></span>
+                  <span class="check-note" x-show="item.note" x-text="item.note"></span>
+                  <span class="check-tags">
+                    <span class="chip">
+                      <span x-text="categoryOf(item.category).icon"></span>
+                      <span x-text="categoryOf(item.category).label"></span>
+                    </span>
+                    <span class="chip" x-show="destinationName(item.destinationId)"
+                          x-text="destinationName(item.destinationId)"></span>
+                    <span class="chip" x-show="planCountFor(item)"
+                          x-text="`${planCountFor(item)} plan${planCountFor(item) === 1 ? '' : 's'}`"></span>
+                  </span>
+                </span>
+                <span class="check-side">
+                  <span class="tiny muted">Open →</span>
+                </span>
+              </button>
+            </template>
+          </div>
+        </template>
+      </section>
+
+      <!-- ══ ITINERARY ══════════════════════════ -->
+      <section x-show="tab === 'itinerary'">
+        <div class="section-head">
+          <h2 class="section-title">Itinerary</h2>
+          <button type="button" class="btn btn-primary btn-sm" @click="openAddEntry()">
+            + Add itinerary item
+          </button>
+        </div>
+
+        <div class="toolbar">
+          <span class="toolbar-label">Category</span>
+          <div class="chip-group">
+            <template x-for="cat in categories" :key="cat.value">
+              <button type="button" class="chip"
+                      :aria-pressed="itinCategoryFilters.includes(cat.value)"
+                      @click="toggleItinCategory(cat.value)">
+                <span x-text="cat.icon"></span><span x-text="cat.label"></span>
+              </button>
+            </template>
+          </div>
+          <label class="checkbox">
+            <input type="checkbox" x-model="itinCostOnly"> Only items with a cost
+          </label>
+        </div>
+
+        <div class="empty-state" x-show="!itinerary.length">
+          <div class="empty-icon">🗓</div>
+          <h3 class="empty-title">Nothing planned yet</h3>
+          <p class="empty-body">
+            Open a checklist item and press Plan, or add an itinerary entry directly.
+          </p>
+          <button type="button" class="btn btn-primary" @click="openAddEntry()">Add an entry</button>
+        </div>
+
+        <template x-for="day in itineraryDays" :key="day.date || 'undated'">
+          <div class="timeline-day">
+            <h3 class="timeline-date">
+              <span x-text="day.label"></span>
+              <span class="timeline-date-count"
+                    x-text="`${day.entries.length} item${day.entries.length === 1 ? '' : 's'}`"></span>
+            </h3>
+            <div class="timeline-entries">
+              <template x-for="item in day.entries" :key="item.id">
+                <div class="timeline-entry">
+                  <span class="timeline-time" x-text="entryTime(item)"></span>
+                  <span class="timeline-icon" x-text="categoryOf(item.category).icon"></span>
+                  <div class="timeline-body">
+                    <div class="timeline-desc" x-text="item.description"></div>
+                    <div class="timeline-meta">
+                      <span x-text="categoryOf(item.category).label"></span>
+                      <span x-show="sourceChecklist(item)">
+                        · from “<span x-text="sourceChecklist(item)"></span>”
+                      </span>
+                    </div>
+                  </div>
+                  <span class="timeline-cost" x-show="item.cost" x-text="entryCost(item)"></span>
+                  <span class="timeline-actions btn-row">
+                    <button type="button" class="btn btn-sm" @click="openEditEntry(item)">Edit</button>
+                    <button type="button" class="btn btn-sm btn-danger"
+                            @click="askDeleteEntry(item)">Delete</button>
+                  </span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <!-- ══ BUDGET ═════════════════════════════ -->
+      <section x-show="tab === 'budget'">
+        <div class="section-head">
+          <h2 class="section-title">Budget</h2>
+          <div class="btn-row">
+            <button type="button" class="btn btn-sm" @click="openRates()">Exchange rates</button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddExpense()">
+              + Add expense
+            </button>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <span class="toolbar-label">Show totals in</span>
+          <select :value="budget.displayCurrency" @change="setDisplayCurrency($event.target.value)">
+            <template x-for="code in currencies" :key="code">
+              <option :value="code" x-text="code"></option>
+            </template>
+          </select>
+        </div>
+
+        <div class="empty-state" x-show="!budget.items.length">
+          <div class="empty-icon">💰</div>
+          <h3 class="empty-title">No costs recorded yet</h3>
+          <p class="empty-body">
+            Put a cost on a plan and it appears here automatically, or add an expense by hand.
+          </p>
+          <button type="button" class="btn btn-primary" @click="openAddExpense()">Add an expense</button>
+        </div>
+
+        <div x-show="budget.items.length">
+          <div class="card" style="margin-bottom:16px">
+            <div class="budget-summary">
+              <div>
+                <div class="budget-total-value" x-text="fmt(budget.total, budget.displayCurrency)"></div>
+                <div class="budget-total-label" x-text="`Total, in ${budget.displayCurrency}`"></div>
+
+                <svg class="budget-donut" viewBox="0 0 100 100" role="img"
+                     aria-label="Spend by category" x-show="donutSegments.length">
+                  <circle cx="50" cy="50" r="42" fill="none"
+                          stroke="var(--tp-surface-alt)" stroke-width="14"></circle>
+                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
+                          transform="rotate(-90 50 50)" x-show="donutSegments[0]"
+                          :stroke="donutSegments[0]?.color"
+                          :stroke-dasharray="donutSegments[0]?.dash"
+                          :stroke-dashoffset="donutSegments[0]?.offset"></circle>
+                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
+                          transform="rotate(-90 50 50)" x-show="donutSegments[1]"
+                          :stroke="donutSegments[1]?.color"
+                          :stroke-dasharray="donutSegments[1]?.dash"
+                          :stroke-dashoffset="donutSegments[1]?.offset"></circle>
+                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
+                          transform="rotate(-90 50 50)" x-show="donutSegments[2]"
+                          :stroke="donutSegments[2]?.color"
+                          :stroke-dasharray="donutSegments[2]?.dash"
+                          :stroke-dashoffset="donutSegments[2]?.offset"></circle>
+                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
+                          transform="rotate(-90 50 50)" x-show="donutSegments[3]"
+                          :stroke="donutSegments[3]?.color"
+                          :stroke-dasharray="donutSegments[3]?.dash"
+                          :stroke-dashoffset="donutSegments[3]?.offset"></circle>
+                </svg>
+              </div>
+
+              <div class="budget-bars">
+                <template x-for="cat in budgetCategories" :key="cat.value">
+                  <div>
+                    <div class="budget-bar-head">
+                      <span><span x-text="cat.icon"></span> <span x-text="cat.label"></span></span>
+                      <span class="budget-bar-amount"
+                            x-text="fmt(cat.amount, budget.displayCurrency)"></span>
+                    </div>
+                    <div class="bar-track">
+                      <div class="bar-fill"
+                           :style="`width:${barWidth(cat.amount)}%;background:${cat.color}`"></div>
+                    </div>
+                  </div>
+                </template>
+
+                <div class="alert alert-warning" x-show="missingRates.length" style="margin-top:12px">
+                  Not included in the total — no exchange rate set for
+                  <template x-for="code in missingRates" :key="code">
+                    <button type="button" class="btn-link" @click="addMissingRate(code)"
+                            x-text="code"></button>
+                  </template>.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th></th><th>Description</th><th>Category</th>
+                  <th class="num">Amount</th>
+                  <th class="num" x-text="`In ${budget.displayCurrency}`"></th>
+                  <th>Date</th><th>Source</th><th class="actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="item in budget.items" :key="item.id">
+                  <tr>
+                    <td x-text="categoryOf(item.category).icon"></td>
+                    <td class="wrap" x-text="item.description"></td>
+                    <td class="muted" x-text="categoryOf(item.category).label"></td>
+                    <td class="num" x-text="fmt(item.amount, item.currency)"></td>
+                    <td class="num" x-text="convertedOf(item) == null ? '—' : fmt(convertedOf(item))"></td>
+                    <td class="muted" x-text="expenseDate(item)"></td>
+                    <td class="tiny muted">
+                      <span x-show="item.itineraryItemId"
+                            :title="sourcePlan(item)">From plan</span>
+                      <span x-show="!item.itineraryItemId">Manual</span>
+                    </td>
+                    <td class="actions">
+                      <span class="btn-row">
+                        <button type="button" class="btn btn-sm"
+                                @click="openEditExpense(item)">Edit</button>
+                        <button type="button" class="btn btn-sm btn-danger"
+                                @click="askDeleteExpense(item)">Delete</button>
+                      </span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ PUBLISH ════════════════════════════ -->
+      <section x-show="tab === 'publish'">
+        <div class="section-head">
+          <h2 class="section-title">Publish</h2>
+        </div>
+
+        <!-- Published -->
+        <div class="card" x-show="isPublished" style="margin-bottom:16px">
+          <div class="card-header">
+            <h3 class="card-title">This trip is published</h3>
+            <span class="badge badge-published">Live</span>
+          </div>
+          <p class="small muted">
+            Anyone with this link can see the trip — no sign-in needed.
+            Last published <span x-text="publishedAtLabel()"></span>.
+          </p>
+          <div class="publish-url">
+            <span x-ref="publicUrl" class="grow" x-text="publish.publicUrl"></span>
+            <button type="button" class="btn btn-sm" @click="copyLink()"
+                    x-text="copied ? 'Copied ✓' : 'Copy link'"></button>
+          </div>
+          <div class="btn-row">
+            <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener">
+              Open public page
+            </a>
+            <button type="button" class="btn btn-sm" x-show="isOwner" :disabled="publishBusy"
+                    @click="doPublish()" x-text="publishBusy ? 'Working…' : 'Re-publish (update)'"></button>
+            <button type="button" class="btn btn-sm btn-danger" x-show="isOwner"
+                    @click="confirmingUnpublish = true">Unpublish</button>
+          </div>
+        </div>
+
+        <!-- Draft, owner -->
+        <div class="card" x-show="!isPublished && isOwner" style="margin-bottom:16px">
+          <div class="card-header"><h3 class="card-title">Ready to share?</h3></div>
+          <p class="small muted">
+            You can publish at any point, however unfinished the plan is — publishing again
+            later updates the page.
+          </p>
+          <div class="field" style="max-width:260px">
+            <label for="publish-theme">Theme for the public page</label>
+            <select id="publish-theme" x-model="publishTheme">
+              <template x-for="option in themes" :key="option.value">
+                <option :value="option.value" x-text="option.label"></option>
+              </template>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary" @click="confirmingPublish = true">
+            Publish trip
+          </button>
+        </div>
+
+        <!-- Draft, non-owner -->
+        <div class="card" x-show="!isPublished && !isOwner" style="margin-bottom:16px">
+          <div class="card-header"><h3 class="card-title">Ask the owner to publish</h3></div>
+          <p class="small muted">
+            Only <span x-text="ownerName()"></span> can publish this trip. Send a request and
+            they can approve it.
+          </p>
+
+          <template x-if="myPendingRequest">
+            <div>
+              <div class="alert alert-info">
+                Requested — waiting for <span x-text="ownerName()"></span>.
+              </div>
+              <button type="button" class="btn btn-sm"
+                      @click="cancelRequest(myPendingRequest)">Cancel request</button>
+            </div>
+          </template>
+
+          <template x-if="!myPendingRequest">
+            <form @submit.prevent="requestPublish()">
+              <div class="field">
+                <label for="request-note">Note for the owner (optional)</label>
+                <input id="request-note" x-model="requestNote"
+                       placeholder="Ready to share with family">
+              </div>
+              <button type="submit" class="btn btn-primary" :disabled="publishBusy"
+                      x-text="publishBusy ? 'Sending…' : 'Request to Publish'"></button>
+            </form>
+          </template>
+        </div>
+
+        <!-- Pending requests, owner -->
+        <div class="card" x-show="isOwner && pendingRequests.length">
+          <div class="card-header">
+            <h3 class="card-title">Publish requests</h3>
+            <span class="badge badge-pending" x-text="pendingRequests.length"></span>
+          </div>
+          <template x-for="request in pendingRequests" :key="request.id">
+            <div class="publish-request-row">
+              <div class="grow">
+                <div class="small strong" x-text="request.requestedByDisplayName"></div>
+                <div class="tiny muted" x-text="requestedAtLabel(request)"></div>
+              </div>
+              <span class="btn-row">
+                <button type="button" class="btn btn-sm btn-primary" :disabled="publishBusy"
+                        @click="approveRequest(request)">Approve &amp; publish</button>
+                <button type="button" class="btn btn-sm btn-danger"
+                        @click="rejectRequest(request)">Reject</button>
+              </span>
+            </div>
+          </template>
+        </div>
+
+        <div class="card" x-show="decidedRequests.length" style="margin-top:16px">
+          <div class="card-header"><h3 class="card-title">Earlier requests</h3></div>
+          <template x-for="request in decidedRequests" :key="request.id">
+            <div class="publish-request-row">
+              <div class="grow small" x-text="request.requestedByDisplayName"></div>
+              <span class="badge" x-text="request.status"></span>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <!-- ══ CHECKLIST DETAIL DRAWER ════════════ -->
+      <div class="drawer-backdrop" x-show="openItem" x-cloak @click.self="closeDrawer()"
+           @keydown.escape.window="closeDrawer()">
+        <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title"
+             x-show="openItem" @click.stop>
+          <!-- Kept in the DOM rather than wrapped in x-if, so the selects below
+               always have their options before a value is assigned to them. -->
+          <div>
+            <div>
+              <div class="drawer-header">
+                <div>
+                  <div class="drawer-eyebrow" x-text="categoryOf(openItem?.category).label"></div>
+                  <h2 class="drawer-title" id="drawer-title" x-text="openItem?.description"></h2>
+                  <span class="badge" :class="openItem?.status === 'COMPLETED' ? 'badge-done' : 'badge-todo'"
+                        x-text="openItem?.status === 'COMPLETED' ? 'Completed' : 'To do'"></span>
+                </div>
+                <button type="button" class="modal-close" @click="closeDrawer()" aria-label="Close">✕</button>
+              </div>
+
+              <div class="alert alert-error" x-show="drawerError" x-text="drawerError" x-cloak></div>
+
+              <!-- edit the item itself -->
+              <div class="drawer-section">
+                <h3 class="drawer-section-title">Details</h3>
+                <div class="field">
+                  <label for="drawer-description">Description</label>
+                  <textarea id="drawer-description" x-model="drawerForm.description"
+                            maxlength="300"></textarea>
+                </div>
+                <div class="field">
+                  <label for="drawer-note">Note</label>
+                  <textarea id="drawer-note" x-model="drawerForm.note"
+                            placeholder="Anything worth remembering — booking references, who is handling it"></textarea>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label for="drawer-category">Category</label>
+                    <select id="drawer-category" x-model="drawerForm.category">
+                      <template x-for="cat in categories" :key="cat.value">
+                        <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
+                      </template>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="drawer-destination">Destination</label>
+                    <select id="drawer-destination" x-model="drawerForm.destinationId">
+                      <option value="">— none —</option>
+                      <template x-for="destination in destinations" :key="destination.id">
+                        <option :value="destination.id" x-text="destination.name"></option>
+                      </template>
+                    </select>
+                  </div>
+                </div>
+                <button type="button" class="btn" :disabled="drawerBusy"
+                        @click="saveDrawer()" x-text="drawerBusy ? 'Saving…' : 'Save changes'"></button>
+              </div>
+
+              <!-- plans -->
+              <div class="drawer-section">
+                <h3 class="drawer-section-title">
+                  Plans<span x-show="openItemPlans.length" x-text="` (${openItemPlans.length})`"></span>
+                </h3>
+
+                <p class="small muted" x-show="!openItemPlans.length && !planOpen">
+                  No plans yet. Press Plan to record a flight, booking or activity —
+                  add as many as this needs.
+                </p>
+
+                <template x-for="plan in openItemPlans" :key="plan.id">
+                  <div class="plan-card">
+                    <div class="plan-when" x-text="planWhen(plan)"></div>
+                    <div class="plan-desc" x-text="plan.description"></div>
+                    <div class="row row-between">
+                      <span class="plan-cost" x-show="plan.cost" x-text="planCost(plan)"></span>
+                      <span class="btn-row">
+                        <button type="button" class="btn btn-sm" @click="editPlan(plan)">Edit</button>
+                        <button type="button" class="btn btn-sm btn-danger"
+                                @click="deletePlan(plan)">Delete</button>
+                      </span>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- the Plan form -->
+                <div class="card card-tight" x-show="planOpen" x-cloak style="margin-top:12px">
+                  <div class="alert alert-error" x-show="planError" x-text="planError" x-cloak></div>
+
+                  <div class="field">
+                    <label for="plan-description">Description</label>
+                    <input id="plan-description" x-ref="planDescription"
+                           x-model="planForm.description" maxlength="300">
+                    <p class="field-hint">Pre-filled as a starting point — edit it to match reality.</p>
+                  </div>
+
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="plan-start-date">Start date</label>
+                      <input id="plan-start-date" type="date" x-model="planForm.startDate">
+                    </div>
+                    <div class="field">
+                      <label for="plan-start-time">Start time</label>
+                      <input id="plan-start-time" type="time" x-model="planForm.startTime">
+                    </div>
+                  </div>
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="plan-end-date">End date</label>
+                      <input id="plan-end-date" type="date" x-model="planForm.endDate">
+                    </div>
+                    <div class="field">
+                      <label for="plan-end-time">End time</label>
+                      <input id="plan-end-time" type="time" x-model="planForm.endTime">
+                    </div>
+                  </div>
+
+                  <div class="field-row">
+                    <div class="field">
+                      <label for="plan-cost">Cost (optional)</label>
+                      <input id="plan-cost" type="number" step="0.01" min="0" x-model="planForm.cost">
+                    </div>
+                    <div class="field">
+                      <label for="plan-currency">Currency</label>
+                      <select id="plan-currency" x-model="planForm.currency">
+                        <template x-for="code in currencies" :key="code">
+                          <option :value="code" x-text="code"></option>
+                        </template>
+                      </select>
+                    </div>
+                  </div>
+                  <p class="field-hint" style="margin-top:-8px">
+                    Adding a cost creates a matching budget entry.
+                  </p>
+
+                  <div class="row row-end" style="margin-top:12px">
+                    <button type="button" class="btn" @click="planOpen = false">Cancel</button>
+                    <button type="button" class="btn btn-primary" :disabled="planBusy"
+                            @click="savePlan()" x-text="planBusy ? 'Saving…' : 'Save plan'"></button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- completion and deletion -->
+              <div class="drawer-footer">
+                <button type="button" class="btn btn-primary"
+                        x-show="openItem?.status !== 'COMPLETED'"
+                        @click="setCheckStatus('COMPLETED')">Set this Checklist to Complete</button>
+                <button type="button" class="btn"
+                        x-show="openItem?.status === 'COMPLETED'"
+                        @click="setCheckStatus('TODO')">Reopen</button>
+                <button type="button" class="btn" x-show="!planOpen"
+                        @click="openPlanForm()"
+                        x-text="openItemPlans.length ? 'Plan another' : 'Plan'"></button>
+                <button type="button" class="btn btn-danger" @click="deletingCheck = true">Delete</button>
+              </div>
+
+              <div class="alert alert-error" x-show="deletingCheck" x-cloak style="margin-top:12px">
+                Delete this checklist item? Its plans stay on the itinerary.
+                <div class="row row-end" style="margin-top:8px">
+                  <button type="button" class="btn btn-sm" @click="deletingCheck = false">Keep it</button>
+                  <button type="button" class="btn btn-sm btn-danger"
+                          @click="confirmDeleteCheck()">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MODALS ═════════════════════════════ -->
+
+      <!-- Edit trip -->
+      <div class="modal-backdrop" x-show="editOpen" x-cloak @click.self="editOpen = false"
+           @keydown.escape.window="editOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-trip-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="edit-trip-title">Edit trip</h2>
+            <button type="button" class="modal-close" @click="editOpen = false" aria-label="Close">✕</button>
+          </div>
+          <div class="alert alert-error" x-show="editError" x-text="editError" x-cloak></div>
+          <form @submit.prevent="saveEdit()">
+            <div class="field">
+              <label for="edit-title">Title</label>
+              <input id="edit-title" x-model="editForm.title" maxlength="120" required>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="edit-start">Start date</label>
+                <input id="edit-start" type="date" x-model="editForm.startDate" required>
+              </div>
+              <div class="field">
+                <label for="edit-end">End date</label>
+                <input id="edit-end" type="date" x-model="editForm.endDate" required>
+              </div>
+              <div class="field">
+                <label for="edit-currency">Budget currency</label>
+                <select id="edit-currency" x-model="editForm.displayCurrency">
+                  <template x-for="code in currencies" :key="code">
+                    <option :value="code" x-text="code"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn" @click="editOpen = false">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="editBusy"
+                      x-text="editBusy ? 'Saving…' : 'Save changes'"></button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete trip -->
+      <div class="modal-backdrop" x-show="deletingTrip" x-cloak @click.self="deletingTrip = false"
+           @keydown.escape.window="deletingTrip = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-trip-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="delete-trip-title">Delete this trip?</h2>
+            <button type="button" class="modal-close" @click="deletingTrip = false" aria-label="Close">✕</button>
+          </div>
+          <p class="small">
+            This permanently removes <strong x-text="trip.title"></strong> and everything in it,
+            for every member. It cannot be undone.
+          </p>
+          <div class="field">
+            <label for="delete-confirm">Type the trip title to confirm</label>
+            <input id="delete-confirm" x-model="deleteConfirm" :placeholder="trip.title">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="deletingTrip = false">Cancel</button>
+            <button type="button" class="btn btn-danger" :disabled="deleteConfirm !== trip.title"
+                    @click="confirmDeleteTrip()">Delete trip</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remove member -->
+      <div class="modal-backdrop" x-show="removingMember" x-cloak @click.self="removingMember = null"
+           @keydown.escape.window="removingMember = null">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title"
+                x-text="isSelf(removingMember || {}) ? 'Leave this trip?' : 'Remove this member?'"></h2>
+            <button type="button" class="modal-close" @click="removingMember = null" aria-label="Close">✕</button>
+          </div>
+          <p class="small" x-show="removingMember && !isSelf(removingMember)">
+            <strong x-text="removingMember?.displayName"></strong> will lose access to this trip.
+            Their account and their other trips are unaffected.
+          </p>
+          <p class="small" x-show="removingMember && isSelf(removingMember)">
+            You will lose access to this trip. Another member can add you again.
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="removingMember = null">Cancel</button>
+            <button type="button" class="btn btn-danger" @click="confirmRemoveMember()"
+                    x-text="isSelf(removingMember || {}) ? 'Leave trip' : 'Remove'"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add / edit destination -->
+      <div class="modal-backdrop" x-show="destFormOpen" x-cloak @click.self="closeDestinationForm()"
+           @keydown.escape.window="closeDestinationForm()">
+        <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="dest-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="dest-title"
+                x-text="destForm.id ? 'Edit destination' : 'Add destination'"></h2>
+            <button type="button" class="modal-close" @click="closeDestinationForm()"
+                    aria-label="Close">✕</button>
+          </div>
+          <div class="alert alert-error" x-show="destError" x-text="destError" x-cloak></div>
+
+          <form @submit.prevent="saveDestination()">
+            <div class="field autocomplete">
+              <label for="dest-name">Name</label>
+              <input id="dest-name" x-ref="destName" x-model="destForm.name"
+                     @input="onDestNameInput()" autocomplete="off" maxlength="120"
+                     placeholder="Cusco" required>
+
+              <!-- Suggestions are a convenience: free text always saves. -->
+              <ul class="autocomplete-list" x-show="suggestions.length" x-cloak>
+                <template x-for="place in suggestions" :key="place.geonameId">
+                  <li>
+                    <button type="button" class="autocomplete-option" @click="pickSuggestion(place)">
+                      <span class="autocomplete-name">
+                        <span x-show="place.countryFlag" x-text="place.countryFlag"></span>
+                        <span x-text="place.name"></span>
+                      </span>
+                      <span class="autocomplete-meta" x-text="suggestionMeta(place)"></span>
+                    </button>
+                  </li>
+                </template>
+              </ul>
+
+              <p class="autocomplete-status" x-show="lookupBusy">Looking up places…</p>
+              <p class="field-hint" x-show="lookupRan && !suggestions.length && !lookupBusy">
+                No match found — that is fine. Save the name as you typed it and
+                fill in the coordinates below if you want them.
+              </p>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="dest-country-code">Country code</label>
+                <input id="dest-country-code" x-model="destForm.countryCode"
+                       maxlength="2" placeholder="PE" style="text-transform:uppercase">
+              </div>
+              <div class="field">
+                <label for="dest-country-name">Country</label>
+                <input id="dest-country-name" x-model="destForm.countryName" placeholder="Peru">
+              </div>
+            </div>
+
+            <div class="coord-inputs">
+              <div class="field">
+                <label for="dest-lat">Latitude</label>
+                <input id="dest-lat" type="number" step="any" min="-90" max="90"
+                       x-model="destForm.latitude" placeholder="-13.53188">
+              </div>
+              <div class="field">
+                <label for="dest-lon">Longitude</label>
+                <input id="dest-lon" type="number" step="any" min="-180" max="180"
+                       x-model="destForm.longitude" placeholder="-71.96701">
+              </div>
+              <p class="coord-hint">
+                Filled in when you pick a suggestion, and editable either way —
+                some places are not in the lookup under the name travellers use.
+              </p>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="dest-start">Start date (optional)</label>
+                <input id="dest-start" type="date" x-model="destForm.startDate">
+              </div>
+              <div class="field">
+                <label for="dest-end">End date (optional)</label>
+                <input id="dest-end" type="date" x-model="destForm.endDate">
+              </div>
+            </div>
+            <p class="field-hint" style="margin-top:-8px" x-show="!destForm.id">
+              With both dates set, the accommodation checklist item counts the nights
+              for you — for example “Plan 6N accommodation in Cusco”.
+            </p>
+
+            <div class="field">
+              <label for="dest-notes">Notes</label>
+              <textarea id="dest-notes" x-model="destForm.notes"
+                        placeholder="Altitude, how to get around, anything worth knowing"></textarea>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn" @click="closeDestinationForm()">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="destBusy"
+                      x-text="destBusy ? 'Saving…' : (destForm.id ? 'Save destination' : 'Add destination')"></button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete destination -->
+      <div class="modal-backdrop" x-show="deletingDestination" x-cloak
+           @click.self="deletingDestination = null" @keydown.escape.window="deletingDestination = null">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title">Delete this destination?</h2>
+            <button type="button" class="modal-close" @click="deletingDestination = null"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">
+            <strong x-text="deletingDestination?.name"></strong> will be removed.
+            Its checklist items are <strong>kept</strong> — they simply stop being
+            linked to a destination, so no planning is lost.
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="deletingDestination = null">Cancel</button>
+            <button type="button" class="btn btn-danger"
+                    @click="confirmDeleteDestination()">Delete destination</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add checklist item -->
+      <div class="modal-backdrop" x-show="addCheckOpen" x-cloak @click.self="addCheckOpen = false"
+           @keydown.escape.window="addCheckOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-check-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="add-check-title">Add checklist item</h2>
+            <button type="button" class="modal-close" @click="addCheckOpen = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <div class="alert alert-error" x-show="addCheckError" x-text="addCheckError" x-cloak></div>
+          <form @submit.prevent="addCheck()">
+            <div class="field">
+              <label for="new-check-description">Description</label>
+              <input id="new-check-description" x-ref="newCheckDescription"
+                     x-model="newCheck.description" maxlength="300"
+                     placeholder="Order eSIM" required>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="new-check-category">Category</label>
+                <select id="new-check-category" x-model="newCheck.category">
+                  <template x-for="cat in categories" :key="cat.value">
+                    <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="field">
+                <label for="new-check-destination">Destination (optional)</label>
+                <select id="new-check-destination" x-model="newCheck.destinationId">
+                  <option value="">— none —</option>
+                  <template x-for="destination in destinations" :key="destination.id">
+                    <option :value="destination.id" x-text="destination.name"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="new-check-note">Note (optional)</label>
+              <textarea id="new-check-note" x-model="newCheck.note"></textarea>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn" @click="addCheckOpen = false">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="addCheckBusy"
+                      x-text="addCheckBusy ? 'Adding…' : 'Add'"></button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Add / edit itinerary entry -->
+      <div class="modal-backdrop" x-show="entryOpen" x-cloak @click.self="entryOpen = false"
+           @keydown.escape.window="entryOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="entry-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="entry-title"
+                x-text="entryForm.id ? 'Edit itinerary item' : 'Add itinerary item'"></h2>
+            <button type="button" class="modal-close" @click="entryOpen = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <div class="alert alert-error" x-show="entryError" x-text="entryError" x-cloak></div>
+          <form @submit.prevent="saveEntry()">
+            <div class="field">
+              <label for="entry-description">Description</label>
+              <input id="entry-description" x-ref="entryDescription"
+                     x-model="entryForm.description" maxlength="300"
+                     placeholder="Delta flight (DL 6071) from LAX to LIM" required>
+            </div>
+            <div class="field">
+              <label for="entry-category">Category</label>
+              <select id="entry-category" x-model="entryForm.category">
+                <template x-for="cat in categories" :key="cat.value">
+                  <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
+                </template>
+              </select>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="entry-start-date">Start date</label>
+                <input id="entry-start-date" type="date" x-model="entryForm.startDate">
+              </div>
+              <div class="field">
+                <label for="entry-start-time">Start time</label>
+                <input id="entry-start-time" type="time" x-model="entryForm.startTime">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="entry-end-date">End date</label>
+                <input id="entry-end-date" type="date" x-model="entryForm.endDate">
+              </div>
+              <div class="field">
+                <label for="entry-end-time">End time</label>
+                <input id="entry-end-time" type="time" x-model="entryForm.endTime">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="entry-cost">Cost (optional)</label>
+                <input id="entry-cost" type="number" step="0.01" min="0" x-model="entryForm.cost">
+              </div>
+              <div class="field">
+                <label for="entry-currency">Currency</label>
+                <select id="entry-currency" x-model="entryForm.currency">
+                  <template x-for="code in currencies" :key="code">
+                    <option :value="code" x-text="code"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+            <p class="field-hint" style="margin-top:-8px">
+              A cost here creates or updates its budget entry. Clearing it removes that entry.
+            </p>
+            <div class="modal-footer">
+              <button type="button" class="btn" @click="entryOpen = false">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="entryBusy"
+                      x-text="entryBusy ? 'Saving…' : 'Save'"></button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete itinerary entry -->
+      <div class="modal-backdrop" x-show="deletingEntry" x-cloak @click.self="deletingEntry = null"
+           @keydown.escape.window="deletingEntry = null">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title">Remove this itinerary item?</h2>
+            <button type="button" class="modal-close" @click="deletingEntry = null"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">
+            <strong x-text="deletingEntry?.description"></strong> will be removed.
+            <span x-show="deletingEntry?.cost">
+              The budget entry it created will be removed too.
+            </span>
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="deletingEntry = null">Cancel</button>
+            <button type="button" class="btn btn-danger" @click="confirmDeleteEntry()">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add / edit expense -->
+      <div class="modal-backdrop" x-show="expenseOpen" x-cloak @click.self="expenseOpen = false"
+           @keydown.escape.window="expenseOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="expense-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="expense-title"
+                x-text="expenseForm.id ? 'Edit expense' : 'Add expense'"></h2>
+            <button type="button" class="modal-close" @click="expenseOpen = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <div class="alert alert-error" x-show="expenseError" x-text="expenseError" x-cloak></div>
+          <form @submit.prevent="saveExpense()">
+            <div class="field">
+              <label for="expense-description">Description</label>
+              <input id="expense-description" x-ref="expenseDescription"
+                     x-model="expenseForm.description"
+                     placeholder="Yellow fever vaccine" required>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="expense-category">Category</label>
+                <select id="expense-category" x-model="expenseForm.category">
+                  <template x-for="cat in categories" :key="cat.value">
+                    <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="field">
+                <label for="expense-amount">Amount</label>
+                <input id="expense-amount" type="number" step="0.01" min="0"
+                       x-model="expenseForm.amount" required>
+              </div>
+              <div class="field">
+                <label for="expense-currency">Currency</label>
+                <select id="expense-currency" x-model="expenseForm.currency">
+                  <template x-for="code in currencies" :key="code">
+                    <option :value="code" x-text="code"></option>
+                  </template>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="expense-date">Date (optional)</label>
+              <input id="expense-date" type="date" x-model="expenseForm.date">
+            </div>
+            <p class="field-hint" x-show="expenseForm.id && expenseForm.amount">
+              Changing the amount on an expense that came from a plan updates that plan's cost too.
+            </p>
+            <div class="modal-footer">
+              <button type="button" class="btn" @click="expenseOpen = false">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="expenseBusy"
+                      x-text="expenseBusy ? 'Saving…' : 'Save'"></button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete expense -->
+      <div class="modal-backdrop" x-show="deletingExpense" x-cloak @click.self="deletingExpense = null"
+           @keydown.escape.window="deletingExpense = null">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title">Remove this expense?</h2>
+            <button type="button" class="modal-close" @click="deletingExpense = null"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">
+            <strong x-text="deletingExpense?.description"></strong> will be removed from the budget.
+            <span x-show="deletingExpense?.itineraryItemId">
+              The plan it came from stays, but loses its cost.
+            </span>
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="deletingExpense = null">Cancel</button>
+            <button type="button" class="btn btn-danger" @click="confirmDeleteExpense()">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exchange rates -->
+      <div class="modal-backdrop" x-show="ratesOpen" x-cloak @click.self="ratesOpen = false"
+           @keydown.escape.window="ratesOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rates-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="rates-title">Exchange rates</h2>
+            <button type="button" class="modal-close" @click="ratesOpen = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small muted">
+            How many units of each currency make one
+            <strong x-text="budget.displayCurrency"></strong>. Rates are kept per trip and
+            entered by hand — nothing here is fetched from a market feed.
+          </p>
+          <div class="alert alert-error" x-show="ratesError" x-text="ratesError" x-cloak></div>
+
+          <template x-for="(row, index) in ratesDraft" :key="row.currency">
+            <div class="field-inline" style="margin-bottom:8px">
+              <div class="field flex-none" style="width:90px">
+                <input :value="row.currency" disabled>
+              </div>
+              <div class="field grow">
+                <input type="number" step="any" min="0" x-model="row.rate"
+                       :placeholder="`${row.currency} per 1 ${budget.displayCurrency}`">
+              </div>
+              <div class="field flex-none">
+                <button type="button" class="btn btn-sm btn-danger"
+                        @click="removeRateRow(index)">Remove</button>
+              </div>
+            </div>
+          </template>
+
+          <p class="small muted" x-show="!ratesDraft.length">No rates set yet.</p>
+
+          <div class="field-inline" style="margin-top:12px">
+            <div class="field grow">
+              <label for="rates-currency">Add a currency</label>
+              <input id="rates-currency" x-model="ratesCurrency" maxlength="3"
+                     placeholder="USD" style="text-transform:uppercase"
+                     @keydown.enter.prevent="addRateRow()">
+            </div>
+            <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
+              <button type="button" class="btn" @click="addRateRow()">Add</button>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="ratesOpen = false">Cancel</button>
+            <button type="button" class="btn btn-primary" :disabled="ratesBusy"
+                    @click="saveRates()" x-text="ratesBusy ? 'Saving…' : 'Save rates'"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm publish -->
+      <div class="modal-backdrop" x-show="confirmingPublish" x-cloak
+           @click.self="confirmingPublish = false" @keydown.escape.window="confirmingPublish = false">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title">Publish this trip?</h2>
+            <button type="button" class="modal-close" @click="confirmingPublish = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">
+            Anyone with the link will be able to see this trip — its destinations,
+            itinerary, checklist and budget. No sign-in required.
+          </p>
+          <p class="small muted">You can unpublish at any time.</p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="confirmingPublish = false">Cancel</button>
+            <button type="button" class="btn btn-primary" :disabled="publishBusy"
+                    @click="doPublish()" x-text="publishBusy ? 'Publishing…' : 'Publish'"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm unpublish -->
+      <div class="modal-backdrop" x-show="confirmingUnpublish" x-cloak
+           @click.self="confirmingUnpublish = false" @keydown.escape.window="confirmingUnpublish = false">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title">Unpublish this trip?</h2>
+            <button type="button" class="modal-close" @click="confirmingUnpublish = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">
+            The public page will be taken down and its link will stop working.
+            Nothing in the trip itself is deleted, and you can publish again later.
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="confirmingUnpublish = false">Cancel</button>
+            <button type="button" class="btn btn-danger" :disabled="publishBusy"
+                    @click="doUnpublish()" x-text="publishBusy ? 'Working…' : 'Unpublish'"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</main>
+
+<footer id="site-footer"></footer>
+
+<style>[x-cloak] { display: none !important; }</style>
+<script type="module">
+  import { bootPage } from './js/boot.js';
+  import { tripPage } from './js/pages/trip.js';
+
+  await bootPage({ active: 'trips', component: { tripPage } });
+</script>
+</body>
+</html>

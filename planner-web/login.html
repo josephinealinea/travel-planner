@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Travel Planner</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/minima.css?v=1"     id="minima-css">
+<link rel="stylesheet" href="assets/css/retro-game.css?v=1" id="retro-game-css" disabled>
+<link rel="stylesheet" href="assets/css/y2k.css?v=1"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/manila.css?v=1"     id="manila-css"     disabled>
+<script>
+  // Enable the remembered theme's stylesheet before first paint, so the page
+  // never flashes the default theme first.
+  (function () {
+    var registry = { minima: 'minima-css', 'retro-game': 'retro-game-css', y2k: 'y2k-css', manila: 'manila-css' };
+    var theme = 'minima';
+    try { if (registry[localStorage.getItem('selectedTheme')]) theme = localStorage.getItem('selectedTheme'); } catch (e) {}
+    Object.keys(registry).forEach(function (name) {
+      var link = document.getElementById(registry[name]);
+      if (link) link.disabled = name !== theme;
+    });
+    document.documentElement.className = 'theme-' + theme;
+  })();
+</script>
+</head>
+<body>
+<header id="site-header"></header>
+
+<main class="page-narrow auth-wrap">
+  <div class="auth-logo">🧭</div>
+  <h1 class="auth-title">Sign in</h1>
+  <p class="auth-subtitle">Plan a trip together.</p>
+
+  <div class="card">
+    <div id="error" class="alert alert-error" hidden></div>
+
+    <form id="login-form" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required autofocus>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <!-- The eye button is appended here by js/password-toggle.js -->
+        <div class="password-field">
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="submit">Sign in</button>
+    </form>
+  </div>
+
+  <p class="auth-footnote">
+    No account? Accounts are created when someone adds you to a trip —
+    check your email for an invitation.
+  </p>
+  <p class="auth-footnote">
+    Forgot your password? Ask another member of your trip to add you again.
+  </p>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script type="module">
+  import { api } from './js/api.js';
+  import { renderChrome } from './js/chrome.js';
+  import { redirectIfSignedIn, afterLoginTarget, clearCachedUser } from './js/session.js';
+
+  renderChrome();
+
+  const form = document.querySelector('#login-form');
+  const errorBox = document.querySelector('#error');
+  const submit = document.querySelector('#submit');
+
+  function showError(message) {
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+  }
+
+  await api.initCsrf();
+  await redirectIfSignedIn();
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.hidden = true;
+    submit.disabled = true;
+    submit.textContent = 'Signing in…';
+
+    try {
+      const user = await api.login({
+        email: form.email.value.trim(),
+        password: form.password.value,
+      });
+      clearCachedUser();
+      // An invited member has to choose a password before anything else works.
+      location.href = user.mustChangePassword ? 'change-password.html' : afterLoginTarget();
+    } catch (error) {
+      showError(error.fullMessage);
+      submit.disabled = false;
+      submit.textContent = 'Sign in';
+      form.password.select();
+    }
+  });
+</script>
+</body>
+</html>

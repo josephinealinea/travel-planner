@@ -1,0 +1,15 @@
+{
+  "name": "planner-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Travel planner frontend — static pages, no bundler. Sass is the only build step.",
+  "scripts": {
+    "css": "sass scss/minima.scss:assets/css/minima.css scss/retro-game.scss:assets/css/retro-game.css scss/y2k.scss:assets/css/y2k.css scss/manila.scss:assets/css/manila.css --no-source-map --style=expanded",
+    "css:watch": "npm run css -- --watch",
+    "build": "npm run css",
+    "dev": "npm run css && ./serve.sh"
+  },
+  "devDependencies": {
+    "sass": "^1.100.0"
+  }
+}

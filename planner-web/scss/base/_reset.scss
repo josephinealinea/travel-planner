@@ -1,0 +1,22 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--tp-bg);
+  color: var(--tp-text);
+  font-family: var(--tp-font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+img, svg { max-width: 100%; height: auto; }
+
+// Toggled from JavaScript with el.hidden, so it has to beat display rules.
+[hidden] { display: none !important; }
+
+:target { scroll-margin-top: 80px; }

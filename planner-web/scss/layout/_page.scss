@@ -1,0 +1,41 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.page {
+  max-width: t.$page-max;
+  margin: 0 auto;
+  padding: t.$space-5 t.$space-4 t.$space-7;
+}
+
+.page-narrow {
+  max-width: t.$narrow-max;
+  margin: 0 auto;
+  padding: t.$space-6 t.$space-4 t.$space-7;
+}
+
+.page-header {
+  display: flex;
+  gap: t.$space-4;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: t.$space-5;
+}
+
+.page-title { margin: 0; }
+.page-subtitle { margin: t.$space-1 0 0; color: var(--tp-muted); font-size: 0.9rem; }
+.page-actions { display: flex; gap: t.$space-2; flex-wrap: wrap; }
+
+.site-footer {
+  max-width: t.$page-max;
+  margin: 0 auto;
+  padding: t.$space-4;
+  color: var(--tp-muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+@include m.mobile {
+  .page, .page-narrow { padding-left: t.$space-3; padding-right: t.$space-3; }
+  .page-header { flex-direction: column; }
+}

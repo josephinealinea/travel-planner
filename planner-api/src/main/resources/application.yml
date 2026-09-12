@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: planner-api
+  jackson:
+    default-property-inclusion: non_null
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    # Mail is only contacted in smtp mode; probing it would otherwise report
+    # the whole app as DOWN whenever no local mail server is running.
+    mail:
+      enabled: false
+
+# Off by default: all records are written as YAML files under app.storage.root.
+# Turning this on requires a JPA implementation of each module's repository
+# interface first — see FeatureFlags, which fails fast rather than silently
+# doing nothing.
+feature-enable-database: false
+
+app:
+  storage:
+    root: ${DATA_DIR:./data}
+  publish:
+    dir: ${PUBLISH_DIR:./data/published}
+    public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080/p}
+  mail:
+    # log | file | smtp. "file" drops .eml files in data/outbox so you can read
+    # a new member's default password in local development.
+    mode: ${MAIL_MODE:file}
+    from: ${MAIL_FROM:no-reply@travel-planner.local}
+  security:
+    jwt-secret: ${JWT_SECRET:}
+    session-ttl: 12h
+    cookie-secure: ${COOKIE_SECURE:false}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  geocoding:
+    base-url: https://countries.dev
+    timeout: 5s
+    city-limit: 8
+    place-limit: 20
+  bootstrap:
+    owner-email: ${BOOTSTRAP_OWNER_EMAIL:}
+    owner-password: ${BOOTSTRAP_OWNER_PASSWORD:}
+
+logging:
+  level:
+    com.josephinealinea.planner: INFO

@@ -1,0 +1,75 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.btn {
+  display: inline-flex;
+  gap: t.$space-2;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--tp-text);
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background t.$transition, border-color t.$transition, color t.$transition;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--tp-accent);
+  color: var(--tp-accent);
+  text-decoration: none;
+}
+.btn:focus-visible { @include m.focus-ring; }
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  color: var(--tp-on-accent);
+  background: var(--tp-accent);
+  border-color: var(--tp-accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  color: var(--tp-on-accent);
+  background: var(--tp-accent-strong);
+  border-color: var(--tp-accent-strong);
+}
+
+.btn-danger { color: var(--tp-danger); border-color: var(--tp-border); }
+.btn-danger:hover:not(:disabled) {
+  color: var(--tp-on-accent);
+  background: var(--tp-danger);
+  border-color: var(--tp-danger);
+}
+
+.btn-ghost { background: none; border-color: transparent; }
+.btn-ghost:hover:not(:disabled) { background: var(--tp-surface-alt); }
+
+.btn-block { width: 100%; }
+.btn-sm { padding: 5px 10px; font-size: 0.82rem; }
+
+// A row of small per-row actions in a table.
+.btn-row { display: inline-flex; gap: t.$space-1; }
+
+.btn-link {
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  color: var(--tp-accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.btn-link:hover { text-decoration: underline; }
+.btn-link:focus-visible { @include m.focus-ring; }

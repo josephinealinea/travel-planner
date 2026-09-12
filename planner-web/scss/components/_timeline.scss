@@ -1,0 +1,50 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.timeline-day { margin-bottom: t.$space-5; }
+
+.timeline-date {
+  display: flex;
+  gap: t.$space-2;
+  align-items: baseline;
+  margin: 0 0 t.$space-2;
+  padding-bottom: t.$space-2;
+  font-size: 1rem;
+  border-bottom: 2px solid var(--tp-border);
+}
+
+.timeline-date-count { font-size: 0.78rem; font-weight: 400; color: var(--tp-muted); }
+
+.timeline-entries { @include m.card-surface; }
+
+.timeline-entry {
+  display: flex;
+  gap: t.$space-3;
+  align-items: flex-start;
+  padding: t.$space-3 t.$space-4;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.timeline-entry:last-child { border-bottom: 0; }
+.timeline-entry:hover { background: var(--tp-surface-alt); }
+
+.timeline-time {
+  flex: none;
+  width: 92px;
+  font-size: 0.8rem;
+  color: var(--tp-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-icon { flex: none; font-size: 1.05rem; line-height: 1.4; }
+.timeline-body { flex: 1; min-width: 0; }
+.timeline-desc { font-size: 0.94rem; font-weight: 500; }
+.timeline-meta { margin-top: 2px; font-size: 0.8rem; color: var(--tp-muted); }
+.timeline-cost { flex: none; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.timeline-actions { flex: none; }
+
+@include m.mobile {
+  .timeline-entry { flex-wrap: wrap; }
+  .timeline-time { width: auto; }
+  .timeline-actions, .timeline-cost { margin-left: auto; }
+}

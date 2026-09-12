@@ -1,0 +1,54 @@
+@use "../abstracts/tokens" as t;
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  background: var(--tp-surface-alt);
+  border: 1px solid var(--tp-border);
+  color: var(--tp-muted);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.badge-owner   { color: var(--tp-accent); border-color: var(--tp-accent); }
+.badge-draft   { color: var(--tp-muted); }
+.badge-published { color: var(--tp-success); border-color: var(--tp-success); }
+.badge-todo    { color: var(--tp-muted); }
+.badge-done    { color: var(--tp-success); border-color: var(--tp-success); }
+.badge-pending { color: var(--tp-warning); border-color: var(--tp-warning); }
+
+.chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 9px;
+  font-size: 0.75rem;
+  color: var(--tp-muted);
+  background: var(--tp-surface-alt);
+  border: 1px solid var(--tp-border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+// Filter chips are buttons, and show their state through aria-pressed.
+button.chip { cursor: pointer; font-family: inherit; }
+button.chip:hover { border-color: var(--tp-accent); }
+button.chip[aria-pressed="true"] {
+  color: var(--tp-on-accent);
+  background: var(--tp-accent);
+  border-color: var(--tp-accent);
+}
+
+.chip-group { display: flex; gap: t.$space-1; flex-wrap: wrap; }
+
+.cat-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}

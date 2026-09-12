@@ -1,0 +1,70 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: t.$z-header;
+  background: var(--tp-header-bg);
+  border-bottom: 1px solid var(--tp-border);
+  backdrop-filter: blur(8px);
+}
+
+.site-header-inner {
+  display: flex;
+  gap: t.$space-4;
+  align-items: center;
+  max-width: t.$page-max;
+  min-height: t.$header-height;
+  margin: 0 auto;
+  padding: 0 t.$space-4;
+}
+
+.site-brand {
+  display: flex;
+  gap: t.$space-2;
+  align-items: center;
+  font-family: var(--tp-font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--tp-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-brand:hover { text-decoration: none; color: var(--tp-accent); }
+
+.site-nav {
+  display: flex;
+  gap: t.$space-1;
+  align-items: center;
+  margin-left: auto;
+}
+
+.nav-link {
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  color: var(--tp-text);
+  text-decoration: none;
+  border-radius: var(--tp-radius-sm);
+}
+
+.nav-link:hover { background: var(--tp-surface-alt); text-decoration: none; }
+.nav-link.active { color: var(--tp-accent); font-weight: 600; }
+.nav-link:focus-visible { @include m.focus-ring; }
+
+.nav-user {
+  padding: 0 t.$space-2;
+  font-size: 0.85rem;
+  color: var(--tp-muted);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@include m.mobile {
+  .site-header-inner { gap: t.$space-2; padding: 0 t.$space-3; }
+  .nav-user { display: none; }
+  .nav-link { padding: 6px 7px; font-size: 0.82rem; }
+}

@@ -1,0 +1,35 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.stack > * + * { margin-top: t.$space-3; }
+.stack-sm > * + * { margin-top: t.$space-2; }
+.stack-lg > * + * { margin-top: t.$space-5; }
+
+.row {
+  display: flex;
+  gap: t.$space-3;
+  align-items: center;
+}
+
+.row-between { justify-content: space-between; }
+.row-end { justify-content: flex-end; }
+.row-wrap { flex-wrap: wrap; }
+.row-top { align-items: flex-start; }
+.grow { flex: 1; min-width: 0; }
+.flex-none { flex: none; }
+
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+
+.sr-only { @include m.visually-hidden; }
+
+.spacer-1 { height: t.$space-1; }
+.spacer-3 { height: t.$space-3; }
+.spacer-5 { height: t.$space-5; }
+
+.divider {
+  height: 1px;
+  background: var(--tp-border);
+  border: 0;
+  margin: t.$space-4 0;
+}

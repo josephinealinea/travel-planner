@@ -1,0 +1,10 @@
+@use "../abstracts/tokens" as t;
+
+.grid {
+  display: grid;
+  gap: t.$space-3;
+}
+
+.grid-cards { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.grid-stats  { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }

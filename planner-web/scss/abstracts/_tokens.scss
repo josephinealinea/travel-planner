@@ -1,0 +1,24 @@
+// Structural values that do not change between themes: spacing rhythm, radii
+// scale, layout widths, z-index order. Anything a theme should be able to
+// restyle lives as a CSS custom property in themes/ instead.
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 24px;
+$space-6: 32px;
+$space-7: 48px;
+
+$page-max: 1180px;
+$narrow-max: 440px;
+
+$header-height: 60px;
+
+// Kept in one ordered list so stacking bugs are settled here, not ad hoc.
+$z-dropdown: 100;
+$z-header: 500;
+$z-drawer: 900;
+$z-modal: 1000;
+$z-toast: 1100;
+
+$transition: 160ms ease;

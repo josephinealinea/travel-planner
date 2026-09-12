@@ -1,0 +1,96 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+
+.trip-head {
+  display: flex;
+  gap: t.$space-4;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: t.$space-4;
+}
+
+.trip-head-title { display: flex; gap: t.$space-2; align-items: center; flex-wrap: wrap; margin: 0; }
+.trip-head-meta { margin-top: t.$space-1; font-size: 0.88rem; color: var(--tp-muted); }
+.trip-head-actions { display: flex; gap: t.$space-2; flex-wrap: wrap; }
+
+.section-head {
+  display: flex;
+  gap: t.$space-3;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: t.$space-3;
+}
+
+.section-title { margin: 0; font-size: 1.1rem; }
+
+.toolbar {
+  display: flex;
+  gap: t.$space-3;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: t.$space-3;
+}
+
+.toolbar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.toolbar select { width: auto; padding: 5px 9px; font-size: 0.85rem; }
+
+// The overview's "needs planning" list, linking straight into the Plan form.
+.needs-planning-row {
+  display: flex;
+  gap: t.$space-3;
+  align-items: center;
+  padding: t.$space-2 0;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.needs-planning-row:last-child { border-bottom: 0; }
+
+.member-name { display: flex; gap: t.$space-2; align-items: center; }
+.member-email-only { font-style: italic; color: var(--tp-muted); }
+
+.coord-inputs {
+  display: grid;
+  gap: t.$space-3;
+  grid-template-columns: 1fr 1fr;
+}
+
+.coord-hint { grid-column: 1 / -1; margin: 0; font-size: 0.78rem; color: var(--tp-muted); }
+
+.publish-url {
+  display: flex;
+  gap: t.$space-2;
+  align-items: center;
+  padding: t.$space-2 t.$space-3;
+  margin: t.$space-3 0;
+  font-family: var(--tp-font-mono);
+  font-size: 0.82rem;
+  background: var(--tp-surface-alt);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  word-break: break-all;
+}
+
+.publish-request-row {
+  display: flex;
+  gap: t.$space-3;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: t.$space-3 0;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.publish-request-row:last-child { border-bottom: 0; }
+
+@include m.mobile {
+  .trip-head { flex-direction: column; }
+  .coord-inputs { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,14 @@
+package com.josephinealinea.planner.geocoding;
+
+/** One autocomplete row, already enriched with the country's name and flag. */
+public record PlaceSuggestion(
+        Long geonameId,
+        String name,
+        String countryCode,
+        String countryName,
+        String countryFlag,
+        String currency,
+        Double latitude,
+        Double longitude,
+        Long population,
+        String timezone) {}
