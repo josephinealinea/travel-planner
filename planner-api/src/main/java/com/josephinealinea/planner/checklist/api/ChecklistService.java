@@ -4,9 +4,10 @@ import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.checklist.domain.ChecklistStatus;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
-import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.shared.ApiException;
+import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.domain.Trip;
@@ -22,21 +23,21 @@ public class ChecklistService {
     public record Input(ChecklistCategory category,
                         String description,
                         String note,
-                        String destinationId) {}
+                        List<String> countryCodes) {}
 
     private final ChecklistRepository checklist;
-    private final DestinationRepository destinations;
     private final ItineraryRepository itinerary;
     private final TripAccessService access;
+    private final TripCountries countries;
 
     public ChecklistService(ChecklistRepository checklist,
-                            DestinationRepository destinations,
                             ItineraryRepository itinerary,
-                            TripAccessService access) {
+                            TripAccessService access,
+                            TripCountries countries) {
         this.checklist = checklist;
-        this.destinations = destinations;
         this.itinerary = itinerary;
         this.access = access;
+        this.countries = countries;
     }
 
     public List<ChecklistItem> list(String tripId, String userId) {
@@ -57,8 +58,8 @@ public class ChecklistService {
         item.setNote(blankToNull(input.note()));
         item.setStatus(ChecklistStatus.TODO);
         item.setSortOrder(checklist.findAll(trip.getSlug()).size());
-        item.setCreatedAt(Instant.now());
-        item.setDestinationId(validDestination(trip, input.destinationId()));
+        item.setCountryCodes(countries.validate(trip, input.countryCodes()));
+        Audit.created(item, userId);
 
         return checklist.save(trip.getSlug(), item);
     }
@@ -73,12 +74,11 @@ public class ChecklistService {
         }
         if (input.note() != null) item.setNote(blankToNull(input.note()));
         if (input.category() != null) item.setCategory(input.category());
-        if (input.destinationId() != null) {
-            // An empty string is how the client clears the link.
-            item.setDestinationId(input.destinationId().isBlank()
-                    ? null
-                    : validDestination(trip, input.destinationId()));
+        if (input.countryCodes() != null) {
+            // An empty list is how the client clears every link.
+            item.setCountryCodes(countries.validate(trip, input.countryCodes()));
         }
+        Audit.touched(item, userId);
         return checklist.save(trip.getSlug(), item);
     }
 
@@ -94,6 +94,7 @@ public class ChecklistService {
 
         item.setStatus(status);
         item.setCompletedAt(status == ChecklistStatus.COMPLETED ? Instant.now() : null);
+        Audit.touched(item, userId);
         return checklist.save(trip.getSlug(), item);
     }
 
@@ -109,6 +110,7 @@ public class ChecklistService {
         for (var plan : plans) {
             if (itemId.equals(plan.getChecklistItemId())) {
                 plan.setChecklistItemId(null);
+                Audit.touched(plan, userId);
                 touched = true;
             }
         }
@@ -120,12 +122,7 @@ public class ChecklistService {
                 .orElseThrow(() -> ApiException.notFound("Checklist item"));
     }
 
-    private String validDestination(Trip trip, String destinationId) {
-        if (destinationId == null || destinationId.isBlank()) return null;
-        return destinations.findById(trip.getSlug(), destinationId)
-                .orElseThrow(() -> ApiException.notFound("Destination"))
-                .getId();
-    }
+    /** Validates every id against this trip's destinations, de-duplicated, order preserved. */
 
     private static void requireDescription(String description) {
         if (description == null || description.isBlank()) {

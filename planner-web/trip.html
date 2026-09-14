@@ -5,15 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trip — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=1"     id="minima-css">
-<link rel="stylesheet" href="assets/css/retro-game.css?v=1" id="retro-game-css" disabled>
-<link rel="stylesheet" href="assets/css/y2k.css?v=1"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/manila.css?v=1"     id="manila-css"     disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=57"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=57"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=57"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
   (function () {
-    var registry = { minima: 'minima-css', 'retro-game': 'retro-game-css', y2k: 'y2k-css', manila: 'manila-css' };
+    var registry = { minima: 'minima-css', y2k: 'y2k-css', dark: 'dark-css' };
     var theme = 'minima';
     try { if (registry[localStorage.getItem('selectedTheme')]) theme = localStorage.getItem('selectedTheme'); } catch (e) {}
     Object.keys(registry).forEach(function (name) {
@@ -100,7 +99,16 @@
               <h2 class="card-title">Needs planning</h2>
               <span class="badge" x-text="needsPlanning().length"></span>
             </div>
-            <p class="small muted" x-show="!needsPlanning().length">
+            <!-- With no destination there is nothing to plan yet, and nothing
+                 on this card to act on — so it offers the first step instead. -->
+            <div x-show="!destinations.length">
+              <p class="small muted">
+                Nothing to plan yet — adding a destination seeds its own checklist items.
+              </p>
+              <button type="button" class="btn btn-sm btn-primary"
+                      @click="addFirstDestination()">Add your first destination</button>
+            </div>
+            <p class="small muted" x-show="destinations.length && !needsPlanning().length">
               Everything on the checklist has a plan against it.
             </p>
             <template x-for="item in needsPlanning()" :key="item.id">
@@ -108,8 +116,8 @@
                 <span x-text="categoryOf(item.category).icon"></span>
                 <div class="grow">
                   <div class="small" x-text="item.description"></div>
-                  <div class="tiny muted" x-show="destinationName(item.destinationId)"
-                       x-text="destinationName(item.destinationId)"></div>
+                  <div class="tiny muted" x-show="countryLabel(item.countryCodes)"
+                       x-text="countryLabel(item.countryCodes)"></div>
                 </div>
                 <button type="button" class="btn btn-sm" @click="planFromOverview(item)">Plan</button>
               </div>
@@ -188,6 +196,17 @@
           </button>
         </div>
 
+        <div class="toolbar" x-show="destinations.length">
+          <div class="toolbar-actions">
+            <button type="button" class="btn btn-sm btn-danger"
+                    :disabled="!destSelected.length"
+                    @click="destBulkOpen = true">
+              Delete selected<span x-show="destSelected.length"
+                                   x-text="` (${destSelected.length})`"></span>
+            </button>
+          </div>
+        </div>
+
         <div class="empty-state" x-show="!destinations.length">
           <div class="empty-icon">📍</div>
           <h3 class="empty-title">No destinations yet</h3>
@@ -204,13 +223,19 @@
           <table class="table">
             <thead>
               <tr>
+                <th class="select-cell"><span class="sr-only">Select</span></th>
                 <th>Name</th><th>Country</th><th>Lat / Lon</th><th>Dates</th>
-                <th class="num">Nights</th><th class="num">Checklist</th><th class="actions"></th>
+                <th class="num">Days</th><th class="num">Checklist</th><th class="actions"></th>
               </tr>
             </thead>
             <tbody>
               <template x-for="destination in destinations" :key="destination.id">
                 <tr>
+                  <td class="select-cell">
+                    <input type="checkbox" :checked="isDestSelected(destination.id)"
+                           @change="toggleDestSelected(destination.id)"
+                           :aria-label="`Select ${destination.name}`">
+                  </td>
                   <td class="strong" x-text="destination.name"></td>
                   <td>
                     <span x-show="destination.countryFlag" x-text="destination.countryFlag"></span>
@@ -222,14 +247,12 @@
                     <span x-show="!mapUrl(destination)" class="muted">—</span>
                   </td>
                   <td x-text="destinationDates(destination) || '—'"></td>
-                  <td class="num" x-text="nightsOf(destination) ? nightsOf(destination) + 'N' : '—'"></td>
+                  <td class="num" x-text="daysOf(destination) ? daysOf(destination) + 'D' : '—'"></td>
                   <td class="num" x-text="checklistCountFor(destination)"></td>
                   <td class="actions">
                     <span class="btn-row">
                       <button type="button" class="btn btn-sm"
                               @click="openEditDestination(destination)">Edit</button>
-                      <button type="button" class="btn btn-sm btn-danger"
-                              @click="askDeleteDestination(destination)">Delete</button>
                     </span>
                   </td>
                 </tr>
@@ -253,15 +276,6 @@
         </div>
 
         <div class="toolbar">
-          <span class="toolbar-label">Status</span>
-          <div class="chip-group">
-            <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
-              <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
-                      @click="checkStatusFilter = option"
-                      x-text="option === 'ALL' ? 'All' : (option === 'TODO' ? 'To do' : 'Completed')"></button>
-            </template>
-          </div>
-
           <span class="toolbar-label">Category</span>
           <div class="chip-group">
             <template x-for="cat in categories" :key="cat.value">
@@ -273,12 +287,30 @@
             </template>
           </div>
 
+          <span class="toolbar-label">Status</span>
+          <div class="chip-group">
+            <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
+              <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
+                      @click="checkStatusFilter = option"
+                      x-text="option === 'ALL' ? 'All' : (option === 'TODO' ? 'To do' : 'Completed')"></button>
+            </template>
+          </div>
+
           <span class="toolbar-label">Group by</span>
           <select x-model="checkGroupBy">
-            <option value="destination">Destination</option>
+            <option value="country">Country</option>
             <option value="category">Category</option>
             <option value="none">Nothing</option>
           </select>
+
+          <div class="toolbar-actions">
+            <button type="button" class="btn btn-sm btn-danger"
+                    :disabled="!checkSelected.length"
+                    @click="checkBulkOpen = true">
+              Delete selected<span x-show="checkSelected.length"
+                                   x-text="` (${checkSelected.length})`"></span>
+            </button>
+          </div>
         </div>
 
         <div class="empty-state" x-show="!checklist.length">
@@ -298,8 +330,18 @@
           <div class="checklist" style="margin-bottom:16px">
             <div class="checklist-group-title" x-show="group.title" x-text="group.title"></div>
             <template x-for="item in group.items" :key="item.id">
-              <button type="button" class="check-row" :class="item.status === 'COMPLETED' ? 'is-done' : ''"
-                      @click="openChecklistItem(item)">
+              <div class="check-row-wrap">
+                <label class="select-box" @click.stop>
+                  <input type="checkbox" :checked="isCheckSelected(item.id)"
+                         @change="toggleCheckSelected(item.id)"
+                         :aria-label="`Select ${item.description}`">
+                </label>
+                <!-- A div, not a button: the row carries its own Edit button
+                     the way the itinerary and budget rows do, and a button
+                     cannot be nested inside another one. Clicking the row
+                     still opens the drawer as a convenience. -->
+                <div class="check-row" :class="item.status === 'COMPLETED' ? 'is-done' : ''"
+                        @click="openChecklistItem(item)">
                 <span class="check-status" @click="quickToggle(item, $event)"
                       :title="item.status === 'COMPLETED' ? 'Mark as to do' : 'Mark complete'"
                       x-text="item.status === 'COMPLETED' ? '✔️' : '▫️'"></span>
@@ -311,16 +353,18 @@
                       <span x-text="categoryOf(item.category).icon"></span>
                       <span x-text="categoryOf(item.category).label"></span>
                     </span>
-                    <span class="chip" x-show="destinationName(item.destinationId)"
-                          x-text="destinationName(item.destinationId)"></span>
+                    <span class="chip" x-show="countryLabel(item.countryCodes)"
+                          x-text="countryLabel(item.countryCodes)"></span>
                     <span class="chip" x-show="planCountFor(item)"
                           x-text="`${planCountFor(item)} plan${planCountFor(item) === 1 ? '' : 's'}`"></span>
                   </span>
                 </span>
-                <span class="check-side">
-                  <span class="tiny muted">Open →</span>
-                </span>
-              </button>
+                  <span class="check-side btn-row">
+                    <button type="button" class="btn btn-sm"
+                            @click.stop="openChecklistItem(item)">Edit</button>
+                  </span>
+                </div>
+              </div>
             </template>
           </div>
         </template>
@@ -346,12 +390,35 @@
               </button>
             </template>
           </div>
-          <label class="checkbox">
-            <input type="checkbox" x-model="itinCostOnly"> Only items with a cost
-          </label>
+
+          <span class="toolbar-label">Show</span>
+          <div class="chip-group">
+            <template x-for="option in ['ALL', 'WEATHER', 'ITINERARY']" :key="option">
+              <button type="button" class="chip" :aria-pressed="itinShow === option"
+                      @click="itinShow = option"
+                      x-text="option === 'ALL' ? 'All'
+                              : (option === 'WEATHER' ? 'Weather only' : 'Itinerary only')"></button>
+            </template>
+          </div>
+
+          <div class="toolbar-actions" x-show="itinShow !== 'WEATHER'">
+            <button type="button" class="btn btn-sm btn-danger"
+                    :disabled="!itinSelected.length"
+                    @click="itinBulkOpen = true">
+              Delete selected<span x-show="itinSelected.length"
+                                   x-text="` (${itinSelected.length})`"></span>
+            </button>
+          </div>
         </div>
 
-        <div class="empty-state" x-show="!itinerary.length">
+        <p class="tiny muted" x-show="weatherLoading">Looking up the weather…</p>
+        <p class="tiny muted" x-show="weatherFailed">
+          The weather could not be looked up just now. Everything else is unaffected.
+        </p>
+
+        <!-- Only when both halves are empty. With weather rows on screen the
+             itinerary is not empty even with nothing planned. -->
+        <div class="empty-state" x-show="!itinerary.length && !filteredWeather.length">
           <div class="empty-icon">🗓</div>
           <h3 class="empty-title">Nothing planned yet</h3>
           <p class="empty-body">
@@ -360,32 +427,90 @@
           <button type="button" class="btn btn-primary" @click="openAddEntry()">Add an entry</button>
         </div>
 
+        <div class="empty-state" x-show="itinShow === 'WEATHER' && !filteredWeather.length
+                                         && !weatherLoading">
+          <div class="empty-icon">🌤</div>
+          <h3 class="empty-title">No days to show the weather for</h3>
+          <p class="empty-body">
+            A destination needs a start and an end date before its days appear here.
+          </p>
+        </div>
+
         <template x-for="day in itineraryDays" :key="day.date || 'undated'">
           <div class="timeline-day">
             <h3 class="timeline-date">
               <span x-text="day.label"></span>
-              <span class="timeline-date-count"
-                    x-text="`${day.entries.length} item${day.entries.length === 1 ? '' : 's'}`"></span>
+              <span class="timeline-date-count" x-text="dayCount(day)"></span>
             </h3>
-            <div class="timeline-entries">
-              <template x-for="item in day.entries" :key="item.id">
+
+            <!-- Where the trip is that day. Not an itinerary entry: nothing
+                 here is stored, so there is nothing to select or edit. -->
+            <!-- One card per place the trip is that day, in two columns. When
+                 the count is odd the first card takes the full width, so the
+                 odd one out leads the block instead of dangling at the end.
+                 The rule is stated here rather than as a structural CSS
+                 selector because x-for leaves its own <template> in the DOM as
+                 the first child, so :first-child never matches a card — see
+                 CLAUDE.md, Traps. -->
+            <div class="weather-locations" x-show="day.weather.length">
+              <template x-for="(row, index) in day.weather" :key="row.key">
+                <div class="weather-card"
+                     :class="index === 0 && day.weather.length % 2 === 1 ? 'weather-card-wide' : ''">
+                  <div class="weather-card-head">
+                    <span class="weather-place" x-text="weatherPlace(row.day)"></span>
+                    <span class="chip" x-show="weatherCountryLabel(row.day)"
+                          x-text="weatherCountryLabel(row.day)"></span>
+                  </div>
+
+                  <div class="weather-line" x-show="weatherHasReading(row.day)">
+                    <span class="weather-icon" x-text="weatherIcon(row.day)"></span>
+                    <span class="weather-temps" x-text="weatherTemps(row.day)"></span>
+                    <span class="weather-condition" x-show="weatherCondition(row.day)"
+                          x-text="weatherCondition(row.day)"></span>
+                    <span class="weather-badge" x-show="weatherBadge(row.day)"
+                          :class="row.day.source === 'CLIMATE' ? 'weather-badge-typical' : ''"
+                          x-text="weatherBadge(row.day)"></span>
+                  </div>
+
+                  <div class="weather-line weather-line-muted"
+                       x-show="!weatherHasReading(row.day)"
+                       :title="weatherUnavailableTitle(row.day)"
+                       x-text="weatherUnavailableText(row.day)"></div>
+
+                  <div class="weather-note tiny muted" x-show="weatherNote(row.day)"
+                       x-text="weatherNote(row.day)"></div>
+                </div>
+              </template>
+            </div>
+
+            <div class="timeline-entries" x-show="day.entries.length">
+              <template x-for="entry in day.entries" :key="entry.key">
                 <div class="timeline-entry">
-                  <span class="timeline-time" x-text="entryTime(item)"></span>
-                  <span class="timeline-icon" x-text="categoryOf(item.category).icon"></span>
+                  <label class="select-box select-box-tight">
+                    <input type="checkbox" :checked="isItinSelected(entry.item.id)"
+                           @change="toggleItinSelected(entry.item.id)"
+                           :aria-label="`Select ${entry.item.description}`">
+                  </label>
+                  <span class="timeline-time" x-text="entryTime(entry)"></span>
                   <div class="timeline-body">
-                    <div class="timeline-desc" x-text="item.description"></div>
+                    <div class="timeline-desc" x-text="entry.item.description"></div>
+                    <!-- The category reads as one icon-and-label chip here too,
+                         the way the checklist and budget rows show it. -->
                     <div class="timeline-meta">
-                      <span x-text="categoryOf(item.category).label"></span>
-                      <span x-show="sourceChecklist(item)">
-                        · from “<span x-text="sourceChecklist(item)"></span>”
+                      <span class="chip">
+                        <span x-text="categoryOf(entry.item.category).icon"></span>
+                        <span x-text="categoryOf(entry.item.category).label"></span>
+                      </span>
+                      <span class="chip" x-show="countryLabel(entry.item.countryCodes)"
+                            x-text="countryLabel(entry.item.countryCodes)"></span>
+                      <span x-show="sourceChecklist(entry.item)">
+                        from “<span x-text="sourceChecklist(entry.item)"></span>”
                       </span>
                     </div>
                   </div>
-                  <span class="timeline-cost" x-show="item.cost" x-text="entryCost(item)"></span>
+                  <span class="timeline-cost" x-show="entry.cost" x-text="entryCost(entry)"></span>
                   <span class="timeline-actions btn-row">
-                    <button type="button" class="btn btn-sm" @click="openEditEntry(item)">Edit</button>
-                    <button type="button" class="btn btn-sm btn-danger"
-                            @click="askDeleteEntry(item)">Delete</button>
+                    <button type="button" class="btn btn-sm" @click="openEditEntry(entry.item)">Edit</button>
                   </span>
                 </div>
               </template>
@@ -399,7 +524,6 @@
         <div class="section-head">
           <h2 class="section-title">Budget</h2>
           <div class="btn-row">
-            <button type="button" class="btn btn-sm" @click="openRates()">Exchange rates</button>
             <button type="button" class="btn btn-primary btn-sm" @click="openAddExpense()">
               + Add expense
             </button>
@@ -407,12 +531,31 @@
         </div>
 
         <div class="toolbar">
-          <span class="toolbar-label">Show totals in</span>
-          <select :value="budget.displayCurrency" @change="setDisplayCurrency($event.target.value)">
-            <template x-for="code in currencies" :key="code">
-              <option :value="code" x-text="code"></option>
+          <span class="toolbar-label">Category</span>
+          <div class="chip-group">
+            <template x-for="cat in categories" :key="cat.value">
+              <button type="button" class="chip"
+                      :aria-pressed="budgetCategoryFilters.includes(cat.value)"
+                      @click="toggleBudgetCategory(cat.value)">
+                <span x-text="cat.icon"></span><span x-text="cat.label"></span>
+              </button>
             </template>
+          </div>
+
+          <label class="toolbar-label" for="budget-group-by">Group by</label>
+          <select id="budget-group-by" x-model="budgetPieMode">
+            <option value="category">Category</option>
+            <option value="country">Country</option>
           </select>
+
+          <div class="toolbar-actions">
+            <button type="button" class="btn btn-sm btn-danger"
+                    :disabled="!budgetSelected.length"
+                    @click="budgetBulkOpen = true">
+              Delete selected<span x-show="budgetSelected.length"
+                                   x-text="` (${budgetSelected.length})`"></span>
+            </button>
+          </div>
         </div>
 
         <div class="empty-state" x-show="!budget.items.length">
@@ -427,79 +570,91 @@
         <div x-show="budget.items.length">
           <div class="card" style="margin-bottom:16px">
             <div class="budget-summary">
-              <div>
-                <div class="budget-total-value" x-text="fmt(budget.total, budget.displayCurrency)"></div>
-                <div class="budget-total-label" x-text="`Total, in ${budget.displayCurrency}`"></div>
-
-                <svg class="budget-donut" viewBox="0 0 100 100" role="img"
-                     aria-label="Spend by category" x-show="donutSegments.length">
-                  <circle cx="50" cy="50" r="42" fill="none"
-                          stroke="var(--tp-surface-alt)" stroke-width="14"></circle>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
-                          transform="rotate(-90 50 50)" x-show="donutSegments[0]"
-                          :stroke="donutSegments[0]?.color"
-                          :stroke-dasharray="donutSegments[0]?.dash"
-                          :stroke-dashoffset="donutSegments[0]?.offset"></circle>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
-                          transform="rotate(-90 50 50)" x-show="donutSegments[1]"
-                          :stroke="donutSegments[1]?.color"
-                          :stroke-dasharray="donutSegments[1]?.dash"
-                          :stroke-dashoffset="donutSegments[1]?.offset"></circle>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
-                          transform="rotate(-90 50 50)" x-show="donutSegments[2]"
-                          :stroke="donutSegments[2]?.color"
-                          :stroke-dasharray="donutSegments[2]?.dash"
-                          :stroke-dashoffset="donutSegments[2]?.offset"></circle>
-                  <circle cx="50" cy="50" r="42" fill="none" stroke-width="14"
-                          transform="rotate(-90 50 50)" x-show="donutSegments[3]"
-                          :stroke="donutSegments[3]?.color"
-                          :stroke-dasharray="donutSegments[3]?.dash"
-                          :stroke-dashoffset="donutSegments[3]?.offset"></circle>
-                </svg>
+              <!-- Chart.js draws the pie; the library is vendored in
+                   vendor/chart.umd.js, not fetched from a CDN. -->
+              <div class="budget-pie" x-effect="renderBudgetPie()"
+                   x-show="budgetBreakdown.length">
+                <canvas x-ref="budgetPie" role="img"
+                        :aria-label="budgetPieMode === 'country' ? 'Spend by country' : 'Spend by category'"></canvas>
               </div>
 
-              <div class="budget-bars">
-                <template x-for="cat in budgetCategories" :key="cat.value">
-                  <div>
-                    <div class="budget-bar-head">
-                      <span><span x-text="cat.icon"></span> <span x-text="cat.label"></span></span>
-                      <span class="budget-bar-amount"
-                            x-text="fmt(cat.amount, budget.displayCurrency)"></span>
-                    </div>
-                    <div class="bar-track">
-                      <div class="bar-fill"
-                           :style="`width:${barWidth(cat.amount)}%;background:${cat.color}`"></div>
-                    </div>
-                  </div>
-                </template>
+              <div class="budget-details">
+                <div class="budget-total-row">
+                  <div class="budget-total-value" x-text="totalLabel()"></div>
+                  <!-- Read-only: rates are fetched daily for the whole install
+                       (see RatesRefresher), so this only says when they last
+                       came in. -->
+                  <span class="budget-rates-note" x-text="ratesNote()"></span>
+                </div>
+                <div class="budget-native-totals" x-show="nativeTotalsLabel"
+                     x-text="`Native: ${nativeTotalsLabel}`"></div>
+
+                <ul class="budget-legend">
+                  <template x-for="slice in budgetBreakdown" :key="slice.key">
+                    <li class="budget-legend-row">
+                      <div class="budget-legend-head">
+                        <span class="budget-legend-swatch" :style="`background:${slice.color}`"></span>
+                        <span class="budget-legend-label">
+                          <span x-text="slice.icon"></span> <span x-text="slice.label"></span>
+                        </span>
+                        <span class="budget-legend-percent" x-text="barPercent(slice.amount)"></span>
+                        <span class="budget-legend-amount"
+                              x-text="fmt(slice.amount, budget.totalsCurrency)"></span>
+                      </div>
+                      <div class="bar-track">
+                        <div class="bar-fill"
+                             :style="`width:${barWidth(slice.amount)}%;background:${slice.color}`"></div>
+                      </div>
+                    </li>
+                  </template>
+                </ul>
 
                 <div class="alert alert-warning" x-show="missingRates.length" style="margin-top:12px">
-                  Not included in the total — no exchange rate set for
+                  Not included in the total — today's rates carry no quote for
                   <template x-for="code in missingRates" :key="code">
-                    <button type="button" class="btn-link" @click="addMissingRate(code)"
-                            x-text="code"></button>
+                    <span class="chip" x-text="code"></span>
                   </template>.
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="table-wrap">
+          <p class="small muted" x-show="!filteredBudgetItems.length">
+            Nothing matches those filters.
+          </p>
+
+          <div class="table-wrap" x-show="filteredBudgetItems.length">
             <table class="table">
               <thead>
                 <tr>
-                  <th></th><th>Description</th><th>Category</th>
+                  <th class="select-cell"><span class="sr-only">Select</span></th>
+                  <th>Description</th><th>Category</th>
                   <th class="num">Amount</th>
-                  <th class="num" x-text="`In ${budget.displayCurrency}`"></th>
+                  <th class="num" x-text="`In ${budget.totalsCurrency}`"></th>
                   <th>Date</th><th>Source</th><th class="actions"></th>
                 </tr>
               </thead>
               <tbody>
-                <template x-for="item in budget.items" :key="item.id">
+                <template x-for="item in filteredBudgetItems" :key="item.id">
                   <tr>
-                    <td x-text="categoryOf(item.category).icon"></td>
+                    <td class="select-cell">
+                      <input type="checkbox" :checked="isBudgetSelected(item.id)"
+                             @change="toggleBudgetSelected(item.id)"
+                             :aria-label="`Select ${item.description}`">
+                    </td>
                     <td class="wrap" x-text="item.description"></td>
-                    <td class="muted" x-text="categoryOf(item.category).label"></td>
+                    <!-- Same icon-and-label chip the checklist and itinerary
+                         rows use, so a category reads the same everywhere. -->
+                    <td>
+                      <div class="chip-group">
+                        <span class="chip">
+                          <span x-text="categoryOf(item.category).icon"></span>
+                          <span x-text="categoryOf(item.category).label"></span>
+                        </span>
+                        <span class="chip" x-show="countryLabel(item.countryCodes)"
+                              x-text="countryLabel(item.countryCodes)"></span>
+                      </div>
+                    </td>
                     <td class="num" x-text="fmt(item.amount, item.currency)"></td>
                     <td class="num" x-text="convertedOf(item) == null ? '—' : fmt(convertedOf(item))"></td>
                     <td class="muted" x-text="expenseDate(item)"></td>
@@ -512,8 +667,6 @@
                       <span class="btn-row">
                         <button type="button" class="btn btn-sm"
                                 @click="openEditExpense(item)">Edit</button>
-                        <button type="button" class="btn btn-sm btn-danger"
-                                @click="askDeleteExpense(item)">Delete</button>
                       </span>
                     </td>
                   </tr>
@@ -563,14 +716,13 @@
             You can publish at any point, however unfinished the plan is — publishing again
             later updates the page.
           </p>
-          <div class="field" style="max-width:260px">
-            <label for="publish-theme">Theme for the public page</label>
-            <select id="publish-theme" x-model="publishTheme">
-              <template x-for="option in themes" :key="option.value">
-                <option :value="option.value" x-text="option.label"></option>
-              </template>
-            </select>
-          </div>
+          <!-- No theme picker: the page is published in whatever theme you are
+               looking at, so the choice is the selector in the header. -->
+          <p class="small muted">
+            The public page will use your current theme,
+            <strong x-text="themeToPublishLabel"></strong>. Switch theme and publish
+            again to restyle it.
+          </p>
           <button type="button" class="btn btn-primary" @click="confirmingPublish = true">
             Publish trip
           </button>
@@ -641,7 +793,7 @@
       </section>
 
       <!-- ══ CHECKLIST DETAIL DRAWER ════════════ -->
-      <div class="drawer-backdrop" x-show="openItem" x-cloak @click.self="closeDrawer()"
+      <div class="drawer-backdrop panel-switchable" x-show="openItem" x-cloak @click.self="closeDrawer()"
            @keydown.escape.window="closeDrawer()">
         <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title"
              x-show="openItem" @click.stop>
@@ -683,14 +835,17 @@
                       </template>
                     </select>
                   </div>
-                  <div class="field">
-                    <label for="drawer-destination">Destination</label>
-                    <select id="drawer-destination" x-model="drawerForm.destinationId">
-                      <option value="">— none —</option>
-                      <template x-for="destination in destinations" :key="destination.id">
-                        <option :value="destination.id" x-text="destination.name"></option>
-                      </template>
-                    </select>
+                </div>
+                <div class="field">
+                  <label id="drawer-destination-label">Location (optional)</label>
+                  <div class="chip-group" role="group" aria-labelledby="drawer-destination-label">
+                    <template x-for="country in tripCountries" :key="country.code">
+                      <button type="button" class="chip"
+                              :aria-pressed="drawerForm.countryCodes.includes(country.code)"
+                              @click="toggleLocation(drawerForm.countryCodes, country.code)"
+                              x-text="country.label"></button>
+                    </template>
+                    <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
                   </div>
                 </div>
                 <button type="button" class="btn" :disabled="drawerBusy"
@@ -710,7 +865,11 @@
 
                 <template x-for="plan in openItemPlans" :key="plan.id">
                   <div class="plan-card">
-                    <div class="plan-when" x-text="planWhen(plan)"></div>
+                    <div class="plan-when">
+                      <span x-text="planWhen(plan)"></span>
+                      <span class="chip" x-show="planNights(plan)"
+                            x-text="planNights(plan)"></span>
+                    </div>
                     <div class="plan-desc" x-text="plan.description"></div>
                     <div class="row row-between">
                       <span class="plan-cost" x-show="plan.cost" x-text="planCost(plan)"></span>
@@ -737,7 +896,7 @@
                   <div class="field-row">
                     <div class="field">
                       <label for="plan-start-date">Start date</label>
-                      <input id="plan-start-date" type="date" x-model="planForm.startDate">
+                      <input id="plan-start-date" type="date" x-model="planForm.startDate" :min="trip.startDate" :max="trip.endDate">
                     </div>
                     <div class="field">
                       <label for="plan-start-time">Start time</label>
@@ -747,7 +906,7 @@
                   <div class="field-row">
                     <div class="field">
                       <label for="plan-end-date">End date</label>
-                      <input id="plan-end-date" type="date" x-model="planForm.endDate">
+                      <input id="plan-end-date" type="date" x-model="planForm.endDate" :min="trip.startDate" :max="trip.endDate">
                     </div>
                     <div class="field">
                       <label for="plan-end-time">End time</label>
@@ -763,7 +922,7 @@
                     <div class="field">
                       <label for="plan-currency">Currency</label>
                       <select id="plan-currency" x-model="planForm.currency">
-                        <template x-for="code in currencies" :key="code">
+                        <template x-for="code in entryCurrencies" :key="code">
                           <option :value="code" x-text="code"></option>
                         </template>
                       </select>
@@ -772,6 +931,19 @@
                   <p class="field-hint" style="margin-top:-8px">
                     Adding a cost creates a matching budget entry.
                   </p>
+
+                  <div class="field">
+                    <label id="plan-destination-label">Location (optional)</label>
+                    <div class="chip-group" role="group" aria-labelledby="plan-destination-label">
+                      <template x-for="country in tripCountries" :key="country.code">
+                        <button type="button" class="chip"
+                                :aria-pressed="planForm.countryCodes.includes(country.code)"
+                                @click="toggleLocation(planForm.countryCodes, country.code)"
+                                x-text="country.label"></button>
+                      </template>
+                      <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+                    </div>
+                  </div>
 
                   <div class="row row-end" style="margin-top:12px">
                     <button type="button" class="btn" @click="planOpen = false">Cancel</button>
@@ -785,11 +957,13 @@
               <div class="drawer-footer">
                 <button type="button" class="btn btn-primary"
                         x-show="openItem?.status !== 'COMPLETED'"
-                        @click="setCheckStatus('COMPLETED')">Set this Checklist to Complete</button>
+                        @click="askComplete(openItem)">Set this Checklist to Complete</button>
                 <button type="button" class="btn"
                         x-show="openItem?.status === 'COMPLETED'"
                         @click="setCheckStatus('TODO')">Reopen</button>
-                <button type="button" class="btn" x-show="!planOpen"
+                <!-- Planning a completed item is not a thing: reopen it first. -->
+                <button type="button" class="btn"
+                        x-show="!planOpen && openItem?.status !== 'COMPLETED'"
                         @click="openPlanForm()"
                         x-text="openItemPlans.length ? 'Plan another' : 'Plan'"></button>
                 <button type="button" class="btn btn-danger" @click="deletingCheck = true">Delete</button>
@@ -836,7 +1010,7 @@
               <div class="field">
                 <label for="edit-currency">Budget currency</label>
                 <select id="edit-currency" x-model="editForm.displayCurrency">
-                  <template x-for="code in currencies" :key="code">
+                  <template x-for="code in entryCurrencies" :key="code">
                     <option :value="code" x-text="code"></option>
                   </template>
                 </select>
@@ -900,7 +1074,7 @@
       </div>
 
       <!-- Add / edit destination -->
-      <div class="modal-backdrop" x-show="destFormOpen" x-cloak @click.self="closeDestinationForm()"
+      <div class="modal-backdrop panel-switchable" x-show="destFormOpen" x-cloak @click.self="closeDestinationForm()"
            @keydown.escape.window="closeDestinationForm()">
         <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="dest-title">
           <div class="modal-header">
@@ -915,14 +1089,24 @@
             <div class="field autocomplete">
               <label for="dest-name">Name</label>
               <input id="dest-name" x-ref="destName" x-model="destForm.name"
-                     @input="onDestNameInput()" autocomplete="off" maxlength="120"
+                     @input="onDestNameInput()"
+                     @keydown.escape.prevent.stop="dismissSuggestions()"
+                     @blur="dismissSuggestions()"
+                     autocomplete="off" maxlength="120"
                      placeholder="Cusco" required>
 
-              <!-- Suggestions are a convenience: free text always saves. -->
+              <!-- Suggestions are a convenience: free text always saves.
+                   The list sits over the fields below it, so it has to be
+                   escapable: the options are not tab stops (Tab goes to
+                   Country code, not into the list), Escape and moving focus
+                   away both close it, and the footer says so for the mouse.
+                   Each option suppresses mousedown so that closing-on-blur
+                   does not swallow the click that picks it. -->
               <ul class="autocomplete-list" x-show="suggestions.length" x-cloak>
                 <template x-for="place in suggestions" :key="place.geonameId">
                   <li>
-                    <button type="button" class="autocomplete-option" @click="pickSuggestion(place)">
+                    <button type="button" class="autocomplete-option" tabindex="-1"
+                            @mousedown.prevent @click="pickSuggestion(place)">
                       <span class="autocomplete-name">
                         <span x-show="place.countryFlag" x-text="place.countryFlag"></span>
                         <span x-text="place.name"></span>
@@ -931,6 +1115,12 @@
                     </button>
                   </li>
                 </template>
+                <li>
+                  <button type="button" class="autocomplete-freetext" tabindex="-1"
+                          @mousedown.prevent @click="keepTypedName()">
+                    Not here? Keep “<span x-text="destForm.name"></span>” as typed
+                  </button>
+                </li>
               </ul>
 
               <p class="autocomplete-status" x-show="lookupBusy">Looking up places…</p>
@@ -940,15 +1130,47 @@
               </p>
             </div>
 
+            <!-- Typed like the name field above, but unlike it only a real
+                 country may come out: resolveCountry accepts an exact name or
+                 code, clears on empty, and otherwise snaps back to whatever
+                 was already chosen. The code beside it is derived, never
+                 typed, so the two can never disagree. -->
             <div class="field-row">
+              <div class="field autocomplete">
+                <label for="dest-country">Country</label>
+                <input id="dest-country" x-model="countryQuery"
+                       @input="onCountryInput()"
+                       @focus="onCountryInput()"
+                       @keydown.escape.prevent.stop="resolveCountry()"
+                       @blur="resolveCountry()"
+                       autocomplete="off" placeholder="Start typing — Peru">
+
+                <ul class="autocomplete-list" x-show="countryListOpen && countryMatches.length" x-cloak>
+                  <template x-for="option in countryMatches" :key="option.code">
+                    <li>
+                      <button type="button" class="autocomplete-option" tabindex="-1"
+                              @mousedown.prevent @click="pickCountry(option)">
+                        <span class="autocomplete-name">
+                          <span x-show="option.flag" x-text="option.flag"></span>
+                          <span x-text="option.name"></span>
+                        </span>
+                        <span class="autocomplete-meta" x-text="option.code"></span>
+                      </button>
+                    </li>
+                  </template>
+                </ul>
+
+                <p class="field-hint"
+                   x-show="countryQuery.trim() && !destForm.countryCode" x-cloak>
+                  Pick one from the list — the code comes from it.
+                </p>
+              </div>
               <div class="field">
                 <label for="dest-country-code">Country code</label>
                 <input id="dest-country-code" x-model="destForm.countryCode"
-                       maxlength="2" placeholder="PE" style="text-transform:uppercase">
-              </div>
-              <div class="field">
-                <label for="dest-country-name">Country</label>
-                <input id="dest-country-name" x-model="destForm.countryName" placeholder="Peru">
+                       readonly tabindex="-1" placeholder="—"
+                       style="text-transform:uppercase">
+                <p class="field-hint">Comes from the country you pick.</p>
               </div>
             </div>
 
@@ -972,16 +1194,22 @@
             <div class="field-row">
               <div class="field">
                 <label for="dest-start">Start date (optional)</label>
-                <input id="dest-start" type="date" x-model="destForm.startDate">
+                <input id="dest-start" type="date" x-model="destForm.startDate" :min="trip.startDate" :max="trip.endDate">
               </div>
               <div class="field">
                 <label for="dest-end">End date (optional)</label>
-                <input id="dest-end" type="date" x-model="destForm.endDate">
+                <input id="dest-end" type="date" x-model="destForm.endDate" :min="trip.startDate" :max="trip.endDate">
               </div>
             </div>
             <p class="field-hint" style="margin-top:-8px" x-show="!destForm.id">
-              With both dates set, the accommodation checklist item counts the nights
-              for you — for example “Plan 6N accommodation in Cusco”.
+              Dates that cover a night add an accommodation checklist item with the
+              count — “Plan 6N accommodation in Cusco”. Leave them empty, or arrive
+              and leave the same day, and none is added; fill them in later and it
+              appears then.
+            </p>
+            <p class="field-hint" style="margin-top:-8px" x-show="destForm.id">
+              If these dates come to cover a night, an accommodation checklist item
+              is added now. Shortening the stay never removes one.
             </p>
 
             <div class="field">
@@ -999,24 +1227,33 @@
         </div>
       </div>
 
-      <!-- Delete destination -->
-      <div class="modal-backdrop" x-show="deletingDestination" x-cloak
-           @click.self="deletingDestination = null" @keydown.escape.window="deletingDestination = null">
-        <div class="modal" role="dialog" aria-modal="true">
+      <!-- Bulk delete destinations -->
+      <div class="modal-backdrop" x-show="destBulkOpen" x-cloak @click.self="destBulkOpen = false"
+           @keydown.escape.window="destBulkOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-dest-title">
           <div class="modal-header">
-            <h2 class="modal-title">Delete this destination?</h2>
-            <button type="button" class="modal-close" @click="deletingDestination = null"
+            <h2 class="modal-title" id="bulk-dest-title">
+              Delete <span x-text="destSelected.length"></span>
+              destination<span x-show="destSelected.length !== 1">s</span>?
+            </h2>
+            <button type="button" class="modal-close" @click="destBulkOpen = false"
                     aria-label="Close">✕</button>
           </div>
           <p class="small">
-            <strong x-text="deletingDestination?.name"></strong> will be removed.
-            Its checklist items are <strong>kept</strong> — they simply stop being
-            linked to a destination, so no planning is lost.
+            This removes the selected destinations. Their checklist items are
+            <strong>kept</strong> — they simply stop being linked to a destination,
+            so no planning already done against them is lost.
+          </p>
+          <p class="small muted" x-show="destSelectedChecklistCount">
+            <span x-text="destSelectedChecklistCount"></span>
+            checklist item<span x-show="destSelectedChecklistCount !== 1">s</span>
+            will be kept and simply stop being linked.
           </p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="deletingDestination = null">Cancel</button>
-            <button type="button" class="btn btn-danger"
-                    @click="confirmDeleteDestination()">Delete destination</button>
+            <button type="button" class="btn" @click="destBulkOpen = false">Cancel</button>
+            <button type="button" class="btn btn-danger" :disabled="destBulkBusy"
+                    @click="confirmBulkDeleteDestinations()"
+                    x-text="destBulkBusy ? 'Deleting…' : 'Delete selected'"></button>
           </div>
         </div>
       </div>
@@ -1038,23 +1275,24 @@
                      x-model="newCheck.description" maxlength="300"
                      placeholder="Order eSIM" required>
             </div>
-            <div class="field-row">
-              <div class="field">
-                <label for="new-check-category">Category</label>
-                <select id="new-check-category" x-model="newCheck.category">
-                  <template x-for="cat in categories" :key="cat.value">
-                    <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
-                  </template>
-                </select>
-              </div>
-              <div class="field">
-                <label for="new-check-destination">Destination (optional)</label>
-                <select id="new-check-destination" x-model="newCheck.destinationId">
-                  <option value="">— none —</option>
-                  <template x-for="destination in destinations" :key="destination.id">
-                    <option :value="destination.id" x-text="destination.name"></option>
-                  </template>
-                </select>
+            <div class="field">
+              <label for="new-check-category">Category</label>
+              <select id="new-check-category" x-model="newCheck.category">
+                <template x-for="cat in categories" :key="cat.value">
+                  <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
+                </template>
+              </select>
+            </div>
+            <div class="field">
+              <label id="new-check-destination-label">Location (optional)</label>
+              <div class="chip-group" role="group" aria-labelledby="new-check-destination-label">
+                <template x-for="country in tripCountries" :key="country.code">
+                  <button type="button" class="chip"
+                          :aria-pressed="newCheck.countryCodes.includes(country.code)"
+                          @click="toggleLocation(newCheck.countryCodes, country.code)"
+                          x-text="country.label"></button>
+                </template>
+                <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
               </div>
             </div>
             <div class="field">
@@ -1071,7 +1309,7 @@
       </div>
 
       <!-- Add / edit itinerary entry -->
-      <div class="modal-backdrop" x-show="entryOpen" x-cloak @click.self="entryOpen = false"
+      <div class="modal-backdrop panel-switchable" x-show="entryOpen" x-cloak @click.self="entryOpen = false"
            @keydown.escape.window="entryOpen = false">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="entry-title">
           <div class="modal-header">
@@ -1096,10 +1334,22 @@
                 </template>
               </select>
             </div>
+            <div class="field">
+              <label id="entry-destination-label">Location (optional)</label>
+              <div class="chip-group" role="group" aria-labelledby="entry-destination-label">
+                <template x-for="country in tripCountries" :key="country.code">
+                  <button type="button" class="chip"
+                          :aria-pressed="entryForm.countryCodes.includes(country.code)"
+                          @click="toggleLocation(entryForm.countryCodes, country.code)"
+                          x-text="country.label"></button>
+                </template>
+                <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+              </div>
+            </div>
             <div class="field-row">
               <div class="field">
                 <label for="entry-start-date">Start date</label>
-                <input id="entry-start-date" type="date" x-model="entryForm.startDate">
+                <input id="entry-start-date" type="date" x-model="entryForm.startDate" :min="trip.startDate" :max="trip.endDate">
               </div>
               <div class="field">
                 <label for="entry-start-time">Start time</label>
@@ -1109,7 +1359,7 @@
             <div class="field-row">
               <div class="field">
                 <label for="entry-end-date">End date</label>
-                <input id="entry-end-date" type="date" x-model="entryForm.endDate">
+                <input id="entry-end-date" type="date" x-model="entryForm.endDate" :min="trip.startDate" :max="trip.endDate">
               </div>
               <div class="field">
                 <label for="entry-end-time">End time</label>
@@ -1124,7 +1374,7 @@
               <div class="field">
                 <label for="entry-currency">Currency</label>
                 <select id="entry-currency" x-model="entryForm.currency">
-                  <template x-for="code in currencies" :key="code">
+                  <template x-for="code in entryCurrencies" :key="code">
                     <option :value="code" x-text="code"></option>
                   </template>
                 </select>
@@ -1142,30 +1392,120 @@
         </div>
       </div>
 
-      <!-- Delete itinerary entry -->
-      <div class="modal-backdrop" x-show="deletingEntry" x-cloak @click.self="deletingEntry = null"
-           @keydown.escape.window="deletingEntry = null">
-        <div class="modal" role="dialog" aria-modal="true">
+      <!-- Bulk delete checklist items -->
+      <div class="modal-backdrop" x-show="checkBulkOpen" x-cloak @click.self="checkBulkOpen = false"
+           @keydown.escape.window="checkBulkOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-check-title">
           <div class="modal-header">
-            <h2 class="modal-title">Remove this itinerary item?</h2>
-            <button type="button" class="modal-close" @click="deletingEntry = null"
+            <h2 class="modal-title" id="bulk-check-title">
+              Delete <span x-text="checkSelected.length"></span>
+              checklist item<span x-show="checkSelected.length !== 1">s</span>?
+            </h2>
+            <button type="button" class="modal-close" @click="checkBulkOpen = false"
                     aria-label="Close">✕</button>
           </div>
           <p class="small">
-            <strong x-text="deletingEntry?.description"></strong> will be removed.
-            <span x-show="deletingEntry?.cost">
-              The budget entry it created will be removed too.
-            </span>
+            This removes the selected items. Their plans
+            <strong>stay on the itinerary</strong> — deleting a checklist item never
+            deletes the planning done against it.
+          </p>
+          <p class="small muted" x-show="checkSelectedPlanCount">
+            <span x-text="checkSelectedPlanCount"></span>
+            plan<span x-show="checkSelectedPlanCount !== 1">s</span>
+            will be kept and simply stop being linked.
           </p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="deletingEntry = null">Cancel</button>
-            <button type="button" class="btn btn-danger" @click="confirmDeleteEntry()">Remove</button>
+            <button type="button" class="btn" @click="checkBulkOpen = false">Cancel</button>
+            <button type="button" class="btn btn-danger" :disabled="checkBulkBusy"
+                    @click="confirmBulkDeleteChecks()"
+                    x-text="checkBulkBusy ? 'Deleting…' : 'Delete selected'"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm completing a checklist item — raised by the list's tick and
+           by the drawer's button alike -->
+      <div class="modal-backdrop" x-show="completingItem" x-cloak
+           @click.self="completingItem = null"
+           @keydown.escape.window="completingItem = null">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="complete-check-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="complete-check-title">Mark this item complete?</h2>
+            <button type="button" class="modal-close" @click="completingItem = null"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">
+            <strong x-text="completingItem?.description"></strong> will be ticked off.
+            You can reopen it at any time.
+          </p>
+          <p class="small muted" x-show="!completingItemPlans.length">
+            Nothing has been planned against it yet — completing it anyway is fine.
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="completingItem = null">Cancel</button>
+            <button type="button" class="btn btn-primary"
+                    @click="confirmSetComplete()">Mark complete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk delete itinerary entries -->
+      <div class="modal-backdrop" x-show="itinBulkOpen" x-cloak @click.self="itinBulkOpen = false"
+           @keydown.escape.window="itinBulkOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-itin-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="bulk-itin-title">
+              Remove <span x-text="itinSelected.length"></span>
+              itinerary item<span x-show="itinSelected.length !== 1">s</span>?
+            </h2>
+            <button type="button" class="modal-close" @click="itinBulkOpen = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">This removes the selected entries from the itinerary.</p>
+          <p class="small muted" x-show="itinSelectedCostCount">
+            <span x-text="itinSelectedCostCount"></span>
+            of them carr<span x-text="itinSelectedCostCount === 1 ? 'ies' : 'y'"></span>
+            a cost, so the matching budget
+            entr<span x-text="itinSelectedCostCount === 1 ? 'y' : 'ies'"></span>
+            will be removed too.
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="itinBulkOpen = false">Cancel</button>
+            <button type="button" class="btn btn-danger" :disabled="itinBulkBusy"
+                    @click="confirmBulkDeleteEntries()"
+                    x-text="itinBulkBusy ? 'Removing…' : 'Remove selected'"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk delete expenses -->
+      <div class="modal-backdrop" x-show="budgetBulkOpen" x-cloak @click.self="budgetBulkOpen = false"
+           @keydown.escape.window="budgetBulkOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-budget-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="bulk-budget-title">
+              Remove <span x-text="budgetSelected.length"></span>
+              expense<span x-show="budgetSelected.length !== 1">s</span>?
+            </h2>
+            <button type="button" class="modal-close" @click="budgetBulkOpen = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <p class="small">This removes the selected rows from the budget.</p>
+          <p class="small muted" x-show="budgetSelectedFromPlanCount">
+            <span x-text="budgetSelectedFromPlanCount"></span>
+            of them came from a plan. Those plans stay on the itinerary, but lose their cost.
+          </p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="budgetBulkOpen = false">Cancel</button>
+            <button type="button" class="btn btn-danger" :disabled="budgetBulkBusy"
+                    @click="confirmBulkDeleteExpenses()"
+                    x-text="budgetBulkBusy ? 'Removing…' : 'Remove selected'"></button>
           </div>
         </div>
       </div>
 
       <!-- Add / edit expense -->
-      <div class="modal-backdrop" x-show="expenseOpen" x-cloak @click.self="expenseOpen = false"
+      <div class="modal-backdrop panel-switchable" x-show="expenseOpen" x-cloak @click.self="expenseOpen = false"
            @keydown.escape.window="expenseOpen = false">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="expense-title">
           <div class="modal-header">
@@ -1182,35 +1522,52 @@
                      x-model="expenseForm.description"
                      placeholder="Yellow fever vaccine" required>
             </div>
+            <div class="field">
+              <label for="expense-category">Category</label>
+              <select id="expense-category" x-model="expenseForm.category">
+                <template x-for="cat in categories" :key="cat.value">
+                  <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
+                </template>
+              </select>
+            </div>
+
+            <!-- Cost and Currency paired on one row, and called Cost, so this
+                 reads the same as the Plan form that can create the very same
+                 budget row. -->
             <div class="field-row">
               <div class="field">
-                <label for="expense-category">Category</label>
-                <select id="expense-category" x-model="expenseForm.category">
-                  <template x-for="cat in categories" :key="cat.value">
-                    <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
-                  </template>
-                </select>
-              </div>
-              <div class="field">
-                <label for="expense-amount">Amount</label>
-                <input id="expense-amount" type="number" step="0.01" min="0"
+                <label for="expense-cost">Cost</label>
+                <input id="expense-cost" type="number" step="0.01" min="0"
                        x-model="expenseForm.amount" required>
               </div>
               <div class="field">
                 <label for="expense-currency">Currency</label>
                 <select id="expense-currency" x-model="expenseForm.currency">
-                  <template x-for="code in currencies" :key="code">
+                  <template x-for="code in entryCurrencies" :key="code">
                     <option :value="code" x-text="code"></option>
                   </template>
                 </select>
               </div>
             </div>
+
+            <div class="field">
+              <label id="expense-destination-label">Location (optional)</label>
+              <div class="chip-group" role="group" aria-labelledby="expense-destination-label">
+                <template x-for="country in tripCountries" :key="country.code">
+                  <button type="button" class="chip"
+                          :aria-pressed="expenseForm.countryCodes.includes(country.code)"
+                          @click="toggleLocation(expenseForm.countryCodes, country.code)"
+                          x-text="country.label"></button>
+                </template>
+                <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+              </div>
+            </div>
             <div class="field">
               <label for="expense-date">Date (optional)</label>
-              <input id="expense-date" type="date" x-model="expenseForm.date">
+              <input id="expense-date" type="date" x-model="expenseForm.date" :min="trip.startDate" :max="trip.endDate">
             </div>
             <p class="field-hint" x-show="expenseForm.id && expenseForm.amount">
-              Changing the amount on an expense that came from a plan updates that plan's cost too.
+              Changing the cost on an expense that came from a plan updates that plan's cost too.
             </p>
             <div class="modal-footer">
               <button type="button" class="btn" @click="expenseOpen = false">Cancel</button>
@@ -1218,82 +1575,6 @@
                       x-text="expenseBusy ? 'Saving…' : 'Save'"></button>
             </div>
           </form>
-        </div>
-      </div>
-
-      <!-- Delete expense -->
-      <div class="modal-backdrop" x-show="deletingExpense" x-cloak @click.self="deletingExpense = null"
-           @keydown.escape.window="deletingExpense = null">
-        <div class="modal" role="dialog" aria-modal="true">
-          <div class="modal-header">
-            <h2 class="modal-title">Remove this expense?</h2>
-            <button type="button" class="modal-close" @click="deletingExpense = null"
-                    aria-label="Close">✕</button>
-          </div>
-          <p class="small">
-            <strong x-text="deletingExpense?.description"></strong> will be removed from the budget.
-            <span x-show="deletingExpense?.itineraryItemId">
-              The plan it came from stays, but loses its cost.
-            </span>
-          </p>
-          <div class="modal-footer">
-            <button type="button" class="btn" @click="deletingExpense = null">Cancel</button>
-            <button type="button" class="btn btn-danger" @click="confirmDeleteExpense()">Remove</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Exchange rates -->
-      <div class="modal-backdrop" x-show="ratesOpen" x-cloak @click.self="ratesOpen = false"
-           @keydown.escape.window="ratesOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rates-title">
-          <div class="modal-header">
-            <h2 class="modal-title" id="rates-title">Exchange rates</h2>
-            <button type="button" class="modal-close" @click="ratesOpen = false"
-                    aria-label="Close">✕</button>
-          </div>
-          <p class="small muted">
-            How many units of each currency make one
-            <strong x-text="budget.displayCurrency"></strong>. Rates are kept per trip and
-            entered by hand — nothing here is fetched from a market feed.
-          </p>
-          <div class="alert alert-error" x-show="ratesError" x-text="ratesError" x-cloak></div>
-
-          <template x-for="(row, index) in ratesDraft" :key="row.currency">
-            <div class="field-inline" style="margin-bottom:8px">
-              <div class="field flex-none" style="width:90px">
-                <input :value="row.currency" disabled>
-              </div>
-              <div class="field grow">
-                <input type="number" step="any" min="0" x-model="row.rate"
-                       :placeholder="`${row.currency} per 1 ${budget.displayCurrency}`">
-              </div>
-              <div class="field flex-none">
-                <button type="button" class="btn btn-sm btn-danger"
-                        @click="removeRateRow(index)">Remove</button>
-              </div>
-            </div>
-          </template>
-
-          <p class="small muted" x-show="!ratesDraft.length">No rates set yet.</p>
-
-          <div class="field-inline" style="margin-top:12px">
-            <div class="field grow">
-              <label for="rates-currency">Add a currency</label>
-              <input id="rates-currency" x-model="ratesCurrency" maxlength="3"
-                     placeholder="USD" style="text-transform:uppercase"
-                     @keydown.enter.prevent="addRateRow()">
-            </div>
-            <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
-              <button type="button" class="btn" @click="addRateRow()">Add</button>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn" @click="ratesOpen = false">Cancel</button>
-            <button type="button" class="btn btn-primary" :disabled="ratesBusy"
-                    @click="saveRates()" x-text="ratesBusy ? 'Saving…' : 'Save rates'"></button>
-          </div>
         </div>
       </div>
 
@@ -1346,6 +1627,7 @@
 <footer id="site-footer"></footer>
 
 <style>[x-cloak] { display: none !important; }</style>
+<script src="vendor/chart.umd.js?v=4.5.1"></script>
 <script type="module">
   import { bootPage } from './js/boot.js';
   import { tripPage } from './js/pages/trip.js';

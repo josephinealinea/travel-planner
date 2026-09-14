@@ -9,6 +9,8 @@ import com.josephinealinea.planner.checklist.domain.ChecklistStatus;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.destinations.domain.Destination;
+import com.josephinealinea.planner.identity.infra.YamlUserRepository;
+import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
@@ -19,6 +21,9 @@ import com.josephinealinea.planner.storage.YamlStore;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.trips.domain.TripStatus;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.josephinealinea.planner.rates.TestRates;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,6 +34,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +61,10 @@ class StaticSiteRendererTest {
                 new AppProperties.Security(null, null, false),
                 new AppProperties.Cors(null),
                 new AppProperties.Geocoding(null, null, 0, 0),
-                new AppProperties.Bootstrap(null, null));
+                new AppProperties.Weather(null, null, null, null, 0, 0, null),
+                new AppProperties.Rates(null, null, "0 0 0 * * *", null),
+                new AppProperties.Bootstrap(null, null),
+                new AppProperties.Currencies(null, null, null));
 
         YamlStore store = new YamlStore();
         YamlPaths paths = new YamlPaths(props);
@@ -71,7 +80,12 @@ class StaticSiteRendererTest {
         // The renderer only ever summarises a Trip it is handed, so the access
         // service the budget summary would need for the by-id path is unused here.
         renderer = new StaticSiteRenderer(destinations, checklist, itinerary,
-                new BudgetService(budget, itinerary, new TripAccessService(null)), store, paths);
+                new BudgetService(budget, itinerary, destinations,
+                        new YamlUserRepository(store, paths, locks), new TripAccessService(null),
+                        new TripCountries(destinations),
+                        TestRates.with(store, paths, props,
+                                Map.of("USD", new BigDecimal("1.17")))),
+                store, paths);
     }
 
     private void seed(DestinationRepository destinations,
@@ -95,7 +109,7 @@ class StaticSiteRendererTest {
         ChecklistItem lodging = new ChecklistItem();
         lodging.setId("check-1");
         lodging.setTripId("trip-1");
-        lodging.setDestinationId("dest-1");
+        lodging.setCountryCodes(java.util.List.of("dest-1"));
         lodging.setCategory(ChecklistCategory.LODGING);
         lodging.setDescription("Plan 6N accommodation in Cusco");
         lodging.setStatus(ChecklistStatus.TODO);
@@ -122,6 +136,15 @@ class StaticSiteRendererTest {
         flight.setCurrency("USD");
         itinerary.save(SLUG, flight);
 
+        // A three-night stay, stored the way ItineraryService now writes one:
+        // an entry per day, the cost on check-in alone, no time on the nights
+        // between. The renderer's job is to lay these out, not to expand them.
+        itinerary.save(SLUG, night("plan-2", LocalDateTime.of(2026, 10, 25, 15, 0),
+                false, new BigDecimal("240.00")));
+        itinerary.save(SLUG, night("plan-2b", LocalDateTime.of(2026, 10, 26, 0, 0), true, null));
+        itinerary.save(SLUG, night("plan-2c", LocalDateTime.of(2026, 10, 27, 0, 0), true, null));
+        itinerary.save(SLUG, night("plan-2d", LocalDateTime.of(2026, 10, 28, 11, 0), false, null));
+
         BudgetItem expense = new BudgetItem();
         expense.setId("budget-1");
         expense.setTripId("trip-1");
@@ -132,6 +155,33 @@ class StaticSiteRendererTest {
         expense.setCurrency("USD");
         expense.setDate(LocalDate.of(2026, 10, 24));
         budget.save(SLUG, expense);
+
+        BudgetItem vaccine = new BudgetItem();
+        vaccine.setId("budget-2");
+        vaccine.setTripId("trip-1");
+        vaccine.setCategory(ChecklistCategory.OTHERS);
+        vaccine.setDescription("Yellow fever vaccine");
+        vaccine.setAmount(new BigDecimal("45.00"));
+        vaccine.setCurrency("USD");
+        vaccine.setDate(LocalDate.of(2026, 10, 20));
+        budget.save(SLUG, vaccine);
+    }
+
+    private static ItineraryItem night(String id, LocalDateTime startAt,
+                                       boolean allDay, BigDecimal cost) {
+        ItineraryItem item = new ItineraryItem();
+        item.setId(id);
+        item.setTripId("trip-1");
+        item.setChecklistItemId("check-1");
+        item.setCategory(ChecklistCategory.LODGING);
+        item.setDescription("Hotel in Cusco — check-in 25 Oct, check-out 28 Oct");
+        item.setStartAt(startAt);
+        if (allDay) item.setAllDay(Boolean.TRUE);
+        if (cost != null) {
+            item.setCost(cost);
+            item.setCurrency("USD");
+        }
+        return item;
     }
 
     private static Trip trip(String theme) {
@@ -145,13 +195,35 @@ class StaticSiteRendererTest {
         trip.setPublishedAt(Instant.now());
         trip.setPublishedTheme(theme);
         trip.setDisplayCurrency("EUR");
-        trip.setExchangeRates(new java.util.LinkedHashMap<>(Map.of("USD", new BigDecimal("1.17"))));
         return trip;
     }
 
     private String render(String theme) throws Exception {
         renderer.render(trip(theme));
         return Files.readString(publishDir.resolve(SLUG).resolve("index.html"));
+    }
+
+    /** The window.TRIP payload the rendered page carries, as JSON. */
+    private JsonNode payload(String html) throws Exception {
+        String marker = "window.TRIP = ";
+        int start = html.indexOf(marker) + marker.length();
+        // The payload escapes "</" as "<\/", so the first ";</script>" after it
+        // is always the real terminator.
+        int end = html.indexOf(";</script>", start);
+        return new ObjectMapper().readTree(html.substring(start, end));
+    }
+
+    /** Every entry for one description, keyed by the day it appears on. */
+    private Map<String, JsonNode> entriesByDay(JsonNode payload, String description) {
+        Map<String, JsonNode> found = new LinkedHashMap<>();
+        payload.get("days").forEach(day -> {
+            for (JsonNode entry : day.get("entries")) {
+                if (entry.get("description").asText().startsWith(description)) {
+                    found.put(day.get("date").asText(), entry);
+                }
+            }
+        });
+        return found;
     }
 
     @Test
@@ -203,12 +275,75 @@ class StaticSiteRendererTest {
         assertThat(html).contains("%3Csvg").contains("%F0%9F%A7%AD");
     }
 
+    /**
+     * Asserted on the html element's own attribute, never with
+     * {@code contains("data-theme=\"x\"")}.
+     *
+     * That substring form passed for the wrong reason and would have kept
+     * passing for any theme at all: the page inlines publish/page.css, which
+     * carries a {@code :root[data-theme="..."]} block for every theme it has
+     * ever styled — including the two withdrawn ones. The match was finding the
+     * stylesheet, not the attribute.
+     */
     @Test
     void recordsTheThemeItWasPublishedIn() throws Exception {
-        assertThat(render("manila")).contains("data-theme=\"manila\"");
-        assertThat(render("retro-game")).contains("data-theme=\"retro-game\"");
-        // An unknown theme falls back rather than emitting something unstyled.
-        assertThat(render("not-a-theme")).contains("data-theme=\"minima\"");
+        assertThat(themeOf(render("y2k"))).isEqualTo("y2k");
+        assertThat(themeOf(render("dark"))).isEqualTo("dark");
+    }
+
+    /**
+     * A theme that is not on offer falls back rather than emitting something
+     * unstyled. Covers both an outright unknown name and the two that were
+     * withdrawn from StaticSiteRenderer.THEMES — a trip published under one of
+     * those before the removal still renders, as Minima.
+     */
+    @Test
+    void aThemeThatIsNoLongerOfferedFallsBackToTheDefault() throws Exception {
+        assertThat(themeOf(render("not-a-theme"))).isEqualTo("minima");
+        assertThat(themeOf(render("manila"))).isEqualTo("minima");
+        assertThat(themeOf(render("retro-game"))).isEqualTo("minima");
+    }
+
+    /**
+     * The page carries the themes a reader may switch to, so page.js never
+     * needs its own copy of the list — withdraw a theme from THEMES and newly
+     * published pages stop offering it.
+     */
+    @Test
+    void offersTheReaderOnlyTheThemesTheAppItselfOffers() throws Exception {
+        String offered = themesOf(render("minima"));
+
+        assertThat(offered.split(",")).containsExactly("minima", "y2k", "dark");
+        // The withdrawn two still have palettes inlined — every :root block is
+        // in page.css — but a reader must not be able to choose them.
+        assertThat(offered).doesNotContain("manila").doesNotContain("retro-game");
+    }
+
+    /**
+     * A reader's switcher starts from the theme the trip was published in, so
+     * the published theme still has to reach the attribute even though it is no
+     * longer the last word.
+     */
+    @Test
+    void theOfferedListIsIndependentOfWhichThemeWasPublished() throws Exception {
+        assertThat(themeOf(render("dark"))).isEqualTo("dark");
+        assertThat(themesOf(render("dark"))).isEqualTo(themesOf(render("y2k")));
+    }
+
+    /** The data-themes on the html element: what the reader may switch to. */
+    private static String themesOf(String html) {
+        var matcher = java.util.regex.Pattern
+                .compile("<html[^>]*\\sdata-themes=\"([^\"]*)\"")
+                .matcher(html);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    /** The data-theme on the html element, which is the one that styles the page. */
+    private static String themeOf(String html) {
+        var matcher = java.util.regex.Pattern
+                .compile("<html[^>]*\\sdata-theme=\"([^\"]*)\"")
+                .matcher(html);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     @Test
@@ -229,5 +364,60 @@ class StaticSiteRendererTest {
 
         renderer.remove(SLUG);
         assertThat(Files.exists(publishDir.resolve(SLUG))).isFalse();
+    }
+
+    @Test
+    void neverLeaksAnIndividualExpenseDescription() throws Exception {
+        String html = render("minima");
+
+        // Per-category totals are what a published page should show; a
+        // manual expense's own description must not reach the page at all —
+        // not in the rendered markup, and not in the inlined window.TRIP
+        // JSON either, since that is also part of index.html's text.
+        assertThat(html).doesNotContain("Yellow fever vaccine");
+    }
+
+    @Test
+    void aStayAppearsOnEveryDayFromCheckInToCheckOut() throws Exception {
+        Map<String, JsonNode> stay = entriesByDay(payload(render("minima")), "Hotel in Cusco");
+
+        // Four days for a three-night stay: you are still in the room on the
+        // morning you check out. They are four stored entries now, so this
+        // pins that the renderer places each on its own day and invents none.
+        assertThat(stay.keySet())
+                .containsExactly("2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28");
+    }
+
+    @Test
+    void aStayCarriesItsCostAndTimesOnlyWhereTheyApply() throws Exception {
+        Map<String, JsonNode> stay = entriesByDay(payload(render("minima")), "Hotel in Cusco");
+
+        // Check-in day: the arrival time, and the one and only cost.
+        assertThat(stay.get("2026-10-25").get("startTime").asText()).isEqualTo("15:00");
+        assertThat(stay.get("2026-10-25").get("cost").asText()).isEqualTo("240.00");
+
+        // A night in between is just "you are here" — no time, no second charge.
+        assertThat(stay.get("2026-10-26").get("startTime").isNull()).isTrue();
+        assertThat(stay.get("2026-10-26").get("cost").isNull()).isTrue();
+
+        // Check-out day: the time you have to be out by, still no charge.
+        assertThat(stay.get("2026-10-28").get("startTime").asText()).isEqualTo("11:00");
+        assertThat(stay.get("2026-10-28").get("cost").isNull()).isTrue();
+
+        // One booking, one charge, however many days it shows on.
+        long charged = stay.values().stream().filter(entry -> !entry.get("cost").isNull()).count();
+        assertThat(charged).isEqualTo(1);
+    }
+
+    @Test
+    void anEventStillAppearsOnItsOwnDayAlone() throws Exception {
+        // The seeded flight leaves on the 24th at 22:15 and lands on the 25th at
+        // 08:40, so it would span two days the moment the rule leaked past
+        // lodging. It belongs to the day it departs.
+        Map<String, JsonNode> flight = entriesByDay(payload(render("minima")), "Delta flight");
+
+        assertThat(flight.keySet()).containsExactly("2026-10-24");
+        assertThat(flight.get("2026-10-24").get("startTime").asText()).isEqualTo("22:15");
+        assertThat(flight.get("2026-10-24").get("endTime").asText()).isEqualTo("08:40");
     }
 }

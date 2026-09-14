@@ -89,14 +89,16 @@ public class DestinationController {
         return destinations.update(tripId, currentUser.userId(), destinationId, request.toInput());
     }
 
-    /** Checklist items for this destination are kept and unlinked, not deleted. */
+    /** Checklist items, itinerary entries and budget rows for this destination are kept and unlinked, not deleted. */
     @DeleteMapping("/{destinationId}")
     DeleteResponse delete(@PathVariable String tripId, @PathVariable String destinationId) {
-        int unlinked = destinations.delete(tripId, currentUser.userId(), destinationId);
-        return new DeleteResponse(unlinked);
+        DestinationService.UnlinkResult result =
+                destinations.delete(tripId, currentUser.userId(), destinationId);
+        return new DeleteResponse(result.checklistItemsUnlinked(), result.itineraryItemsUnlinked(),
+                result.budgetItemsUnlinked());
     }
 
-    public record DeleteResponse(int checklistItemsUnlinked) {}
+    public record DeleteResponse(int checklistItemsUnlinked, int itineraryItemsUnlinked, int budgetItemsUnlinked) {}
 
     @PostMapping("/reorder")
     @ResponseStatus(HttpStatus.NO_CONTENT)

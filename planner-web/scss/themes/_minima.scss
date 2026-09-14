@@ -1,35 +1,35 @@
-// Default theme — clean and light, in the spirit of the site's Minima base.
+// Default theme — warm paper, serif display face, understated.
 // A theme file only ever defines tokens (plus the occasional flourish); all
 // structure lives in _core.scss and reads these values.
 body.theme-minima {
-  --tp-bg: #f6f8fa;
-  --tp-surface: #ffffff;
-  --tp-surface-alt: #f1f4f7;
-  --tp-header-bg: rgba(248, 249, 250, 0.92);
-  --tp-input-bg: #ffffff;
-  --tp-backdrop: rgba(27, 31, 36, 0.42);
-  --tp-toast-bg: #24292f;
+  --tp-bg: #fdf6e8;
+  --tp-surface: #fffdf7;
+  --tp-surface-alt: #f7eed8;
+  --tp-header-bg: rgba(253, 246, 232, 0.94);
+  --tp-input-bg: #fffdf7;
+  --tp-backdrop: rgba(58, 47, 29, 0.38);
+  --tp-toast-bg: #3a2f1d;
 
-  --tp-text: #24292f;
-  --tp-muted: #5b6570;
-  --tp-border: #d8dee4;
+  --tp-text: #3a2f1d;
+  --tp-muted: #7a6a4f;
+  --tp-border: #e2d3b0;
 
-  --tp-accent: #0969da;
-  --tp-accent-strong: #0757b8;
-  --tp-on-accent: #ffffff;
+  --tp-accent: #b45309;
+  --tp-accent-strong: #92400e;
+  --tp-on-accent: #fffdf7;
 
-  --tp-success: #1a7f37;
-  --tp-danger: #cf222e;
-  --tp-danger-bg: #fff5f5;
-  --tp-warning: #d4a72c;
-  --tp-warning-bg: #fff8e5;
-  --tp-warning-text: #7d5f10;
+  --tp-success: #4d7c0f;
+  --tp-danger: #b91c1c;
+  --tp-danger-bg: #fef2f2;
+  --tp-warning: #ca8a04;
+  --tp-warning-bg: #fefce8;
+  --tp-warning-text: #854d0e;
 
-  --tp-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --tp-font-display: var(--tp-font-body);
-  --tp-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --tp-font-body: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+  --tp-font-display: Georgia, "Times New Roman", serif;
+  --tp-font-mono: "Courier New", Courier, monospace;
 
-  --tp-radius: 10px;
-  --tp-radius-sm: 6px;
-  --tp-shadow: 0 1px 3px rgba(27, 31, 36, 0.08);
+  --tp-radius: 6px;
+  --tp-radius-sm: 4px;
+  --tp-shadow: 0 2px 6px rgba(120, 95, 50, 0.12);
 }

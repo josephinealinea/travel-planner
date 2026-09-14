@@ -1,35 +1,98 @@
-// Y2K — soft violets, generous rounding, a little glow.
+// Y2K — the Windows 95 desktop, taken from the palette the main site's own
+// y2k theme uses (josephinealinea.dev /assets/y2k-theme.css):
+//
+//   desktop  #008a8a   face      #c0c0c0   face-light  #dfdfdf
+//   face-dark #808080  face-darker #0a0a0a
+//   titlebar #000080 -> #1084d0  link #0000ff  window #ffffff
+//
+// Mapped onto this app's tokens the same way that site maps them onto its own
+// travel panel: the page is the desktop, cards are windows, chips are button
+// faces, and a switched-on filter is the title-bar navy.
+//
+// Three values are deliberately not the source's literal hex, each because
+// this app puts text somewhere that site does not:
+//
+//   The title-bar gradient stops at #0a5fa8 rather than #1084d0. The nav links
+//   sit at the light end of a 90deg gradient, and white on #1084d0 is 4.01:1.
+//
+//   Chips take face-light #dfdfdf rather than the #c0c0c0 button face. Badge
+//   text is a semantic colour on the chip, and green-on-#c0c0c0 is 2.82:1.
+//
+//   --tp-success / --tp-danger / --tp-warning are darkened from the era's
+//   #008000 / #ff0000 / #808000, all of which fail against both white cards
+//   and the chip face. The hue is kept; only the value moves.
+//
+// A theme file only ever defines tokens (plus the occasional flourish); all
+// structure lives in _core.scss and reads these values.
 body.theme-y2k {
-  --tp-bg: #f3e9ff;
+  --tp-bg: #008a8a;
   --tp-surface: #ffffff;
-  --tp-surface-alt: #f8f0ff;
-  --tp-header-bg: rgba(248, 240, 255, 0.92);
+  --tp-surface-alt: #dfdfdf;
+  --tp-header-bg: linear-gradient(90deg, #000080, #0a5fa8);
   --tp-input-bg: #ffffff;
-  --tp-backdrop: rgba(42, 26, 74, 0.4);
-  --tp-toast-bg: #7b2ff7;
+  --tp-backdrop: rgba(0, 0, 0, 0.45);
+  --tp-toast-bg: #000080;
 
-  --tp-text: #2a1a4a;
-  --tp-muted: #6b5b8c;
-  --tp-border: #dcc4f2;
+  --tp-text: #000000;
+  --tp-muted: #444444;
+  --tp-border: #808080;
 
-  --tp-accent: #c026d3;
-  --tp-accent-strong: #a21caf;
+  --tp-accent: #0000ff;
+  --tp-accent-strong: #000080;
   --tp-on-accent: #ffffff;
 
-  --tp-success: #16a34a;
-  --tp-danger: #e11d48;
-  --tp-danger-bg: #fff1f4;
-  --tp-warning: #d97706;
-  --tp-warning-bg: #fff7ed;
-  --tp-warning-text: #92400e;
+  // The source's own --travel-active-toggle-bg / -text.
+  --tp-selected: #000080;
+  --tp-on-selected: #ffffff;
 
-  --tp-font-body: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
-  --tp-font-display: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
-  --tp-font-mono: "Lucida Console", Monaco, monospace;
+  --tp-success: #006400;
+  --tp-danger: #aa0000;
+  --tp-danger-bg: #ffe4e4;
+  --tp-warning: #665500;
+  --tp-warning-bg: #ffffcc;
+  --tp-warning-text: #000000;
 
-  --tp-radius: 16px;
-  --tp-radius-sm: 10px;
-  --tp-shadow: 0 4px 14px rgba(192, 38, 211, 0.14);
+  --tp-font-body: Tahoma, "MS Sans Serif", Geneva, sans-serif;
+  --tp-font-display: Tahoma, "MS Sans Serif", Geneva, sans-serif;
+  --tp-font-mono: "Courier New", Courier, monospace;
 
-  .btn-primary { box-shadow: 0 2px 10px rgba(192, 38, 211, 0.32); }
+  --tp-radius: 0;
+  --tp-radius-sm: 0;
+
+  // The raised-control bevel, the one piece of Win95 that is a shadow rather
+  // than a colour. --tp-shadow feeds the card-surface mixin's box-shadow.
+  --tp-shadow:
+    inset -1px -1px 0 #0a0a0a,
+    inset 1px 1px 0 #ffffff,
+    inset -2px -2px 0 #808080,
+    inset 2px 2px 0 #dfdfdf;
+
+  // The header is a title bar, so it carries the title bar's own white text
+  // rather than the page ink, and drops the blur that reads as glass.
+  .site-header { backdrop-filter: none; }
+  .site-brand,
+  .site-brand:hover,
+  .nav-link,
+  .nav-user { color: #ffffff; }
+  .nav-link:hover,
+  .nav-link.active { background: #c0c0c0; color: #000000; }
+
+  // The content is a window sitting on the desktop, which is how the source
+  // site frames its own page: a grey face panel with the raised bevel, teal
+  // showing around and below it.
+  //
+  // This is load-bearing, not decoration. Without the panel the page's muted
+  // ink — the subtitle, the tab labels, the filter captions — would sit
+  // straight on #008a8a at 2.3:1. On the face it is 5.35:1.
+  .page,
+  .page-narrow {
+    margin-top: 16px;
+    margin-bottom: 16px;
+    background: #c0c0c0;
+    border: 1px solid #0a0a0a;
+    box-shadow: var(--tp-shadow);
+  }
+
+  // The footer stays out on the desktop, where the muted grey is 2.3:1.
+  .site-footer { color: #000000; }
 }

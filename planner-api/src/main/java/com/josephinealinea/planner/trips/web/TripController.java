@@ -59,7 +59,7 @@ public class TripController {
                                 @Valid @RequestBody TripDtos.UpdateTripRequest request) {
         String userId = currentUser.userId();
         Trip trip = trips.update(tripId, userId, request.title(), request.startDate(),
-                request.endDate(), request.displayCurrency(), request.exchangeRates());
+                request.endDate(), request.displayCurrency());
         return views.detail(trip, userId);
     }
 

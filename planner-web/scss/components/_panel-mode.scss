@@ -1,0 +1,55 @@
+@use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
+@use "../abstracts/breakpoints" as bp;
+
+// One setting swaps how a tab's detail view opens: centred popup, or side
+// panel. Only geometry moves — the markup and the Alpine state are identical in
+// both modes, which is why this is a stylesheet and not two sets of templates.
+//
+// Applies ONLY to surfaces marked .panel-switchable. Confirmation dialogs
+// ("Delete this trip?") stay centred in both modes: a yes/no question does not
+// belong in a working side panel.
+//
+// Below the mobile breakpoint both styles already collapse to the same bottom
+// sheet, so the setting only needs to do anything on wider screens. Scoping the
+// whole file to a min-width avoids fighting the mobile rules in _modal.scss and
+// _drawer.scss.
+@include m.from(bp.$bp-md) {
+
+  // Popup mode: the checklist detail, normally a side drawer, becomes centred.
+  body.panels-popup {
+    .drawer-backdrop.panel-switchable {
+      align-items: center;
+      justify-content: center;
+      padding: t.$space-4;
+      overflow-y: auto;
+    }
+
+    .drawer-backdrop.panel-switchable > .drawer {
+      height: auto;
+      max-height: calc(100vh - #{t.$space-6});
+      border: 1px solid var(--tp-border);
+      border-radius: var(--tp-radius);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+    }
+  }
+
+  // Side mode: the three detail forms, normally centred, become side panels.
+  body.panels-side {
+    .modal-backdrop.panel-switchable {
+      align-items: stretch;
+      justify-content: flex-end;
+      padding: 0;
+    }
+
+    .modal-backdrop.panel-switchable > .modal {
+      max-width: 520px;
+      max-height: none;
+      height: 100%;
+      border: 0;
+      border-left: 1px solid var(--tp-border);
+      border-radius: 0;
+      box-shadow: -8px 0 30px rgba(0, 0, 0, 0.18);
+    }
+  }
+}

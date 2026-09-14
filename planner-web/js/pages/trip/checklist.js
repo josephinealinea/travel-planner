@@ -1,5 +1,7 @@
 import { toast } from '../../toast.js';
 import { category, timeRange, longDate, money, dateOf, timeOf } from '../../format.js';
+import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
+import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
 
 /**
  * The Checklist tab and its detail drawer — the centre of the app.
@@ -22,26 +24,37 @@ export function checklistTab() {
     endTime: '',
     cost: '',
     currency: '',
+    countryCodes: [],
   });
 
   return {
     // filters
     checkStatusFilter: 'ALL',
     checkCategoryFilters: [],
-    checkGroupBy: 'destination',
+    checkGroupBy: 'country',
+
+    // bulk selection
+    checkSelectedIds: [],
+    checkBulkOpen: false,
+    checkBulkBusy: false,
 
     // add form
     addCheckOpen: false,
-    newCheck: { category: 'OTHERS', description: '', note: '', destinationId: '' },
+    newCheck: { category: 'OTHERS', description: '', note: '', countryCodes: [] },
     addCheckError: '',
     addCheckBusy: false,
 
     // drawer
     openItem: null,
-    drawerForm: { description: '', note: '', category: 'OTHERS', destinationId: '' },
+    drawerForm: { description: '', note: '', category: 'OTHERS', countryCodes: [] },
     drawerError: '',
     drawerBusy: false,
     deletingCheck: false,
+
+    // The item a completion confirmation is pending for. Holds the item rather
+    // than a flag because the confirmation is also raised from the list, where
+    // there is no open drawer to read it from.
+    completingItem: null,
 
     // plan form inside the drawer
     planOpen: false,
@@ -60,20 +73,31 @@ export function checklistTab() {
       });
     },
 
-    /** Returns [{ title, items }] so the template stays simple. */
+    /**
+     * Returns [{ title, items }] so the template stays simple.
+     *
+     * Grouping by destination is a fan-out, not a partition: an item linked to
+     * several destinations appears once under each of them. "No destination"
+     * is reserved for items linked to none.
+     */
     get checklistGroups() {
       const items = this.filteredChecklist;
       if (this.checkGroupBy === 'none') return [{ title: null, items }];
 
       const groups = new Map();
-      const keyFor = (item) => (this.checkGroupBy === 'category'
-        ? category(item.category).label
-        : this.destinationName(item.destinationId) || 'No destination');
-
-      items.forEach((item) => {
-        const key = keyFor(item);
+      const push = (key, item) => {
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(item);
+      };
+
+      items.forEach((item) => {
+        if (this.checkGroupBy === 'category') {
+          push(category(item.category).label, item);
+          return;
+        }
+        const names = this.countryLabels(item.countryCodes);
+        if (!names.length) push('No country', item);
+        else names.forEach((name) => push(name, item));
       });
 
       // "No destination" reads better last.
@@ -95,10 +119,10 @@ export function checklistTab() {
 
     // ── add ─────────────────────────────────────────
     openAddCheck() {
-      this.newCheck = { category: 'OTHERS', description: '', note: '', destinationId: '' };
+      this.newCheck = { category: 'OTHERS', description: '', note: '', countryCodes: [] };
       this.addCheckError = '';
       this.addCheckOpen = true;
-      this.$nextTick(() => this.$refs.newCheckDescription?.focus());
+      this.focusWhenShown('newCheckDescription');
     },
 
     async addCheck() {
@@ -114,7 +138,7 @@ export function checklistTab() {
           category: this.newCheck.category,
           description,
           note: this.newCheck.note.trim() || null,
-          destinationId: this.newCheck.destinationId || null,
+          countryCodes: this.newCheck.countryCodes,
         });
         this.addCheckOpen = false;
         toast.success('Checklist item added');
@@ -133,22 +157,31 @@ export function checklistTab() {
         description: item.description || '',
         note: item.note || '',
         category: item.category,
-        destinationId: item.destinationId || '',
+        countryCodes: [...(item.countryCodes || [])],
       };
       this.drawerError = '';
       this.planOpen = false;
       this.deletingCheck = false;
+      this.completingItem = null;
     },
 
     closeDrawer() {
       this.openItem = null;
       this.planOpen = false;
+      this.completingItem = null;
     },
 
-    /** Plans recorded against the open item. */
+    /**
+     * Plans recorded against the open item — one entry per plan, not per day.
+     *
+     * A plan that covers several days is several itinerary records, all but
+     * the first carrying planId. Filtering to the rows that own their plan is
+     * what makes a four-night booking read as one plan here while still being
+     * four deletable rows on the Itinerary tab.
+     */
     get openItemPlans() {
       if (!this.openItem) return [];
-      return this.itinerary.filter((plan) => plan.checklistItemId === this.openItem.id);
+      return this.plansFor(this.openItem);
     },
 
     async saveDrawer() {
@@ -164,8 +197,8 @@ export function checklistTab() {
           description,
           note: this.drawerForm.note.trim(),
           category: this.drawerForm.category,
-          // An empty string clears the link server-side.
-          destinationId: this.drawerForm.destinationId,
+          // An empty array clears every link server-side.
+          countryCodes: this.drawerForm.countryCodes,
         });
         toast.success('Saved');
         await this.reload();
@@ -177,27 +210,63 @@ export function checklistTab() {
       }
     },
 
+    /**
+     * Raises the completion confirmation, from either the list's tick or the
+     * drawer's button. Completing is the deliberate "this job is finished"
+     * call — it takes the Plan button away with it — so both routes ask, and
+     * both ask the same way.
+     */
+    askComplete(item, event) {
+      event?.stopPropagation();
+      this.completingItem = item;
+    },
+
+    async confirmSetComplete() {
+      const item = this.completingItem;
+      this.completingItem = null;
+      if (item) await this.applyStatus(item, 'COMPLETED');
+    },
+
+    /** Plans recorded against whichever item the confirmation is asking about. */
+    get completingItemPlans() {
+      if (!this.completingItem) return [];
+      return this.plansFor(this.completingItem);
+    },
+
     async setCheckStatus(status) {
+      await this.applyStatus(this.openItem, status);
+    },
+
+    /** The one path that writes a status, whichever surface asked for it. */
+    async applyStatus(item, status) {
       try {
-        await this.api.setCheckStatus(this.trip.id, this.openItem.id, status);
+        await this.api.setCheckStatus(this.trip.id, item.id, status);
         toast.success(status === 'COMPLETED' ? 'Marked complete' : 'Reopened');
         await this.reload();
-        this.refreshOpenItem();
+
+        // Completing is the "this job is finished" call — it takes the Plan
+        // button away with it — so the item's own panel has nothing left to
+        // say and closes. Reopening deliberately leaves it open: that is the
+        // start of more work on the item, not the end of it.
+        if (status === 'COMPLETED' && this.openItem?.id === item.id) this.closeDrawer();
+        else this.refreshOpenItem();
       } catch (error) {
         toast.error(error.fullMessage);
       }
     },
 
-    /** Inline tick from the list, without opening the drawer. */
+    /**
+     * Inline tick from the list, without opening the drawer. Ticking asks for
+     * confirmation; un-ticking does not — undoing a completion needs no
+     * ceremony, and refusing to ask twice keeps the quick path quick.
+     */
     async quickToggle(item, event) {
-      event.stopPropagation();
-      try {
-        await this.api.setCheckStatus(this.trip.id, item.id,
-          item.status === 'COMPLETED' ? 'TODO' : 'COMPLETED');
-        await this.reload();
-      } catch (error) {
-        toast.error(error.fullMessage);
+      if (item.status !== 'COMPLETED') {
+        this.askComplete(item, event);
+        return;
       }
+      event.stopPropagation();
+      await this.applyStatus(item, 'TODO');
     },
 
     async confirmDeleteCheck() {
@@ -222,6 +291,9 @@ export function checklistTab() {
     async openPlanForm() {
       this.planError = '';
       this.planForm = blankPlan();
+      // Defaults to the checklist item's own locations — "Plan activities in
+      // Paris" obviously happens in Paris — but stays fully editable.
+      this.planForm.countryCodes = [...(this.openItem.countryCodes || [])];
       this.planOpen = true;
 
       // Pre-fill from the server's suggestion; every field stays editable.
@@ -232,12 +304,20 @@ export function checklistTab() {
         this.planForm.startTime = timeOf(template.startAt);
         this.planForm.endDate = dateOf(template.endAt);
         this.planForm.endTime = timeOf(template.endAt);
-        this.planForm.currency = template.currency || this.budget.displayCurrency || '';
+
+        // The template suggests the destination country's own currency, which
+        // is only useful if the member actually works in it. Offering PEN to
+        // someone who keeps EUR and USD adds a code to their list and, with
+        // no rate for it on the trip, a cost the budget cannot total. So the
+        // suggestion is taken only when it is already selectable.
+        this.planForm.currency = this.entryCurrencies.includes(template.currency)
+          ? template.currency
+          : (this.budget.displayCurrency || '');
       } catch {
         this.planForm.description = this.openItem.description || '';
         this.planForm.currency = this.budget.displayCurrency || '';
       }
-      this.$nextTick(() => this.$refs.planDescription?.focus());
+      this.focusWhenShown('planDescription');
     },
 
     editPlan(plan) {
@@ -251,6 +331,7 @@ export function checklistTab() {
         endTime: timeOf(plan.endAt),
         cost: plan.cost ?? '',
         currency: plan.currency || this.budget.displayCurrency || '',
+        countryCodes: [...(plan.countryCodes || [])],
       };
       this.planOpen = true;
     },
@@ -266,6 +347,12 @@ export function checklistTab() {
       const endAt = combine(this.planForm.endDate, this.planForm.endTime);
       if (startAt && endAt && endAt < startAt) {
         this.planError = 'The end time cannot be before the start time.';
+        return;
+      }
+      const outsideTrip = this.dateOutsideTrip(this.planForm.startDate, 'start date')
+                       || this.dateOutsideTrip(this.planForm.endDate, 'end date');
+      if (outsideTrip) {
+        this.planError = outsideTrip;
         return;
       }
 
@@ -286,6 +373,8 @@ export function checklistTab() {
             // Zero is how the API is told to clear a cost and drop its budget row.
             cost: cost == null ? 0 : cost,
             currency: this.planForm.currency || null,
+            // An empty array clears every link server-side.
+            countryCodes: this.planForm.countryCodes,
           });
           toast.success('Plan updated');
         } else {
@@ -296,7 +385,12 @@ export function checklistTab() {
             startAt,
             endAt,
             cost,
-            currency: cost == null ? null : (this.planForm.currency || null),
+            // A date with no time belongs to a day, not an hour — the API
+          // records it the same way a stay's middle nights are recorded, and
+          // the row shows "—" instead of a misleading 00:00.
+          allDay: !this.planForm.startTime,
+          currency: cost == null ? null : (this.planForm.currency || null),
+            countryCodes: this.planForm.countryCodes,
           });
           toast.success(cost == null
             ? 'Plan added'
@@ -312,10 +406,15 @@ export function checklistTab() {
       }
     },
 
+    /**
+     * Removes the plan and every day it covers — from here a plan is the
+     * booking. Removing a single night is the Itinerary tab's job.
+     */
     async deletePlan(plan) {
+      const days = this.daysOfPlan(plan).length;
       try {
         await this.api.deletePlan(this.trip.id, plan.id);
-        toast.success('Plan removed');
+        toast.success(days > 1 ? `Plan removed — ${days} itinerary items` : 'Plan removed');
         await this.reload();
         this.refreshOpenItem();
       } catch (error) {
@@ -324,6 +423,50 @@ export function checklistTab() {
     },
 
     // ── display helpers ─────────────────────────────
+    // ── bulk selection ──────────────────────────────
+    toggleCheckSelected(id) {
+      toggleId(this.checkSelectedIds, id);
+    },
+
+    isCheckSelected(id) {
+      return this.checkSelectedIds.includes(id);
+    },
+
+    /**
+     * Selected items that are actually on screen — everything else derives
+     * from this, so "Delete selected" can never remove a row a filter is
+     * hiding. Ids survive the filter, so widening it brings them back.
+     */
+    get checkSelected() {
+      return selectedPresent(this.checkSelectedIds, this.filteredChecklist);
+    },
+
+    /** How many of the selected items carry plans, for the confirm wording. */
+    get checkSelectedPlanCount() {
+      return this.checkSelected.reduce((sum, item) => sum + this.planCountFor(item), 0);
+    },
+
+    async confirmBulkDeleteChecks() {
+      const doomed = this.checkSelected;
+      if (!doomed.length) return;
+
+      this.checkBulkBusy = true;
+      try {
+        const { deleted, failed } = await runBulkDelete(
+          doomed, (id) => this.api.deleteCheck(this.trip.id, id));
+
+        this.checkSelectedIds = [];
+        this.checkBulkOpen = false;
+
+        if (failed) toast.error(`Deleted ${deleted} — ${failed} could not be removed`);
+        else toast.success(`Deleted ${deleted} checklist item${deleted === 1 ? '' : 's'}`);
+
+        await this.reload();
+      } finally {
+        this.checkBulkBusy = false;
+      }
+    },
+
     categoryOf: (value) => category(value),
 
     planWhen(plan) {
@@ -335,13 +478,41 @@ export function checklistTab() {
 
     planCost: (plan) => money(plan.cost, plan.currency),
 
-    destinationName(destinationId) {
-      if (!destinationId) return null;
-      return this.destinations.find((d) => d.id === destinationId)?.name || null;
+    // ── location picker (shared with the itinerary and expense forms) ──
+    toggleLocation,
+
+    countryLabels(countryCodes) {
+      return locationNames(this.destinations, countryCodes);
+    },
+
+    /** Comma-joined, for chip/label text; empty when nothing is linked. */
+    countryLabel(countryCodes) {
+      return this.countryLabels(countryCodes).join(', ');
+    },
+
+    /** The plans linked to an item: the rows that are plans, not their days. */
+    plansFor(item) {
+      return this.itinerary.filter(
+        (plan) => plan.checklistItemId === item.id && !plan.planId);
     },
 
     planCountFor(item) {
-      return this.itinerary.filter((plan) => plan.checklistItemId === item.id).length;
+      return this.plansFor(item).length;
+    },
+
+    /** Every row belonging to one plan, the plan's own row included. */
+    daysOfPlan(plan) {
+      return this.itinerary.filter((row) => row.id === plan.id || row.planId === plan.id);
+    },
+
+    /**
+     * "4N" for a plan that spans, nothing for one that does not. Counted from
+     * the rows that exist right now, so deleting a night makes this read 3N
+     * without anything having to be rewritten.
+     */
+    planNights(plan) {
+      const nights = this.daysOfPlan(plan).length - 1;
+      return nights > 0 ? `${nights}N` : '';
     },
   };
 }

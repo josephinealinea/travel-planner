@@ -61,6 +61,25 @@ textarea { min-height: 76px; resize: vertical; }
 .field-inline { display: flex; gap: t.$space-3; flex-wrap: wrap; }
 .field-inline > .field { flex: 1 1 160px; margin-bottom: 0; }
 
+// A field whose control should read as one fixed size rather than stretching
+// to fill its container — e.g. two selects on the same card that should look
+// like the same control even though only one of them shares a row with a
+// button. A fixed width, not just a cap: one of the pair sits in a flex row
+// and would otherwise settle at whatever the row's own math leaves it, which
+// is rarely the same number as a plain block field gets.
+.field-narrow { width: 200px; max-width: 100%; }
+
+// Overrides .field-inline > .field's own flex-basis (a more specific
+// selector, so a plain .field-narrow rule above cannot win against it) so a
+// narrow field does not grow to fill the row it shares with a button.
+.field-inline > .field.field-narrow { flex: 0 0 200px; }
+
+// Narrows just the control, not the field around it — for a select whose
+// field-hint below it still needs the card's full width. .field-narrow above
+// caps the whole field block instead, which is right for a control with no
+// full-width sibling to protect, like "Add a currency" beside its button.
+.control-narrow { width: 200px; max-width: 100%; }
+
 .field-row {
   display: grid;
   gap: t.$space-3;

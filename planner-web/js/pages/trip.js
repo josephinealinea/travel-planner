@@ -1,7 +1,9 @@
 import { api } from '../api.js';
 import { queryParam } from '../chrome.js';
-import { dateRange, CATEGORIES, CURRENCIES } from '../format.js';
+import { dateRange, CATEGORIES } from '../format.js';
+import { countriesOfTrip } from '../location-picker.js';
 import { toast } from '../toast.js';
+import { currentUser } from '../session.js';
 
 import { overviewTab } from './trip/overview.js';
 import { membersTab } from './trip/members.js';
@@ -34,7 +36,9 @@ export function tripPage() {
     api,
     tabs: TABS,
     categories: CATEGORIES,
-    currencies: CURRENCIES,
+
+    // The member's own list from Account — see entryCurrencies.
+    userCurrencies: ['EUR'],
 
     tripId: queryParam('id'),
     tab: 'overview',
@@ -47,7 +51,8 @@ export function tripPage() {
     destinations: [],
     checklist: [],
     itinerary: [],
-    budget: { items: [], byCategory: {}, exchangeRates: {}, total: 0, displayCurrency: 'EUR' },
+    budget: { items: [], byCategory: {}, byCountry: [], exchangeRates: {}, total: 0,
+             displayCurrency: 'EUR', totalsCurrency: 'EUR' },
     publish: { status: 'DRAFT', requests: [] },
     currentUserId: null,
     isOwner: false,
@@ -67,9 +72,14 @@ export function tripPage() {
         return;
       }
 
-      this.tab = this.tabFromHash();
-      window.addEventListener('hashchange', () => { this.tab = this.tabFromHash(); });
+      const user = await currentUser();
+      if (user?.currencies?.length) this.userCurrencies = user.currencies;
 
+      this.tab = this.tabFromHash();
+      window.addEventListener('hashchange', () => this.showTab(this.tabFromHash()));
+
+      // reload() warms the weather itself, so opening a trip is what triggers
+      // the lookup — not switching to the Itinerary tab. See reload().
       await this.reload();
       this.loading = false;
     },
@@ -79,8 +89,26 @@ export function tripPage() {
       return TABS.some((tab) => tab.id === hash) ? hash : 'overview';
     },
 
-    selectTab(id) {
+    /**
+     * Switches tab, closing the checklist drawer on the way out.
+     *
+     * The drawer's markup sits outside the tab sections, so nothing hides it
+     * when the tab changes — and its backdrop covers the whole viewport. Left
+     * open, it silently swallows every click on the tab you just moved to
+     * (the browser's back button reaches this through hashchange). Leaving a
+     * tab closes its detail view.
+     */
+    showTab(id) {
+      if (id !== this.tab) this.closeDrawer();
       this.tab = id;
+      // Normally already warm from init(); this only does anything if that
+      // first attempt failed, since loadWeather() is a no-op while the
+      // destinations are unchanged.
+      if (id === 'itinerary') this.loadWeather();
+    },
+
+    selectTab(id) {
+      this.showTab(id);
       // replaceState rather than assigning location.hash, so switching tabs
       // does not fill the back button with history entries.
       history.replaceState(null, '', `${location.pathname}${location.search}#${id}`);
@@ -100,13 +128,82 @@ export function tripPage() {
         this.currentUserId = detail.currentUserId;
         this.isOwner = detail.isOwner;
         this.error = '';
+
+        // Destinations may have just changed, which is the only thing that
+        // moves the weather rows — adding one is exactly when a fresh lookup is
+        // wanted. loadWeather compares a signature and does nothing when they
+        // did not, so this is free after a checklist tick, and no longer
+        // conditional on which tab is open: the point is to have the answer
+        // before the Itinerary tab is asked for.
+        this.loadWeather();
       } catch (error) {
         this.error = error.fullMessage;
       }
     },
 
+    /**
+     * What every "record a cost" select offers: the member's own list, plus
+     * every code this trip already works in.
+     *
+     * The union is what stops a silent mismatch. These forms pre-fill from
+     * trip data — the trip's display currency, an existing row's currency, a
+     * plan template's suggestion — and none of that has to be a code the
+     * member keeps in Account. A <select> whose model matches no option
+     * silently falls back to showing the first one, so the form would read
+     * "EUR" while still holding, and saving, GBP. The budget's own
+     * "Show totals in" control already keeps its current value selectable for
+     * exactly this reason.
+     *
+     * Deliberately derived only from loaded data, never from a form's own
+     * model: the options have to already exist in the DOM by the time a form
+     * sets its currency, or x-model writes a value the select cannot show.
+     *
+     * Equally deliberately, nothing else may widen it. A form that wants a
+     * code the member does not keep has to fall back to one they do — see
+     * openPlanForm. Injecting the suggestion instead put PEN in the list of a
+     * member who works in EUR and USD, preselected it, and produced a cost in
+     * a currency the trip had no rate for, which the budget then excluded from
+     * its total.
+     */
+    get entryCurrencies() {
+      const codes = [...this.userCurrencies];
+      const add = (code) => { if (code && !codes.includes(code)) codes.push(code); };
+
+      add(this.budget.displayCurrency);
+      // Codes already stored on this trip stay selectable, so editing a row
+      // someone entered in GBP does not silently rewrite it to EUR.
+      (this.budget.items || []).forEach((item) => add(item.currency));
+      (this.itinerary || []).forEach((item) => add(item.currency));
+      return codes;
+    },
+
     tripDates() {
       return dateRange(this.trip.startDate, this.trip.endDate);
+    },
+
+    /**
+     * The countries this trip visits, for every "Use in" / "Location" picker
+     * and every country filter. One getter on the page component so all four
+     * tabs offer exactly the same list, derived from the destinations rather
+     * than stored anywhere.
+     */
+    get tripCountries() {
+      return countriesOfTrip(this.destinations);
+    },
+
+    /**
+     * Checks one date field against the trip's own dates, both ends inclusive.
+     * Returns '' when it is fine, and the message to show otherwise.
+     *
+     * Every date input in the four tabs also carries min/max, but that only
+     * constrains the picker — a typed or pasted date sails past it. The API
+     * rejects an out-of-range date either way (TripWindow); this is what puts
+     * the answer beside the field instead of behind a round trip.
+     */
+    dateOutsideTrip(date, what) {
+      if (!date || !this.trip.startDate || !this.trip.endDate) return '';
+      if (date >= this.trip.startDate && date <= this.trip.endDate) return '';
+      return `The ${what} must be within the trip, ${this.tripDates()}.`;
     },
 
     ownerName() {
@@ -175,6 +272,33 @@ export function tripPage() {
         toast.error(error.fullMessage);
         this.deletingTrip = false;
       }
+    },
+
+    /**
+     * Focuses a field in a surface that has only just been shown.
+     *
+     * One $nextTick is not enough: x-show applies its display change on the
+     * next frame, and focus() on a still-hidden element is silently ignored,
+     * so the caret never lands and the form opens with nothing focused.
+     * Waiting for the frame after the tick is what makes it stick.
+     */
+    focusWhenShown(ref) {
+      this.$nextTick(() => requestAnimationFrame(() => this.$refs[ref]?.focus()));
+    },
+
+    /**
+     * The Overview's way out of an empty trip: land on Destinations with the
+     * add form already open. A destination is the first domino — it seeds the
+     * checklist items that everything else hangs off — so the shortcut skips
+     * the step where somebody has to work out where to start.
+     */
+    addFirstDestination() {
+      // Opened in the same tick as the tab switch, not nested inside a
+      // $nextTick: the modal lives outside the tab sections, so it does not
+      // wait on the tab, and nesting only pushes its focus onto a frame where
+      // the surface is still hidden.
+      this.selectTab('destinations');
+      this.openAddDestination();
     },
 
     /** Jumps from the Overview shortcut straight into a checklist item's drawer. */

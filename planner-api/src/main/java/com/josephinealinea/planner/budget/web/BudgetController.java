@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}/budget")
@@ -22,10 +23,11 @@ public class BudgetController {
             @NotNull(message = "Pick a category") ChecklistCategory category,
             @NotNull(message = "Enter an amount") BigDecimal amount,
             String currency,
-            LocalDate date) {
+            LocalDate date,
+            List<String> countryCodes) {
 
         BudgetService.Input toInput() {
-            return new BudgetService.Input(description, category, amount, currency, date);
+            return new BudgetService.Input(description, category, amount, currency, date, countryCodes);
         }
     }
 
@@ -34,10 +36,11 @@ public class BudgetController {
             ChecklistCategory category,
             BigDecimal amount,
             String currency,
-            LocalDate date) {
+            LocalDate date,
+            List<String> countryCodes) {
 
         BudgetService.Input toInput() {
-            return new BudgetService.Input(description, category, amount, currency, date);
+            return new BudgetService.Input(description, category, amount, currency, date, countryCodes);
         }
     }
 

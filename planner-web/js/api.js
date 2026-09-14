@@ -98,7 +98,10 @@ export const api = {
   login: (data) => post('/api/v1/auth/login', data),
   logout: () => post('/api/v1/auth/logout'),
   me: () => get('/api/v1/auth/me'),
+  config: () => get('/api/v1/config'),
   updateProfile: (data) => patch('/api/v1/account/profile', data),
+  updateCurrencies: (data) => patch('/api/v1/account/currencies', data),
+  updateDisplayCurrency: (data) => patch('/api/v1/account/display-currency', data),
   changePassword: (data) => post('/api/v1/account/password', data),
 
   // ── trips ──────────────────────────────────────────
@@ -115,6 +118,7 @@ export const api = {
 
   // ── destinations ───────────────────────────────────
   geocode: (query) => get(`/api/v1/geocode?q=${encodeURIComponent(query)}`),
+  countries: () => get('/api/v1/geocode/countries'),
   destinations: (id) => get(`${trip(id)}/destinations`),
   addDestination: (id, data) => post(`${trip(id)}/destinations`, data),
   updateDestination: (id, destId, data) => patch(`${trip(id)}/destinations/${destId}`, data),
@@ -133,7 +137,15 @@ export const api = {
   itinerary: (id) => get(`${trip(id)}/itinerary`),
   addPlan: (id, data) => post(`${trip(id)}/itinerary`, data),
   updatePlan: (id, planId, data) => patch(`${trip(id)}/itinerary/${planId}`, data),
-  deletePlan: (id, planId) => del(`${trip(id)}/itinerary/${planId}`),
+  // One day of a plan.
+  deleteEntry: (id, itemId) => del(`${trip(id)}/itinerary/${itemId}`),
+  // The plan and every day it covers.
+  deletePlan: (id, itemId) => del(`${trip(id)}/itinerary/${itemId}/plan`),
+
+  // Where the trip is on each of its days, with that day's weather. Its own
+  // request on purpose: it calls Open-Meteo, and the trip bundle must not wait
+  // on somebody else's server — see WeatherController.
+  weather: (id) => get(`${trip(id)}/weather`),
 
   // ── budget ─────────────────────────────────────────
   budget: (id) => get(`${trip(id)}/budget`),

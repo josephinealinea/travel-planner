@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +24,10 @@ public class CountryCatalog {
 
     private final RestClient client;
     private final Map<String, Optional<CountriesDevDtos.Country>> cache = new ConcurrentHashMap<>();
+    // The whole list, fetched once. Held separately from the by-code cache
+    // because a miss here is worth retrying — an outage on first use should
+    // not leave the picker permanently empty for the life of the process.
+    private volatile List<CountriesDevDtos.Country> all;
 
     public CountryCatalog(RestClient countriesDevClient) {
         this.client = countriesDevClient;
@@ -42,6 +48,40 @@ public class CountryCatalog {
 
     public String currencyOf(String countryCode) {
         return byCode(countryCode).map(CountriesDevDtos.Country::primaryCurrency).orElse(null);
+    }
+
+    /**
+     * Every country, by name, for a picker to choose from.
+     *
+     * The whole point of offering this rather than a free-text code box is
+     * that the code stops being something to get right by hand: the caller
+     * picks "Peru" and the alpha-2 comes with it. Populating the by-code cache
+     * on the way through means the flag and currency lookups that follow cost
+     * nothing.
+     */
+    public List<CountriesDevDtos.Country> all() {
+        List<CountriesDevDtos.Country> cached = all;
+        if (cached != null) return cached;
+
+        try {
+            CountriesDevDtos.Country[] fetched = client.get()
+                    .uri("/countries")
+                    .retrieve()
+                    .body(CountriesDevDtos.Country[].class);
+            if (fetched == null) return List.of();
+
+            List<CountriesDevDtos.Country> usable = java.util.Arrays.stream(fetched)
+                    .filter(country -> country.alpha2Code() != null && country.name() != null)
+                    .sorted(Comparator.comparing(CountriesDevDtos.Country::name))
+                    .toList();
+            usable.forEach(country ->
+                    cache.putIfAbsent(country.alpha2Code().toUpperCase(), Optional.of(country)));
+            all = usable;
+            return usable;
+        } catch (Exception e) {
+            log.debug("Country list lookup failed: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     private Optional<CountriesDevDtos.Country> fetch(String code) {

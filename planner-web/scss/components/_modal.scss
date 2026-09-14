@@ -15,6 +15,7 @@
 
 .modal {
   @include m.card-surface;
+  @include m.opaque-surface;
   width: 100%;
   max-width: 520px;
   max-height: calc(100vh - #{t.$space-6});

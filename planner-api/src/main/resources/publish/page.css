@@ -22,7 +22,55 @@
   --tp-max: 1080px;
 }
 
+/* Warm paper. Mirrors scss/themes/_minima.scss. */
+:root[data-theme="minima"] {
+  --tp-bg: #fdf6e8;
+  --tp-surface: #fffdf7;
+  --tp-surface-alt: #f7eed8;
+  --tp-text: #3a2f1d;
+  --tp-muted: #7a6a4f;
+  --tp-accent: #b45309;
+  --tp-border: #e2d3b0;
+  --tp-done: #4d7c0f;
+  --tp-font-display: Georgia, "Times New Roman", serif;
+  --tp-radius: 6px;
+  --tp-shadow: 0 2px 6px rgba(120, 95, 50, 0.15);
+}
+
+/* The main site's own retro palette. Mirrors scss/themes/_retro-game.scss;
+   --tp-selected is that site's active-toggle blue, --tp-done its phosphor
+   green (the source has no success colour of its own). */
 :root[data-theme="retro-game"] {
+  --tp-bg: #0a0a0a;
+  --tp-surface: rgba(74, 158, 255, 0.12);
+  --tp-surface-alt: rgba(74, 158, 255, 0.22);
+  --tp-text: #ffffff;
+  --tp-muted: #ff6b9d;
+  --tp-accent: #ffd700;
+  --tp-selected: #4a9eff;
+  --tp-on-selected: #000000;
+  --tp-border: rgba(74, 158, 255, 0.45);
+  --tp-done: #4dff91;
+  --tp-font-body: "Courier New", Courier, monospace;
+  --tp-font-display: "Courier New", Courier, monospace;
+  --tp-shadow: 0 0 12px rgba(74, 158, 255, 0.22);
+  --tp-radius: 12px;
+}
+
+/* The source's heading signature, and the CRT glow it puts on the body. */
+:root[data-theme="retro-game"] body { text-shadow: 0 0 3px rgba(74, 158, 255, 0.35); }
+:root[data-theme="retro-game"] .trip-title,
+:root[data-theme="retro-game"] .panel-heading,
+:root[data-theme="retro-game"] .day-date {
+  color: #4a9eff;
+  text-shadow: 2px 2px 0 #1a4a8a;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+/* Dark — retro-game's palette as it stood before that theme was reworked,
+   kept under its own name. Mirrors scss/themes/_dark.scss. */
+:root[data-theme="dark"] {
   --tp-bg: #0b1020;
   --tp-surface: rgba(18, 28, 56, 0.92);
   --tp-surface-alt: rgba(30, 44, 84, 0.85);
@@ -36,32 +84,61 @@
   --tp-radius: 4px;
 }
 
+/* The Windows 95 desktop, from the main site's own y2k palette. Mirrors
+   scss/themes/_y2k.scss; --tp-selected is that site's active-toggle navy. */
 :root[data-theme="y2k"] {
-  --tp-bg: #f0e6ff;
+  --tp-bg: #008a8a;
   --tp-surface: #ffffff;
-  --tp-surface-alt: #f7edff;
-  --tp-text: #2a1a4a;
-  --tp-muted: #6b5b8c;
-  --tp-accent: #c026d3;
-  --tp-border: #d8bcf0;
-  --tp-done: #16a34a;
-  --tp-font-display: "Trebuchet MS", "Comic Sans MS", var(--tp-font-body);
-  --tp-radius: 16px;
-  --tp-shadow: 0 4px 12px rgba(192, 38, 211, 0.18);
+  --tp-surface-alt: #dfdfdf;
+  --tp-text: #000000;
+  --tp-muted: #444444;
+  --tp-accent: #0000ff;
+  --tp-selected: #000080;
+  --tp-border: #808080;
+  --tp-done: #006400;
+  --tp-font-body: Tahoma, "MS Sans Serif", Geneva, sans-serif;
+  --tp-font-display: Tahoma, "MS Sans Serif", Geneva, sans-serif;
+  --tp-radius: 0;
+  --tp-shadow:
+    inset -1px -1px 0 #0a0a0a,
+    inset 1px 1px 0 #ffffff,
+    inset -2px -2px 0 #808080,
+    inset 2px 2px 0 #dfdfdf;
 }
 
+/* The Philippine flag — blue, scarlet, gold, white. All text is the flag
+   blue here (--tp-text and --tp-muted both) — a deliberate departure from
+   scss/themes/_manila.scss, which otherwise this mirrors. --tp-done is
+   --tp-success there, the flag blue because the flag has no green. */
 :root[data-theme="manila"] {
-  --tp-bg: #fdf6e8;
-  --tp-surface: #fffdf7;
-  --tp-surface-alt: #f7eed8;
-  --tp-text: #3a2f1d;
-  --tp-muted: #7a6a4f;
-  --tp-accent: #b45309;
-  --tp-border: #e2d3b0;
-  --tp-done: #4d7c0f;
+  --tp-bg: #fffbef;
+  --tp-surface: #ffffff;
+  --tp-surface-alt: #f5e9c9;
+  --tp-text: #0038a8;
+  --tp-muted: #0038a8;
+  --tp-accent: #0038a8;
+  --tp-selected: #7d2233;
+  --tp-border: #e2d4ab;
+  --tp-done: #0038a8;
   --tp-font-display: Georgia, "Times New Roman", serif;
   --tp-radius: 6px;
-  --tp-shadow: 0 2px 6px rgba(120, 95, 50, 0.15);
+  --tp-shadow: 0 2px 6px rgba(90, 72, 25, 0.14);
+}
+
+/* Unselected panel buttons (the Show/Destinations/Checklist/... switch, and
+   the budget By Category/By Country switch — both .panel-btn) take the
+   flag's full-strength gold, scoped here rather than through --tp-surface-alt
+   so the nights badge, chips and progress bars keep the softer wash. */
+:root[data-theme="manila"] .panel-btn:not([aria-pressed="true"]) { background: #fcd116; }
+
+/* Y2K frames its content as a window on the desktop, the way the source site
+   does: a grey face panel with the raised bevel, teal showing around it.
+   Load-bearing — the muted ink would otherwise sit on #008a8a at 2.3:1. */
+:root[data-theme="y2k"] .page {
+  margin: 16px auto;
+  background: #c0c0c0;
+  border: 1px solid #0a0a0a;
+  box-shadow: var(--tp-shadow);
 }
 
 * { box-sizing: border-box; }
@@ -135,12 +212,13 @@ body {
   cursor: pointer;
 }
 
-.panel-btn:hover { border-color: var(--tp-accent); }
+.panel-btn:hover { border-color: var(--tp-selected, var(--tp-accent)); }
 
+/* Several can be pressed at once: the Show bar is a multi-select. */
 .panel-btn[aria-pressed="true"] {
-  background: var(--tp-accent);
-  border-color: var(--tp-accent);
-  color: #fff;
+  background: var(--tp-selected, var(--tp-accent));
+  border-color: var(--tp-selected, var(--tp-accent));
+  color: var(--tp-on-selected, #fff);
 }
 
 /* ── sections ───────────────────────────────────────── */
@@ -241,6 +319,14 @@ body {
   vertical-align: middle;
 }
 
+/* The hidden attribute is only a UA-stylesheet display:none, so ANY author
+   display declaration beats it — .weather-locations sets display:grid, and
+   without this its data-part="weather" block stayed on screen with the
+   attribute dutifully set. Nothing in show() is wrong; the attribute simply
+   does not win on its own. !important because the whole point is to outrank
+   whatever a component declares for itself. */
+[hidden] { display: none !important; }
+
 /* ── budget ─────────────────────────────────────────── */
 
 .budget-total {
@@ -248,17 +334,73 @@ body {
   margin-bottom: 4px;
 }
 
-.budget-total-label { color: var(--tp-muted); font-size: 0.85rem; margin-bottom: 16px; }
+/* The actual, unconverted amounts behind the Total above it. */
+.budget-native-totals {
+  color: var(--tp-muted);
+  font-size: 0.78rem;
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
 
-.bar-row { margin-bottom: 10px; }
+/* The pie sits alone on the left; total, native totals and the legend sit
+   together on the right, matching the reference budget panel this mirrors. */
+.budget-summary {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(150px, 190px) 1fr;
+  align-items: start;
+}
 
-.bar-head {
+/* The breakdown switch reuses the panel toggle's buttons, but sits inside a
+   card rather than across the page, so it needs its own spacing. */
+.budget-modes { margin-bottom: 14px; }
+
+.budget-pie {
+  display: block;
+  width: 100%;
+  max-width: 170px;
+  margin: 0 auto;
+}
+
+/* One row per category/country: a colour swatch matching its pie slice, the
+   label, the percentage and the converted amount, with a thin bar underneath
+   sized to that slice's own share — without it, a row with a short label and
+   a small amount reads as mostly empty space. */
+.budget-legend {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.budget-legend-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.9rem;
   margin-bottom: 4px;
 }
+
+.budget-legend-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.budget-legend-label { flex: 1; min-width: 0; }
+
+.budget-legend-percent {
+  flex: none;
+  min-width: 3.2em;
+  text-align: right;
+  color: var(--tp-muted);
+  font-size: 0.78rem;
+}
+
+.budget-legend-amount { flex: none; color: var(--tp-muted); }
 
 .bar-track {
   height: 8px;
@@ -279,15 +421,6 @@ body {
   font-size: 0.88rem;
 }
 
-/* Wide content scrolls inside its own container, never the page. */
-.table-wrap { overflow-x: auto; }
-
-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--tp-border); white-space: nowrap; }
-th { color: var(--tp-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
-td.num, th.num { text-align: right; }
-td.wrap { white-space: normal; min-width: 200px; }
-
 a { color: var(--tp-accent); }
 
 .footer {
@@ -303,4 +436,124 @@ a { color: var(--tp-accent); }
   .page { padding: 20px 14px 56px; }
   .entry { flex-wrap: wrap; }
   .entry-cost { width: 100%; padding-left: 27px; }
+  .budget-summary { grid-template-columns: 1fr; }
+}
+
+/* ── weather cards ──────────────────────────────────────────────
+   Where the trip is on each day, above that day's planned entries.
+   Mirrors the planner's .weather-locations grid: two columns, and an odd
+   count leads with one full-width card so the odd one out is not left
+   dangling in the left column. The readings are filled in by page.js from
+   the reader's own browser — see loadWeather there. */
+.weather-locations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.weather-card-wide { grid-column: 1 / -1; }
+
+.weather-card {
+  background: var(--tp-surface-alt);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  padding: 8px 12px;
+  min-width: 0;
+}
+
+.weather-card-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.weather-place { font-size: 0.9rem; font-weight: 600; }
+
+.weather-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--tp-muted);
+}
+
+.weather-line-muted { font-size: 0.78rem; }
+.weather-icon { font-size: 1.05rem; line-height: 1; }
+
+.weather-temps {
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--tp-text);
+}
+
+.weather-badge {
+  padding: 1px 5px;
+  border: 1px solid var(--tp-border);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* "Typical" is the one that matters — a climate projection is not a forecast —
+   so it is the one that gets a tint, matching the planner's own badge. */
+.weather-badge-typical {
+  border-color: var(--tp-weather-typical-border, var(--tp-accent));
+  color: var(--tp-weather-typical-fg, var(--tp-accent));
+}
+
+/* Two columns is already tight on a phone, so the cards stack. */
+@media (max-width: 640px) {
+  .weather-locations { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── the reader's theme switcher ──────────────────────────────
+   Every palette above is already in this file, and the html element's
+   data-theme picks between them, so this bar only ever writes that one
+   attribute — no request, which is what lets it work on a page served from a
+   CDN with nothing behind it. page.js hides the bar when the page offers fewer
+   than two themes.
+
+   Quieter than .panel-toggle on purpose: which panels to read is the page's
+   own question, whereas the theme is a preference, and it should not compete
+   with the trip title for attention. */
+.theme-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.theme-bar-label {
+  margin-right: 2px;
+  color: var(--tp-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.theme-btn {
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--tp-muted);
+  background: transparent;
+  border: 1px solid var(--tp-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.theme-btn:hover { border-color: var(--tp-selected, var(--tp-accent)); }
+
+.theme-btn[aria-pressed="true"] {
+  color: var(--tp-on-selected, #fff);
+  background: var(--tp-selected, var(--tp-accent));
+  border-color: var(--tp-selected, var(--tp-accent));
 }

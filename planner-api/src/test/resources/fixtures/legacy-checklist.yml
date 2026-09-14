@@ -1,0 +1,63 @@
+- id: f6bcff24-a7ea-40bf-ba13-24af82fc3222
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  destinationId: 16ba0fac-a09c-4412-8f09-0db250208ab1
+  category: TRANSPORTATION
+  description: Plan transportation to Luxembourg
+  status: TODO
+  autoSeeded: true
+  sortOrder: 0
+  createdAt: 2026-09-13T07:17:28.397844Z
+- id: dec2a2c2-7add-445f-9c7f-348a37239a0b
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  destinationId: 16ba0fac-a09c-4412-8f09-0db250208ab1
+  category: LODGING
+  description: Plan 1N accommodation in Luxembourg
+  status: COMPLETED
+  autoSeeded: true
+  sortOrder: 1
+  createdAt: 2026-09-13T07:17:28.397872Z
+  completedAt: 2026-09-13T07:21:03.181080Z
+- id: 3822c7b5-a3ae-4f45-80c7-b923d4c594da
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  destinationId: 16ba0fac-a09c-4412-8f09-0db250208ab1
+  category: ACTIVITIES
+  description: Plan activities in Luxembourg
+  status: TODO
+  autoSeeded: true
+  sortOrder: 2
+  createdAt: 2026-09-13T07:17:28.397902Z
+- id: 36202481-5988-40a1-9487-a1cf428e0c78
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  destinationId: 931502b2-c491-4a60-9bb9-a6c15a8162e5
+  category: TRANSPORTATION
+  description: Plan transportation to Paris
+  status: TODO
+  autoSeeded: true
+  sortOrder: 3
+  createdAt: 2026-09-13T07:17:54.544449Z
+- id: 7ef9c5e0-b3b2-4763-a775-cc55525943b0
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  destinationId: 931502b2-c491-4a60-9bb9-a6c15a8162e5
+  category: LODGING
+  description: Plan 1N accommodation in Paris
+  status: TODO
+  autoSeeded: true
+  sortOrder: 4
+  createdAt: 2026-09-13T07:17:54.544457Z
+- id: 3956b3ed-c2af-4dbc-ab1c-a7491834c3c3
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  destinationId: 931502b2-c491-4a60-9bb9-a6c15a8162e5
+  category: ACTIVITIES
+  description: Plan activities in Paris
+  status: TODO
+  autoSeeded: true
+  sortOrder: 5
+  createdAt: 2026-09-13T07:17:54.544470Z
+- id: f996c7b3-1903-4a8f-a30b-9a1102123b16
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  category: OTHERS
+  description: Order eSim
+  status: TODO
+  autoSeeded: false
+  sortOrder: 6
+  createdAt: 2026-09-13T07:22:07.398596Z

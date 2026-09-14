@@ -52,9 +52,29 @@ app:
     timeout: 5s
     city-limit: 8
     place-limit: 20
+  weather:
+    forecast-base-url: https://api.open-meteo.com/v1
+    climate-base-url: https://climate-api.open-meteo.com/v1
+    timeout: 8s
+    climate-model: MRI_AGCM3_2_S
+    horizon-days: 14
+    history-days: 85
+    cache-ttl: 12h
+  rates:
+    base-url: https://open.er-api.com
+    base: EUR
+    # Daily, an hour after the provider's own update (~00:30 UTC).
+    cron: ${RATES_CRON:0 30 1 * * *}
+    timeout: 10s
   bootstrap:
     owner-email: ${BOOTSTRAP_OWNER_EMAIL:}
     owner-password: ${BOOTSTRAP_OWNER_PASSWORD:}
+  currencies:
+    defaults: [EUR, USD, SGD]
+    default-display: ${DEFAULT_DISPLAY_CURRENCY:EUR}
+    available: [AUD, BRL, CAD, CHF, CLP, CNY, COP, CZK, DKK, EUR, GBP, HKD, HUF,
+                IDR, ILS, INR, ISK, JPY, KRW, MXN, MYR, NOK, NZD, PEN, PHP, PLN,
+                RON, SEK, SGD, THB, TRY, TWD, USD, VND, ZAR]
 
 logging:
   level:

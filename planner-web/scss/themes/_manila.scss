@@ -1,27 +1,81 @@
-// Manila — warm paper, serif display face, understated.
+// Manila — the Philippine flag: royal blue, scarlet, gold, white.
+//
+// How the four colours are spread, so the flag reads as a palette rather than
+// as four swatches shouting at each other:
+//   white   cards, so everything else has room
+//   red     destructive actions and errors
+//   cream   the page ground — #fffbef, the --manila-bg that
+//           josephinealinea.dev's own Manila theme puts on its body
+//   blue    the accent — links, primary buttons, active states
+//   gold    the warm wash under every chip, badge, hover row and progress
+//           track, the gilt edge on every border, the warning states, and —
+//           at full strength — table and group headers
+//
+// Two notes on the values, both learned from contrast rather than taste:
+//
+// The flag's #fcd116 is a lemon yellow — 98% saturated — and a straight tint
+// of it reads as highlighter, not as gold. The wash (--tp-surface-alt) is
+// therefore pulled to 69% saturation and a warmer 43.6° hue, which is what
+// makes it read as metal rather than as paint; --tp-border carries the same
+// hue at half the saturation, so every chip and card gets a gilt edge.
+// --tp-table-header keeps the flag's full-strength gold, because it carries
+// the flag's own blue as text rather than white — the same pairing as the
+// "By Category" toggle on josephinealinea.dev's own Manila theme
+// (--manila-gold background, --manila-blue text). Full-strength gold only
+// works with dark text on it; everywhere gold is a background for something
+// that could carry white text instead, it uses the softer wash.
+//
+// Nothing gold carries white text: full strength manages 1.5:1, and even the
+// wash is 1.5:1 as *muted* grey text (3.99:1) — short of the 4.5:1 a header
+// label needs, hence --tp-table-header-text overriding to the flag blue.
+// --tp-warning, which is badge text as well as a toast background, is the
+// deep #7d5c05 for the same reason. Every pairing here clears AA, the
+// tightest being scarlet on the gold wash at 4.66:1.
+//
+// There is no green in the flag, so --tp-success is the flag blue rather than
+// an imported fifth hue: "done" is carried by the check glyph and the
+// strikethrough, which _core.scss already draws, not by hue alone.
+//
+// A theme file only ever defines tokens (plus the occasional flourish); all
+// structure lives in _core.scss and reads these values.
 body.theme-manila {
-  --tp-bg: #fdf6e8;
-  --tp-surface: #fffdf7;
-  --tp-surface-alt: #f7eed8;
-  --tp-header-bg: rgba(253, 246, 232, 0.94);
-  --tp-input-bg: #fffdf7;
-  --tp-backdrop: rgba(58, 47, 29, 0.38);
-  --tp-toast-bg: #3a2f1d;
+  --tp-bg: #fffbef;
+  --tp-surface: #ffffff;
+  --tp-surface-alt: #f5e9c9;
+  --tp-header-bg: rgba(255, 251, 239, 0.94);
+  --tp-input-bg: #ffffff;
+  --tp-backdrop: rgba(0, 26, 79, 0.42);
+  --tp-toast-bg: #002060;
 
-  --tp-text: #3a2f1d;
-  --tp-muted: #7a6a4f;
-  --tp-border: #e2d3b0;
+  --tp-text: #14203a;
+  --tp-muted: #5a6482;
+  --tp-border: #e2d4ab;
 
-  --tp-accent: #b45309;
-  --tp-accent-strong: #92400e;
-  --tp-on-accent: #fffdf7;
+  --tp-accent: #0038a8;
+  --tp-accent-strong: #002a7f;
+  --tp-on-accent: #ffffff;
 
-  --tp-success: #4d7c0f;
-  --tp-danger: #b91c1c;
-  --tp-danger-bg: #fef2f2;
-  --tp-warning: #ca8a04;
-  --tp-warning-bg: #fefce8;
-  --tp-warning-text: #854d0e;
+  // A filter that is switched on is a deepened, muted flag scarlet rather
+  // than the blue: it keeps the selected state from reading as another
+  // primary button, and stays distinct from --tp-danger, which is the
+  // brighter #ce1126 and means destroy rather than chosen.
+  --tp-selected: #7d2233;
+  --tp-on-selected: #ffffff;
+
+  // A table's or group's own header row — "LUXEMBOURG" atop a destination's
+  // checklist items, a `<table>` thead — takes the flag's full-strength gold
+  // rather than the softer wash everywhere else, with the flag blue as its
+  // text (muted grey manages only 3.99:1 here, short of the 4.5:1 a label
+  // needs).
+  --tp-table-header: #fcd116;
+  --tp-table-header-text: #0038a8;
+
+  --tp-success: #0038a8;
+  --tp-danger: #ce1126;
+  --tp-danger-bg: #fff0f2;
+  --tp-warning: #7d5c05;
+  --tp-warning-bg: #faf1d9;
+  --tp-warning-text: #63490a;
 
   --tp-font-body: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
   --tp-font-display: Georgia, "Times New Roman", serif;
@@ -29,5 +83,11 @@ body.theme-manila {
 
   --tp-radius: 6px;
   --tp-radius-sm: 4px;
-  --tp-shadow: 0 2px 6px rgba(120, 95, 50, 0.12);
+  --tp-shadow: 0 2px 6px rgba(90, 72, 25, 0.13);
+
+  // Dragging over table text otherwise shows the browser's default blue
+  // selection highlight — the one colour on the page no token here reaches.
+  // Richer than --tp-surface-alt on purpose: the pale wash would barely show
+  // against a white cell.
+  .table ::selection { background: #ecc767; color: var(--tp-text); }
 }

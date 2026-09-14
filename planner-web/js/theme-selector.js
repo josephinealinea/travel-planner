@@ -4,13 +4,22 @@
  * active theme disabled, plus a body class and a remembered choice.
  *
  * Adding a theme means one entry here, one <link> in each page's head, one
- * token file and one entry point in scss/ — nothing else.
+ * token file and one entry point in scss/, plus the sass command in
+ * package.json and StaticSiteRenderer.THEMES if published pages should offer
+ * it — nothing else.
+ *
+ * Retro-Game and Manila were removed from this registry but their sources were
+ * kept (scss/themes/_retro-game.scss, scss/manila.scss and friends, plus their
+ * :root[data-theme] blocks in the API's publish/page.css), so re-adding either
+ * is those same edits and no restyling. A name that is no longer here degrades
+ * on its own: savedTheme() and StaticSiteRenderer.safeTheme both fall back to
+ * the default rather than failing, so anybody still holding "retro-game" in
+ * localStorage, or a trip published in it, simply gets Minima.
  */
 export const THEME_REGISTRY = {
-  minima:       { stylesheetId: 'minima-css',     labelFull: 'Minima Theme',   labelShort: 'Minima', swatch: '#0969da' },
-  'retro-game': { stylesheetId: 'retro-game-css', labelFull: 'Retro-Game FF7', labelShort: 'FF7',    swatch: '#5ad1ff' },
-  y2k:          { stylesheetId: 'y2k-css',        labelFull: 'Y2K Theme',      labelShort: 'Y2K',    swatch: '#c026d3' },
-  manila:       { stylesheetId: 'manila-css',     labelFull: 'Manila Theme',   labelShort: 'Manila', swatch: '#b45309' },
+  minima:       { stylesheetId: 'minima-css',     labelFull: 'Minima Theme',   labelShort: 'Minima', swatch: '#b45309' },
+  y2k:          { stylesheetId: 'y2k-css',        labelFull: 'Y2K Theme',      labelShort: 'Y2K',    swatch: '#000080' },
+  dark:         { stylesheetId: 'dark-css',       labelFull: 'Dark Theme',     labelShort: 'Dark',   swatch: '#5ad1ff' },
 };
 
 export const THEME_NAMES = Object.keys(THEME_REGISTRY);

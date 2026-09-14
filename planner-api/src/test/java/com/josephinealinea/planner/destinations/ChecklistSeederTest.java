@@ -22,6 +22,7 @@ class ChecklistSeederTest {
         destination.setId("dest-1");
         destination.setTripId("trip-1");
         destination.setName("Cusco");
+        destination.setCountryCode("PE");
         destination.setStartDate(start);
         destination.setEndDate(end);
         return destination;
@@ -41,24 +42,64 @@ class ChecklistSeederTest {
     }
 
     @Test
-    void omitsTheNightsCountWhenItIsNotCalculable() {
-        assertThat(seeder.seedFor(cusco(LocalDate.of(2026, 10, 25), null), 0))
-                .extracting(ChecklistItem::getDescription)
-                .contains("Plan accommodation in Cusco");
-
+    void seedsNoAccommodationUntilTheDatesCoverANight() {
+        // Nothing to book for a night nobody stays, so these seed two items,
+        // not three with vague wording.
         assertThat(seeder.seedFor(cusco(null, null), 0))
-                .extracting(ChecklistItem::getDescription)
-                .contains("Plan accommodation in Cusco");
+                .extracting(ChecklistItem::getCategory)
+                .containsExactly(ChecklistCategory.TRANSPORTATION, ChecklistCategory.ACTIVITIES);
+
+        // One date alone says nothing about how long anyone stays.
+        assertThat(seeder.seedFor(cusco(LocalDate.of(2026, 10, 25), null), 0))
+                .extracting(ChecklistItem::getCategory)
+                .containsExactly(ChecklistCategory.TRANSPORTATION, ChecklistCategory.ACTIVITIES);
+
+        // A day trip: arrive and leave on the 24th, sleep somewhere else.
+        assertThat(seeder.seedFor(cusco(LocalDate.of(2026, 10, 24), LocalDate.of(2026, 10, 24)), 0))
+                .extracting(ChecklistItem::getCategory)
+                .containsExactly(ChecklistCategory.TRANSPORTATION, ChecklistCategory.ACTIVITIES);
     }
 
     @Test
-    void seededItemsStartAsTodoAndAreLinkedToTheDestination() {
+    void sortOrderStaysContiguousWhenAccommodationIsSkipped() {
+        // The activities item takes the slot accommodation would have had,
+        // rather than leaving a hole in the ordering.
+        assertThat(seeder.seedFor(cusco(null, null), 4))
+                .extracting(ChecklistItem::getSortOrder)
+                .containsExactly(4, 5);
+    }
+
+    @Test
+    void needsAccommodationIsTheNightsTest() {
+        assertThat(seeder.needsAccommodation(cusco(null, null))).isFalse();
+        assertThat(seeder.needsAccommodation(
+                cusco(LocalDate.of(2026, 10, 24), LocalDate.of(2026, 10, 24)))).isFalse();
+        assertThat(seeder.needsAccommodation(
+                cusco(LocalDate.of(2026, 10, 24), LocalDate.of(2026, 10, 25)))).isTrue();
+    }
+
+    @Test
+    void theAccommodationItemOnItsOwnCarriesTheNightsCount() {
+        ChecklistItem item = seeder.accommodationFor(
+                cusco(LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 31)), 9);
+
+        assertThat(item.getDescription()).isEqualTo("Plan 6N accommodation in Cusco");
+        assertThat(item.getCategory()).isEqualTo(ChecklistCategory.LODGING);
+        assertThat(item.getSortOrder()).isEqualTo(9);
+        assertThat(item.getSeededFromDestinationId()).isEqualTo("dest-1");
+    }
+
+    @Test
+    void seededItemsStartAsTodoAndAreLinkedToTheDestinationsCountry() {
         List<ChecklistItem> seeded = seeder.seedFor(
                 cusco(LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 31)), 7);
 
         assertThat(seeded).allSatisfy(item -> {
             assertThat(item.getStatus()).isEqualTo(ChecklistStatus.TODO);
-            assertThat(item.getDestinationId()).isEqualTo("dest-1");
+            // The link is the country; the city is kept only as provenance,
+            // which is what lets PlanTemplates still suggest Cusco's own dates.
+            assertThat(item.getCountryCodes()).containsExactly("PE");
+            assertThat(item.getSeededFromDestinationId()).isEqualTo("dest-1");
             assertThat(item.getTripId()).isEqualTo("trip-1");
             assertThat(item.isAutoSeeded()).isTrue();
             assertThat(item.getId()).isNotBlank();

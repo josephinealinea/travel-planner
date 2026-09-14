@@ -1,5 +1,6 @@
 package com.josephinealinea.planner.identity.api;
 
+import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
@@ -8,6 +9,7 @@ import com.josephinealinea.planner.shared.Ids;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -18,10 +20,12 @@ public class UserService {
 
     private final UserRepository users;
     private final PasswordEncoder encoder;
+    private final AppProperties props;
 
-    public UserService(UserRepository users, PasswordEncoder encoder) {
+    public UserService(UserRepository users, PasswordEncoder encoder, AppProperties props) {
         this.users = users;
         this.encoder = encoder;
+        this.props = props;
     }
 
     /** What a newly invited member needs: the account, plus the plaintext to email them. */
@@ -48,6 +52,8 @@ public class UserService {
                     user.setScreenName(null);
                     user.setPasswordHash(encoder.encode(password));
                     user.setMustChangePassword(true);
+                    user.setCurrencies(new ArrayList<>(props.currencies().defaults()));
+                    user.setDisplayCurrency(props.currencies().defaultDisplay());
                     return new Invited(users.save(user), password, true);
                 });
     }
@@ -73,6 +79,50 @@ public class UserService {
             throw ApiException.badRequest("Screen name must be 60 characters or fewer.");
         }
         user.setScreenName(trimmed == null || trimmed.isBlank() ? null : trimmed);
+        return users.save(user);
+    }
+
+    /**
+     * A user's own working currencies — seeded from app.currencies.defaults
+     * when their account is created, fully replaceable after that. This is
+     * what the "record a cost" forms offer (a plan, an itinerary entry, an
+     * expense, the trip's own display currency); it has nothing to do with
+     * which currencies a particular trip's budget happens to contain, which
+     * is derived from that trip's own data instead.
+     */
+    public User updateCurrencies(String userId, List<String> currencies) {
+        User user = require(userId);
+        if (currencies == null || currencies.isEmpty()) {
+            throw ApiException.badRequest("Choose at least one currency.");
+        }
+        if (currencies.size() > 20) {
+            throw ApiException.badRequest("That is too many currencies — choose 20 or fewer.");
+        }
+        List<String> normalised = new ArrayList<>();
+        for (String code : currencies) {
+            if (code == null || !code.trim().matches("[A-Za-z]{3}")) {
+                throw ApiException.badRequest("\"" + code + "\" does not look like a currency code.");
+            }
+            String upper = code.trim().toUpperCase();
+            if (!normalised.contains(upper)) normalised.add(upper);
+        }
+        user.setCurrencies(normalised);
+        return users.save(user);
+    }
+
+    /**
+     * The single currency this user's budget totals show in, wherever they
+     * are — independent of the currencies list above and of any trip's own
+     * displayCurrency (that stays the anchor its exchange-rate table is
+     * quoted against; see TripService.rebase). A trip with no rate for this
+     * currency reports it in currenciesMissingRates rather than guessing.
+     */
+    public User updateDisplayCurrency(String userId, String currency) {
+        User user = require(userId);
+        if (currency == null || !currency.trim().matches("[A-Za-z]{3}")) {
+            throw ApiException.badRequest("\"" + currency + "\" does not look like a currency code.");
+        }
+        user.setDisplayCurrency(currency.trim().toUpperCase());
         return users.save(user);
     }
 

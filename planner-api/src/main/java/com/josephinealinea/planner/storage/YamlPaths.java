@@ -31,6 +31,9 @@ public class YamlPaths {
 
     public Path secret() { return root.resolve("secret.yml"); }
 
+    /** Global, not per trip: exchange rates are a property of the day. */
+    public Path rates() { return root.resolve("rates.yml"); }
+
     public Path outbox() { return root.resolve("outbox"); }
 
     public Path publishDir() { return publishDir; }
@@ -44,6 +47,7 @@ public class YamlPaths {
     public Path checklist(String slug)    { return travels("checklist", slug); }
     public Path itinerary(String slug)    { return travels("itinerary", slug); }
     public Path budget(String slug)       { return travels("budget", slug); }
+    public Path weather(String slug)      { return travels("weather", slug); }
 
     private Path travels(String entity, String slug) {
         return root.resolve("travels").resolve(entity).resolve(Slugs.requireSafe(slug) + ".yml");

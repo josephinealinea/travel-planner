@@ -1,10 +1,10 @@
 package com.josephinealinea.planner.publish.api;
 
 import com.josephinealinea.planner.budget.api.BudgetService;
-import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
+import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
@@ -33,6 +33,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.stream.Stream;
 
 /**
  * Renders a published trip to a single self-contained HTML file.
@@ -51,8 +54,24 @@ public class StaticSiteRenderer {
 
     private static final Logger log = LoggerFactory.getLogger(StaticSiteRenderer.class);
 
-    /** Must match the theme names the frontend's theme registry offers. */
-    private static final Set<String> THEMES = Set.of("minima", "retro-game", "y2k", "manila");
+    /**
+     * Must match the theme names the frontend's theme registry offers.
+     *
+     * Retro-Game and Manila were dropped from both. Their :root[data-theme]
+     * blocks are still in publish/page.css — kept deliberately so re-adding
+     * either needs no restyling — but with the names gone from here nothing can
+     * ever be published under them, so those blocks are inert. safeTheme below
+     * is what makes the removal safe for a trip already published in one.
+     */
+    private static final Set<String> THEMES = Set.of("minima", "y2k", "dark");
+
+    /**
+     * Display order for the reader's theme switcher. Lists every theme
+     * page.css can style, including the two withdrawn ones, so re-offering one
+     * is a single edit to THEMES above — this order never needs touching.
+     */
+    private static final List<String> THEME_ORDER =
+            List.of("minima", "y2k", "dark", "retro-game", "manila");
     private static final String DEFAULT_THEME = "minima";
 
     private static final DateTimeFormatter ISO_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
@@ -81,6 +100,14 @@ public class StaticSiteRenderer {
         this.json = JsonMapper.builder()
                 .addModule(new JavaTimeModule())
                 .build();
+    }
+
+    /**
+     * The themes on offer, in a fixed order — THEMES is a Set, and a page's
+     * switcher must not reshuffle itself between publishes.
+     */
+    private static List<String> offeredThemes() {
+        return THEME_ORDER.stream().filter(THEMES::contains).toList();
     }
 
     public static String safeTheme(String theme) {
@@ -126,8 +153,18 @@ public class StaticSiteRenderer {
         List<String> route = new ArrayList<>(new LinkedHashSet<>(
                 allDestinations.stream().map(d -> d.getName()).toList()));
 
-        Map<String, String> destinationNames = new LinkedHashMap<>();
-        allDestinations.forEach(d -> destinationNames.put(d.getId(), d.getName()));
+        // Items link to countries, so the chips they show are country names —
+        // flag included, which is what the destination cards already show.
+        Map<String, String> countryNames = new LinkedHashMap<>();
+        allDestinations.forEach(destination -> {
+            String code = destination.getCountryCode();
+            if (code == null || code.isBlank()) return;
+            String label = destination.getCountryName() == null
+                    ? code : destination.getCountryName();
+            countryNames.putIfAbsent(code.toUpperCase(),
+                    destination.getCountryFlag() == null
+                            ? label : destination.getCountryFlag() + " " + label);
+        });
 
         return new PublishedTrip(
                 trip.getTitle(),
@@ -140,11 +177,11 @@ public class StaticSiteRenderer {
                         .toList(),
                 String.join(" → ", route),
                 allDestinations.stream().map(this::toView).toList(),
-                days(allItinerary),
+                days(allItinerary, allDestinations),
                 allChecklist.stream()
-                        .map(item -> toView(item, destinationNames))
+                        .map(item -> toView(item, countryNames))
                         .toList(),
-                toView(budget, trip.getExchangeRates()));
+                toView(budget));
     }
 
     private PublishedTrip.Destination toView(
@@ -166,7 +203,10 @@ public class StaticSiteRenderer {
                 mapUrl);
     }
 
-    private PublishedTrip.Checklist toView(ChecklistItem item, Map<String, String> destinationNames) {
+    private PublishedTrip.Checklist toView(ChecklistItem item, Map<String, String> countryNames) {
+        List<String> names = item.getCountryCodes().stream()
+                .map(code -> countryNames.getOrDefault(code, code))
+                .toList();
         return new PublishedTrip.Checklist(
                 item.getCategory().dataKey(),
                 item.getCategory().label(),
@@ -175,34 +215,89 @@ public class StaticSiteRenderer {
                 item.getNote(),
                 item.isCompleted() ? "done" : "todo",
                 item.isCompleted() ? PublishStyle.DONE_ICON : PublishStyle.TODO_ICON,
-                item.getDestinationId() == null ? null : destinationNames.get(item.getDestinationId()));
+                names);
     }
 
     /** Groups itinerary entries by day; undated plans are left out of the timeline. */
-    private List<PublishedTrip.Day> days(List<ItineraryItem> items) {
-        Map<LocalDate, List<PublishedTrip.Entry>> byDay = new LinkedHashMap<>();
+    private List<PublishedTrip.Day> days(List<ItineraryItem> items,
+                                        List<Destination> allDestinations) {
+        // Sorted by day rather than by insertion. The stream above already
+        // walks items in start order and a stay only ever adds days forward
+        // from its own first, so insertion order happens to come out
+        // chronological too — but only as a consequence of that upstream sort.
+        // Ordering the map itself is what stops the page's day order from
+        // silently depending on it.
+        Map<LocalDate, List<PublishedTrip.Entry>> byDay = new TreeMap<>();
 
+        // One entry per item, on its own day. A stay covering several nights is
+        // already several items by the time it gets here — ItineraryService
+        // writes them at create time — so expanding again would show each
+        // night twice.
         items.stream()
                 .filter(item -> item.getStartAt() != null)
                 .sorted(Comparator.comparing(ItineraryItem::getStartAt))
-                .forEach(item -> byDay
-                        .computeIfAbsent(item.getStartAt().toLocalDate(), key -> new ArrayList<>())
-                        .add(new PublishedTrip.Entry(
-                                item.getCategory().dataKey(),
-                                item.getCategory().label(),
-                                PublishStyle.icon(item.getCategory()),
-                                item.getDescription(),
-                                time(item.getStartAt() == null ? null : item.getStartAt().toLocalTime()),
-                                time(item.getEndAt() == null ? null : item.getEndAt().toLocalTime()),
-                                item.getCost() == null ? null : item.getCost().toPlainString(),
-                                item.getCurrency())));
+                .forEach(item -> byDay.computeIfAbsent(item.getStartAt().toLocalDate(),
+                                key -> new ArrayList<>())
+                        .add(entryFor(item)));
 
-        return byDay.entrySet().stream()
-                .map(entry -> new PublishedTrip.Day(iso(entry.getKey()), entry.getValue()))
+        // Where the trip is on each day, from the destinations' own dates —
+        // both ends counted, the same reading as the app's Days column. This is
+        // also what adds days the itinerary has nothing planned on: a published
+        // trip should still show that you were in Cusco on the 29th, and that
+        // is the day the reader's browser looks the weather up for.
+        Map<LocalDate, List<PublishedTrip.Place>> placesByDay = new TreeMap<>();
+        for (Destination destination : allDestinations) {
+            LocalDate from = destination.getStartDate();
+            LocalDate to = destination.getEndDate();
+            if (from == null || to == null || to.isBefore(from)) continue;
+            PublishedTrip.Place place = new PublishedTrip.Place(
+                    destination.getName(),
+                    destination.getCountryName(),
+                    destination.getCountryFlag(),
+                    destination.getLatitude(),
+                    destination.getLongitude());
+            for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+                placesByDay.computeIfAbsent(day, key -> new ArrayList<>()).add(place);
+            }
+        }
+
+        List<LocalDate> allDays = new ArrayList<>(new TreeSet<>(
+                Stream.concat(byDay.keySet().stream(), placesByDay.keySet().stream()).toList()));
+
+        return allDays.stream()
+                .map(day -> new PublishedTrip.Day(
+                        iso(day),
+                        byDay.getOrDefault(day, List.of()),
+                        placesByDay.getOrDefault(day, List.of())))
                 .toList();
     }
 
-    private PublishedTrip.Budget toView(BudgetService.Summary summary, Map<String, BigDecimal> rates) {
+    /**
+     * One entry's view.
+     *
+     * A night in the middle of a stay belongs to a day but not to an hour, so
+     * it shows no time; the check-in and check-out entries show theirs. The
+     * cost rides on the check-in entry alone, which is the only one that
+     * carries it — one booking, one charge.
+     */
+    private PublishedTrip.Entry entryFor(ItineraryItem item) {
+        LocalTime shown = item.coversWholeDay() ? null : item.getStartAt().toLocalTime();
+        LocalTime until = item.coversWholeDay() || item.getEndAt() == null
+                ? null
+                : item.getEndAt().toLocalTime();
+
+        return new PublishedTrip.Entry(
+                item.getCategory().dataKey(),
+                item.getCategory().label(),
+                PublishStyle.icon(item.getCategory()),
+                item.getDescription(),
+                time(shown),
+                time(until),
+                item.getCost() != null ? item.getCost().toPlainString() : null,
+                item.getCurrency());
+    }
+
+    private PublishedTrip.Budget toView(BudgetService.Summary summary) {
         List<PublishedTrip.Budget.Category> categories = new ArrayList<>();
         summary.byCategory().forEach((key, amount) -> {
             if (amount.signum() == 0) return;
@@ -215,22 +310,22 @@ public class StaticSiteRenderer {
                     amount));
         });
 
-        List<PublishedTrip.Budget.Line> lines = summary.items().stream()
-                .map(item -> new PublishedTrip.Budget.Line(
-                        item.getDescription(),
-                        item.getCategory().label(),
-                        PublishStyle.icon(item.getCategory()),
-                        item.getAmount(),
-                        item.getCurrency(),
-                        BudgetService.convert(item, summary.displayCurrency(), rates),
-                        iso(item.getDate())))
+        List<PublishedTrip.Budget.Country> countries = summary.byCountry().stream()
+                .filter(country -> country.amount() != null && country.amount().signum() != 0)
+                .map(country -> new PublishedTrip.Budget.Country(
+                        country.key(), country.name(), country.flag(), country.amount()))
+                .toList();
+
+        List<PublishedTrip.Budget.Native> nativeTotals = summary.nativeTotals().stream()
+                .map(n -> new PublishedTrip.Budget.Native(n.currency(), n.amount()))
                 .toList();
 
         return new PublishedTrip.Budget(
                 summary.displayCurrency(),
                 summary.total(),
                 categories,
-                lines,
+                countries,
+                nativeTotals,
                 summary.currenciesMissingRates());
     }
 
@@ -253,7 +348,7 @@ public class StaticSiteRenderer {
 
         String template = """
                 <!doctype html>
-                <html lang="en" data-theme="{{theme}}">
+                <html lang="en" data-theme="{{theme}}" data-themes="{{themes}}">
                 <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -273,6 +368,9 @@ public class StaticSiteRenderer {
                 <div id="app" class="page"></div>
                 <script>window.TRIP = {{payload}};</script>
                 <script>
+                {{vendor}}
+                </script>
+                <script>
                 {{js}}
                 </script>
                 </body>
@@ -281,11 +379,23 @@ public class StaticSiteRenderer {
 
         Map<String, String> values = new LinkedHashMap<>();
         values.put("theme", theme);
+        // Which themes the reader may switch to. Ordered, comma-separated, read
+        // by page.js. Inlined rather than hardcoded in page.js so THEMES stays
+        // the single source of what is on offer — withdraw a theme and newly
+        // published pages stop offering it, with no second list to remember.
+        // A page published earlier keeps the list it shipped with, which is
+        // inherent to a static file and harmless: every palette is inlined.
+        values.put("themes", String.join(",", offeredThemes()));
         values.put("title", escapeHtml(trip.getTitle()));
         values.put("ogTitle", escapeHtml(trip.getTitle() + " " + flags));
         values.put("startDate", snapshot.startDate() == null ? "" : snapshot.startDate());
         values.put("endDate", snapshot.endDate() == null ? "" : snapshot.endDate());
         values.put("css", resource("publish/page.css"));
+        // Chart.js is inlined, not linked: the page has to draw its budget
+        // chart with no network behind it. It costs ~200KB per published page
+        // and buys a charting engine that handles the geometry — including the
+        // small-slice and single-category cases a hand-drawn pie gets wrong.
+        values.put("vendor", resource("publish/vendor/chart.umd.js"));
         values.put("js", resource("publish/page.js"));
         values.put("payload", payload);
 

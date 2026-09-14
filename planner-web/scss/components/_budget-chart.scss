@@ -1,11 +1,35 @@
 @use "../abstracts/tokens" as t;
 @use "../abstracts/mixins" as m;
 
+// The pie sits alone on the left; everything textual — total, native
+// totals, and the category/country legend — sits together on the right,
+// matching the reference budget panel this mirrors.
 .budget-summary {
   display: grid;
   gap: t.$space-4;
-  grid-template-columns: minmax(200px, 260px) 1fr;
+  grid-template-columns: minmax(160px, 200px) 1fr;
   align-items: start;
+}
+
+// The Total and the rates note share a row so the note lands at the top right
+// of the summary card, across from the figure it qualifies, rather than under
+// it or outside the card. flex-start rather than baseline: the note is a
+// fraction of the Total's size, and sitting it on that baseline drops it well
+// below the top of the box.
+.budget-total-row {
+  display: flex;
+  gap: t.$space-3;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.budget-rates-note {
+  flex: none;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--tp-muted);
+  text-align: right;
 }
 
 .budget-total-value {
@@ -16,48 +40,70 @@
   font-variant-numeric: tabular-nums;
 }
 
-.budget-total-label { margin-top: 2px; font-size: 0.8rem; color: var(--tp-muted); }
-
-.budget-bars > * + * { margin-top: t.$space-2; }
-
-.budget-bar-head {
-  display: flex;
-  gap: t.$space-3;
-  justify-content: space-between;
-  margin-bottom: 3px;
-  font-size: 0.85rem;
+// The actual, unconverted amounts behind the Total above it — "320.00 EUR +
+// 450.00 USD" — so a currency doesn't quietly disappear into a conversion.
+.budget-native-totals {
+  margin-top: 4px;
+  margin-bottom: t.$space-3;
+  font-size: 0.78rem;
+  color: var(--tp-muted);
 }
 
-.budget-bar-amount { color: var(--tp-muted); font-variant-numeric: tabular-nums; }
-
-// A ring rather than a pie: the hole carries the total, which is the number
-// people actually look for.
-.budget-donut {
-  display: block;
+// Wrapper around the chart canvas. Chart.js sizes the canvas to this box, so
+// the cap lives here rather than on the canvas itself — a percentage width on
+// a responsive canvas feeds its own resize observer and the chart creeps.
+.budget-pie {
   width: 100%;
   max-width: 190px;
   margin: 0 auto;
 }
 
-.budget-donut-total {
-  font-family: var(--tp-font-display);
-  font-size: 15px;
-  font-weight: 700;
-  fill: var(--tp-text);
-}
+.budget-pie canvas { display: block; }
 
-.budget-donut-label { font-size: 7px; fill: var(--tp-muted); }
-
-.budget-legend { display: flex; flex-direction: column; gap: 5px; margin-top: t.$space-3; }
-
-.budget-legend-row {
+// One row per category/country: a colour swatch matching its pie slice, the
+// label, the percentage and the converted amount, with a thin bar underneath
+// sized to that slice's own share — without it, a row with a short label and
+// a small amount reads as mostly empty space.
+.budget-legend {
   display: flex;
-  gap: t.$space-2;
-  align-items: center;
-  font-size: 0.8rem;
+  flex-direction: column;
+  gap: t.$space-3;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.budget-legend-amount { margin-left: auto; color: var(--tp-muted); font-variant-numeric: tabular-nums; }
+.budget-legend-head {
+  display: flex;
+  align-items: center;
+  gap: t.$space-2;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.budget-legend-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.budget-legend-label { flex: 1; min-width: 0; }
+
+.budget-legend-percent {
+  flex: none;
+  min-width: 3.2em;
+  text-align: right;
+  color: var(--tp-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-legend-amount {
+  flex: none;
+  color: var(--tp-muted);
+  font-variant-numeric: tabular-nums;
+}
 
 @include m.below(t.$page-max) {
   .budget-summary { grid-template-columns: 1fr; }

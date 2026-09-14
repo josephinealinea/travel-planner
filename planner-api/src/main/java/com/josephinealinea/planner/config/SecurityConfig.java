@@ -48,6 +48,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/p/**", "/actuator/health/**").permitAll()
+                // Carries no user data and is the same for everyone; the
+                // sign-in page may need it before anybody has signed in.
+                .requestMatchers(HttpMethod.GET, "/api/v1/config").permitAll()
                 .requestMatchers("/api/v1/auth/login",
                                  "/api/v1/auth/logout",
                                  "/api/v1/auth/csrf",

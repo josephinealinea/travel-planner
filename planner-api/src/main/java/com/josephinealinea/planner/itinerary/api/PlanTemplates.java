@@ -66,6 +66,13 @@ public class PlanTemplates {
             }
             case ACTIVITIES -> new Template("Activity in %s".formatted(name),
                     at(start, LocalTime.of(9, 0)), null, currency);
+            // No sensible default hour for either — you shop and eat whenever —
+            // so these pre-fill the place and leave the time to the member,
+            // the way OTHERS does.
+            case SHOPPING -> new Template("Shopping in %s".formatted(name),
+                    at(start, LocalTime.MIDNIGHT), null, currency);
+            case FOOD -> new Template("Meal in %s".formatted(name),
+                    at(start, LocalTime.MIDNIGHT), null, currency);
             case OTHERS -> new Template(item.getDescription(), at(start, LocalTime.MIDNIGHT), null, currency);
         };
     }

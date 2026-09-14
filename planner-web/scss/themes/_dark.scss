@@ -1,0 +1,43 @@
+// Dark — a deep navy, high-contrast theme with a monospaced display face.
+//
+// This began as a copy of Retro-Game FF7, taken before that theme was
+// reworked to match the main site's own retro palette. The two are
+// independent now: changing one does not touch the other.
+body.theme-dark {
+  --tp-bg: #0b1020;
+  --tp-surface: #131d38;
+  --tp-surface-alt: #1c2a50;
+  --tp-header-bg: rgba(11, 16, 32, 0.94);
+  --tp-input-bg: #0e1732;
+  --tp-backdrop: rgba(2, 5, 14, 0.72);
+  --tp-toast-bg: #1c2a50;
+
+  --tp-text: #e8f0ff;
+  --tp-muted: #93a6cc;
+  --tp-border: #2a3d6e;
+
+  --tp-accent: #5ad1ff;
+  --tp-accent-strong: #8ae0ff;
+  --tp-on-accent: #06182b;
+
+  --tp-success: #7bdc8b;
+  --tp-danger: #ff7b7b;
+  --tp-danger-bg: rgba(255, 123, 123, 0.1);
+  --tp-warning: #ffd479;
+  --tp-warning-bg: rgba(255, 212, 121, 0.1);
+  --tp-warning-text: #ffd479;
+
+  --tp-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tp-font-display: "Courier New", Courier, monospace;
+  --tp-font-mono: "Courier New", Courier, monospace;
+
+  --tp-radius: 4px;
+  --tp-radius-sm: 3px;
+  --tp-shadow: 0 0 0 1px rgba(90, 209, 255, 0.14);
+
+  // Squared-off, uppercase headings suit the era.
+  .page-title, .modal-title, .drawer-title, h1, h2 {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}

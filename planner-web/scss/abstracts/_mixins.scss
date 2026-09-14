@@ -30,6 +30,16 @@
   outline-offset: 2px;
 }
 
+// Anything that floats over the page — a modal, a drawer, a dropdown — cannot
+// take --tp-surface straight: in a theme where that token is a translucent
+// wash (retro-game) whatever it covers reads through it. The background-color
+// paints an opaque base and the gradient lays the themed surface over it, so
+// the colour still comes from the tokens.
+@mixin opaque-surface {
+  background-color: var(--tp-bg);
+  background-image: linear-gradient(var(--tp-surface), var(--tp-surface));
+}
+
 @mixin card-surface {
   background: var(--tp-surface);
   border: 1px solid var(--tp-border);

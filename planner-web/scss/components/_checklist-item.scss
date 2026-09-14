@@ -3,35 +3,52 @@
 
 .checklist { @include m.card-surface; }
 
+// Same header tokens as .table thead th — a destination's group title is a
+// table header in everything but markup.
 .checklist-group-title {
   padding: t.$space-2 t.$space-4;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--tp-muted);
+  color: var(--tp-table-header-text, var(--tp-muted));
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: var(--tp-surface-alt);
+  background: var(--tp-table-header, var(--tp-surface-alt));
   border-bottom: 1px solid var(--tp-border);
 }
 
+// Not a <button>: the row carries its own Edit button, like the itinerary and
+// budget rows do, and buttons cannot nest. Clicking the row still opens the
+// drawer, so it keeps the pointer.
 .check-row {
   display: flex;
   gap: t.$space-3;
   align-items: flex-start;
   width: 100%;
   padding: t.$space-3 t.$space-4;
-  font: inherit;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--tp-border);
   cursor: pointer;
   color: var(--tp-text);
 }
 
-.check-row:last-child { border-bottom: 0; }
-.check-row:hover { background: var(--tp-surface-alt); }
-.check-row:focus-visible { @include m.focus-ring; outline-offset: -2px; }
+// The checkbox cannot live inside the row either, so it sits beside it and the
+// wrapper owns the row treatment: the separator line and the hover highlight,
+// which then cover the checkbox too.
+.check-row-wrap {
+  display: flex;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.check-row-wrap:last-child { border-bottom: 0; }
+.check-row-wrap:hover { background: var(--tp-surface-alt); }
+
+.select-box {
+  display: flex;
+  align-items: flex-start;
+  padding: t.$space-3 0 t.$space-3 t.$space-4;
+  cursor: pointer;
+}
+
+.select-box input { cursor: pointer; }
 
 .check-status {
   flex: none;
@@ -70,12 +87,8 @@
   margin-top: t.$space-1;
 }
 
-.check-side {
-  flex: none;
-  display: flex;
-  gap: t.$space-2;
-  align-items: center;
-}
+// Layout comes from .btn-row alongside it, exactly as .timeline-actions does.
+.check-side { flex: none; }
 
 .plan-card {
   padding: t.$space-3;

@@ -1,6 +1,8 @@
 package com.josephinealinea.planner.identity.domain;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Mutable on purpose: the YAML store reads a list of these, mutates one, and
@@ -17,6 +19,8 @@ public class User {
     private String screenName;
     private String passwordHash;
     private boolean mustChangePassword;
+    private List<String> currencies = new ArrayList<>();
+    private String displayCurrency;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -40,6 +44,22 @@ public class User {
 
     public boolean isMustChangePassword() { return mustChangePassword; }
     public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+
+    public List<String> getCurrencies() { return currencies; }
+    public void setCurrencies(List<String> currencies) {
+        this.currencies = currencies == null ? new ArrayList<>() : currencies;
+    }
+
+    /**
+     * The currency this user's budget totals are shown in — independent of
+     * currencies above (what "record a cost" forms offer) and of any trip's
+     * own displayCurrency (the anchor its exchange-rate table is quoted
+     * against). Seeded from app.currencies.defaultDisplay; null only for an
+     * account created before this field existed, which callers treat as
+     * "fall back to the trip's own currency".
+     */
+    public String getDisplayCurrency() { return displayCurrency; }
+    public void setDisplayCurrency(String displayCurrency) { this.displayCurrency = displayCurrency; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

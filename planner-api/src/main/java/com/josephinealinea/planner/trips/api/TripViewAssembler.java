@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.trips.api;
 
 import com.josephinealinea.planner.budget.api.BudgetService;
+import com.josephinealinea.planner.rates.api.RatesService;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
 import com.josephinealinea.planner.config.AppProperties;
@@ -27,6 +28,7 @@ public class TripViewAssembler {
     private final ChecklistRepository checklist;
     private final ItineraryRepository itinerary;
     private final BudgetService budgets;
+    private final RatesService rates;
     private final String publicBaseUrl;
 
     public TripViewAssembler(UserRepository users,
@@ -34,12 +36,14 @@ public class TripViewAssembler {
                              ChecklistRepository checklist,
                              ItineraryRepository itinerary,
                              BudgetService budgets,
+                             RatesService rates,
                              AppProperties props) {
         this.users = users;
         this.destinations = destinations;
         this.checklist = checklist;
         this.itinerary = itinerary;
         this.budgets = budgets;
+        this.rates = rates;
         this.publicBaseUrl = props.publish().publicBaseUrl();
     }
 
@@ -70,7 +74,11 @@ public class TripViewAssembler {
     }
 
     public TripViews.TripDetail detail(Trip trip, String currentUserId) {
-        BudgetService.Summary budget = budgets.summarise(trip);
+        // Totals show in the viewer's own display-currency preference; the
+        // trip's own displayCurrency (its rate anchor) is unaffected by who
+        // is looking.
+        User currentUser = currentUserId == null ? null : users.findById(currentUserId).orElse(null);
+        BudgetService.Summary budget = budgets.summarise(trip, currentUser);
 
         return new TripViews.TripDetail(
                 trip.getId(),
@@ -86,7 +94,7 @@ public class TripViewAssembler {
                 destinations.findAllOrdered(trip.getSlug()),
                 checklist.findAllOrdered(trip.getSlug()),
                 itinerary.findAllOrdered(trip.getSlug()),
-                TripViews.BudgetView.from(budget, trip.getExchangeRates()),
+                TripViews.BudgetView.from(budget, rates.current()),
                 publish(trip));
     }
 

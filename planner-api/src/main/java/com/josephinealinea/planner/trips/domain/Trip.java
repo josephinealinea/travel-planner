@@ -3,6 +3,7 @@ package com.josephinealinea.planner.trips.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import com.josephinealinea.planner.publish.domain.PublishRequest;
+import com.josephinealinea.planner.shared.Audited;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -17,7 +18,7 @@ import java.util.Optional;
  * The trip itself, plus its members and publish requests — they are only ever
  * read and written together, so they share one file.
  */
-public class Trip {
+public class Trip implements Audited {
 
     private String id;
     private String slug;
@@ -40,6 +41,11 @@ public class Trip {
 
     private Instant createdAt;
     private Instant updatedAt;
+    // The timestamps above are stamped by YamlTripRepository on every
+    // save; these two come from the service, which is the layer that
+    // knows who is asking. See Audit.
+    private String createdByUserId;
+    private String updatedByUserId;
 
     public Trip() {}
 
@@ -110,4 +116,10 @@ public class Trip {
 
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getCreatedByUserId() { return createdByUserId; }
+    public void setCreatedByUserId(String createdByUserId) { this.createdByUserId = createdByUserId; }
+
+    public String getUpdatedByUserId() { return updatedByUserId; }
+    public void setUpdatedByUserId(String updatedByUserId) { this.updatedByUserId = updatedByUserId; }
 }

@@ -25,12 +25,24 @@ public class ItineraryController {
             @Size(max = 300, message = "That description is too long") String description,
             LocalDateTime startAt,
             LocalDateTime endAt,
+            /**
+             * True when the member gave a date but no time.
+             *
+             * Sent by the client rather than inferred here, because by the time
+             * a date and an empty time field have been combined into a
+             * LocalDateTime the two cases are indistinguishable: "no time
+             * given" and "midnight" are both 00:00. Only the form knows which
+             * it was.
+             */
+            Boolean allDay,
             BigDecimal cost,
-            String currency) {
+            String currency,
+            List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
-                    checklistItemId, category, description, startAt, endAt, cost, currency);
+                    checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
+                    countryCodes);
         }
     }
 
@@ -39,12 +51,15 @@ public class ItineraryController {
             @Size(max = 300, message = "That description is too long") String description,
             LocalDateTime startAt,
             LocalDateTime endAt,
+            Boolean allDay,
             BigDecimal cost,
-            String currency) {
+            String currency,
+            List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
-                    null, category, description, startAt, endAt, cost, currency);
+                    null, category, description, startAt, endAt, allDay, cost, currency,
+                    countryCodes);
         }
     }
 
@@ -69,16 +84,27 @@ public class ItineraryController {
     }
 
     /** Sending cost as 0 clears it, which removes the budget record it created. */
-    @PatchMapping("/{planId}")
+    @PatchMapping("/{itemId}")
     ItineraryItem update(@PathVariable String tripId,
-                         @PathVariable String planId,
+                         @PathVariable String itemId,
                          @Valid @RequestBody PatchRequest request) {
-        return itinerary.update(tripId, currentUser.userId(), planId, request.toInput());
+        return itinerary.update(tripId, currentUser.userId(), itemId, request.toInput());
     }
 
-    @DeleteMapping("/{planId}")
+    /**
+     * Removes a plan with every day it covers. Distinct from DELETE /{itemId},
+     * which removes one day: from a checklist item a plan is the booking, not
+     * one of its nights.
+     */
+    @DeleteMapping("/{itemId}/plan")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void delete(@PathVariable String tripId, @PathVariable String planId) {
-        itinerary.delete(tripId, currentUser.userId(), planId);
+    void deletePlan(@PathVariable String tripId, @PathVariable String itemId) {
+        itinerary.deletePlan(tripId, currentUser.userId(), itemId);
+    }
+
+    @DeleteMapping("/{itemId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void delete(@PathVariable String tripId, @PathVariable String itemId) {
+        itinerary.delete(tripId, currentUser.userId(), itemId);
     }
 }

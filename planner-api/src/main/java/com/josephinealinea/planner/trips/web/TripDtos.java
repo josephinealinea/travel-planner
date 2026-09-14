@@ -23,8 +23,7 @@ public final class TripDtos {
             @Size(max = 120, message = "That title is too long") String title,
             LocalDate startDate,
             LocalDate endDate,
-            String displayCurrency,
-            Map<String, BigDecimal> exchangeRates) {}
+            String displayCurrency) {}
 
     public record AddMemberRequest(
             @NotBlank(message = "Enter an email address")

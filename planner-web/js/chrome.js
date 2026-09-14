@@ -1,4 +1,5 @@
 import { renderSelector, initThemeSelector, applyTheme, savedTheme } from './theme-selector.js';
+import { applyPanelMode, savedPanelMode } from './panel-mode.js';
 import { initPasswordToggles } from './password-toggle.js';
 import { signOut } from './session.js';
 
@@ -43,6 +44,10 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
     footer.className = 'site-footer';
     footer.textContent = 'Travel Planner — plan a trip together, publish it when you are ready.';
   }
+
+  // Panels are hidden at load, so unlike the theme this needs no pre-paint
+  // script — there is nothing visible to flash.
+  applyPanelMode(savedPanelMode());
 
   initPasswordToggles();
 }

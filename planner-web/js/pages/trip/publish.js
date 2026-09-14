@@ -1,5 +1,5 @@
 import { toast } from '../../toast.js';
-import { THEME_NAMES, THEME_REGISTRY, savedTheme } from '../../theme-selector.js';
+import { THEME_REGISTRY, savedTheme } from '../../theme-selector.js';
 
 /**
  * The Publish tab.
@@ -11,13 +11,30 @@ import { THEME_NAMES, THEME_REGISTRY, savedTheme } from '../../theme-selector.js
 export function publishTab() {
   return {
     publishBusy: false,
-    publishTheme: savedTheme(),
     requestNote: '',
     confirmingPublish: false,
     confirmingUnpublish: false,
     copied: false,
 
-    themes: THEME_NAMES.map((name) => ({ value: name, label: THEME_REGISTRY[name].labelFull })),
+    /**
+     * The theme a publish will use: whichever one the member is looking at.
+     *
+     * Read at the moment of publishing rather than held in state, so switching
+     * theme and publishing does the obvious thing without a picker to keep in
+     * step. There used to be a select here, which asked a question the answer
+     * to was already on screen — and defaulted to this same value anyway.
+     *
+     * Republishing later picks up whatever is current then, which is how the
+     * page gets restyled: switch theme, publish again.
+     */
+    get themeToPublish() {
+      return savedTheme();
+    },
+
+    /** "Minima Theme", for the line that says what publishing will use. */
+    get themeToPublishLabel() {
+      return THEME_REGISTRY[this.themeToPublish]?.labelFull || this.themeToPublish;
+    },
 
     get publishState() {
       return this.publish?.status || 'DRAFT';
@@ -43,7 +60,7 @@ export function publishTab() {
     async doPublish() {
       this.publishBusy = true;
       try {
-        this.publish = await this.api.publish(this.trip.id, this.publishTheme);
+        this.publish = await this.api.publish(this.trip.id, this.themeToPublish);
         this.trip.status = 'PUBLISHED';
         this.confirmingPublish = false;
         toast.success('Trip published');
@@ -94,7 +111,10 @@ export function publishTab() {
     async approveRequest(request) {
       this.publishBusy = true;
       try {
-        this.publish = await this.api.approvePublish(this.trip.id, request.id, this.publishTheme);
+        // The approving owner's own theme, not the requester's — they are the
+        // one publishing it.
+        this.publish = await this.api.approvePublish(this.trip.id, request.id,
+          this.themeToPublish);
         toast.success('Published');
         await this.reload();
       } catch (error) {

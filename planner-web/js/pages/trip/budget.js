@@ -1,15 +1,36 @@
 import { toast } from '../../toast.js';
 import { category, money, shortDate, CATEGORIES } from '../../format.js';
+import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
+import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
+
+/**
+ * Colours for the country pie/bars, cycled by rank. Countries are not a fixed
+ * set like categories, so — unlike CATEGORIES — there is no per-country
+ * colour to look up; this is deliberately a different palette from the
+ * category one so the two breakdowns never look interchangeable.
+ */
+const COUNTRY_PALETTE = [
+  '#4C6EF5', '#FD7E14', '#12B886', '#E64980', '#BE4BDB', '#FAB005', '#15AABF', '#FA5252',
+];
 
 /**
  * The Budget tab.
  *
- * Rows created by a plan's cost stay editable here like any other, and the
- * rollup converts into the trip's display currency using the hand-maintained
- * rates. Anything in a currency with no rate is listed as excluded rather than
- * folded in at some guessed value.
+ * Rows created by a plan's cost stay editable here like any other. The
+ * rollup — byCategory, byCountry and total — converts into the signed-in
+ * member's own display-currency preference (budget.totalsCurrency), pivoting
+ * through the trip's own displayCurrency where the two differ; anything in a
+ * currency with no rate for that pivot is listed as excluded rather than
+ * folded in at some guessed value. budget.displayCurrency is a different
+ * thing entirely — the trip's own anchor currency — and stays what "record a
+ * cost" forms default to.
  */
 export function budgetTab() {
+  // The Chart instance is held here rather than on the component: Alpine deep
+  // proxies its own state, and handing a live class instance to that proxy
+  // breaks the library's internals.
+  let pie = null;
+
   const blankExpense = () => ({
     id: null,
     description: '',
@@ -17,6 +38,7 @@ export function budgetTab() {
     amount: '',
     currency: '',
     date: '',
+    countryCodes: [],
   });
 
   return {
@@ -24,24 +46,68 @@ export function budgetTab() {
     expenseForm: blankExpense(),
     expenseError: '',
     expenseBusy: false,
-    deletingExpense: null,
 
-    ratesOpen: false,
-    ratesDraft: [],
-    ratesCurrency: '',
-    ratesError: '',
-    ratesBusy: false,
+    // filtering
+    budgetCategoryFilters: [],
+
+    // Which breakdown the pie (and the bars beside it) show.
+    budgetPieMode: 'category',
+
+    // bulk selection — like the checklist and itinerary, removing is a
+    // select-then-delete job rather than a button on every row
+    budgetSelectedIds: [],
+    budgetBulkOpen: false,
+    budgetBulkBusy: false,
+
+
+    // ── filtering ───────────────────────────────────
+    toggleBudgetCategory(value) {
+      const index = this.budgetCategoryFilters.indexOf(value);
+      if (index >= 0) this.budgetCategoryFilters.splice(index, 1);
+      else this.budgetCategoryFilters.push(value);
+    },
+
+    /**
+     * The rows the table lists. The summary above it deliberately stays the
+     * whole trip: it is the rollup, and its chart is a breakdown (by category
+     * or by country) — filtering that down to one slice would answer a
+     * question nobody asked.
+     */
+    get filteredBudgetItems() {
+      const items = this.budget.items || [];
+      if (!this.budgetCategoryFilters.length) return items;
+      return items.filter((item) => this.budgetCategoryFilters.includes(item.category));
+    },
 
     // ── rollup ──────────────────────────────────────
     get budgetCategories() {
       const totals = this.budget.byCategory || {};
       return CATEGORIES
-        .map((cat) => ({ ...cat, amount: Number(totals[cat.value] || 0) }))
+        .map((cat) => ({ key: cat.value, icon: cat.icon, label: cat.label, color: cat.color,
+                         amount: Number(totals[cat.value] || 0) }))
         .filter((cat) => cat.amount > 0);
     },
 
+    /** budget.byCountry already comes sorted largest-first and excludes zero slices. */
+    get budgetCountries() {
+      return (this.budget.byCountry || [])
+        .filter((c) => Number(c.amount) > 0)
+        .map((c, i) => ({
+          key: c.key,
+          icon: c.flag || '🌍',
+          label: c.name,
+          color: COUNTRY_PALETTE[i % COUNTRY_PALETTE.length],
+          amount: Number(c.amount),
+        }));
+    },
+
+    /** What the pie and the bars beside it currently show, per budgetPieMode. */
+    get budgetBreakdown() {
+      return this.budgetPieMode === 'country' ? this.budgetCountries : this.budgetCategories;
+    },
+
     get budgetLargest() {
-      return this.budgetCategories.reduce((max, cat) => Math.max(max, cat.amount), 0);
+      return this.budgetBreakdown.reduce((max, slice) => Math.max(max, slice.amount), 0);
     },
 
     barWidth(amount) {
@@ -49,32 +115,115 @@ export function budgetTab() {
     },
 
     /**
-     * Donut segments as stroke-dash offsets on a single circle — no charting
-     * library for four slices.
+     * A slice's share of the whole breakdown, as a percentage string like the
+     * reference budget panel shows beside each row ("36.2%"). Computed here
+     * rather than served by the API: it is entirely derived from amount and
+     * the breakdown's own total, the same rule this project already applies
+     * to nights and other display-only numbers.
      */
-    get donutSegments() {
-      const total = this.budgetCategories.reduce((sum, cat) => sum + cat.amount, 0);
-      if (!total) return [];
-      const circumference = 2 * Math.PI * 42;
-      let offset = 0;
-      return this.budgetCategories.map((cat) => {
-        const length = (cat.amount / total) * circumference;
-        const segment = {
-          color: cat.color,
-          dash: `${length} ${circumference - length}`,
-          offset: -offset,
-        };
-        offset += length;
-        return segment;
+    barPercent(amount) {
+      const total = this.budgetBreakdown.reduce((sum, slice) => sum + slice.amount, 0);
+      return total > 0 ? ((amount / total) * 100).toFixed(1) + '%' : '0.0%';
+    },
+
+    /**
+     * "320.00 EUR + 450.00 USD" - what was actually spent, in the currencies
+     * it was actually spent in, alongside the converted Total above it.
+     * budget.nativeTotals already comes from the API sorted largest
+     * (converted) contribution first, so this only has to format and join.
+     */
+    get nativeTotalsLabel() {
+      return (this.budget.nativeTotals || [])
+        .filter((n) => Number(n.amount) > 0)
+        .map((n) => this.fmt(n.amount, n.currency))
+        .join(' + ');
+    },
+
+    /**
+     * Draws the spend-by-category-or-country pie with Chart.js, from whichever
+     * breakdown budgetPieMode currently selects.
+     *
+     * Called from x-effect, so it re-runs whenever the rollup, the pie mode,
+     * the totals currency or the tab changes — the reactive reads all happen
+     * up front, before the frame wait, or the effect would not track them.
+     *
+     * Drawing waits a frame because x-show applies its display change on the
+     * next one, and Chart.js measures a container that is still hidden
+     * otherwise and sizes the canvas to nothing.
+     */
+    renderBudgetPie() {
+      const slices = this.budgetBreakdown.map((s) => ({
+        label: s.label, amount: s.amount, color: s.color,
+      }));
+      const currency = this.budget.totalsCurrency;
+      const onBudgetTab = this.tab === 'budget';
+
+      requestAnimationFrame(() => {
+        if (pie) { pie.destroy(); pie = null; }
+
+        const canvas = this.$refs.budgetPie;
+        if (!onBudgetTab || !slices.length || !canvas || typeof Chart === 'undefined') return;
+
+        pie = new Chart(canvas, {
+          type: 'pie',
+          data: {
+            labels: slices.map((s) => s.label),
+            datasets: [{
+              data: slices.map((s) => s.amount),
+              backgroundColor: slices.map((s) => s.color),
+              borderWidth: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              // The bars beside it already name every slice.
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${ctx.label}: ${money(ctx.parsed, currency)}`,
+                },
+              },
+            },
+          },
+        });
       });
     },
 
+    /**
+     * A single row's amount in budget.totalsCurrency, for the table's "In
+     * <totals currency>" column. Mirrors BudgetService.convertAmount.
+     *
+     * Two currencies that used to be the same one, and are not any more. The
+     * trip's `displayCurrency` is what an item with no currency of its own is
+     * taken to be in. `ratesBase` is what every rate is quoted against and the
+     * currency a cross-rate pivots through — rates are fetched daily for the
+     * whole install against their own base, so it has nothing to do with the
+     * trip.
+     */
     convertedOf(item) {
-      const display = this.budget.displayCurrency;
-      if (!item.currency || item.currency === display) return Number(item.amount || 0);
-      const rate = Number((this.budget.exchangeRates || {})[item.currency]);
-      if (!rate) return null;
-      return Number(item.amount) / rate;
+      const tripCurrency = this.budget.displayCurrency;
+      const pivot = this.budget.ratesBase || tripCurrency;
+      const target = this.budget.totalsCurrency;
+      const amount = Number(item.amount || 0);
+      const from = item.currency || tripCurrency;
+      if (from === target) return amount;
+
+      const rates = this.budget.exchangeRates || {};
+      let inAnchor;
+      if (from === pivot) {
+        inAnchor = amount;
+      } else {
+        const rate = Number(rates[from]);
+        if (!rate) return null;
+        inAnchor = amount / rate;
+      }
+
+      if (target === pivot) return inAnchor;
+      const targetRate = Number(rates[target]);
+      if (!targetRate) return null;
+      return inAnchor * targetRate;
     },
 
     // ── expenses ────────────────────────────────────
@@ -83,7 +232,7 @@ export function budgetTab() {
       this.expenseForm.currency = this.budget.displayCurrency || '';
       this.expenseError = '';
       this.expenseOpen = true;
-      this.$nextTick(() => this.$refs.expenseDescription?.focus());
+      this.focusWhenShown('expenseDescription');
     },
 
     openEditExpense(item) {
@@ -94,6 +243,7 @@ export function budgetTab() {
         amount: item.amount ?? '',
         currency: item.currency || this.budget.displayCurrency || '',
         date: item.date || '',
+        countryCodes: [...(item.countryCodes || [])],
       };
       this.expenseError = '';
       this.expenseOpen = true;
@@ -111,6 +261,11 @@ export function budgetTab() {
         this.expenseError = 'Enter an amount of zero or more.';
         return;
       }
+      const outsideTrip = this.dateOutsideTrip(this.expenseForm.date, 'date');
+      if (outsideTrip) {
+        this.expenseError = outsideTrip;
+        return;
+      }
 
       this.expenseError = '';
       this.expenseBusy = true;
@@ -121,6 +276,8 @@ export function budgetTab() {
           amount,
           currency: this.expenseForm.currency || null,
           date: this.expenseForm.date || null,
+          // An empty array clears every link server-side.
+          countryCodes: this.expenseForm.countryCodes,
         };
         if (this.expenseForm.id) {
           await this.api.updateExpense(this.trip.id, this.expenseForm.id, payload);
@@ -138,102 +295,112 @@ export function budgetTab() {
       }
     },
 
-    askDeleteExpense(item) {
-      this.deletingExpense = item;
+    // ── bulk selection ──────────────────────────────
+    toggleBudgetSelected(id) {
+      toggleId(this.budgetSelectedIds, id);
     },
 
-    async confirmDeleteExpense() {
+    isBudgetSelected(id) {
+      return this.budgetSelectedIds.includes(id);
+    },
+
+    /**
+     * Selected rows that are actually on screen — everything else derives from
+     * this, so "Delete selected" can never remove a row a filter is hiding.
+     */
+    get budgetSelected() {
+      return selectedPresent(this.budgetSelectedIds, this.filteredBudgetItems);
+    },
+
+    /** How many of the selected rows a plan created, for the confirm wording. */
+    get budgetSelectedFromPlanCount() {
+      return this.budgetSelected.filter((item) => item.itineraryItemId).length;
+    },
+
+    async confirmBulkDeleteExpenses() {
+      const doomed = this.budgetSelected;
+      if (!doomed.length) return;
+
+      this.budgetBulkBusy = true;
       try {
-        await this.api.deleteExpense(this.trip.id, this.deletingExpense.id);
-        this.deletingExpense = null;
-        toast.success('Expense removed');
+        const { deleted, failed } = await runBulkDelete(
+          doomed, (id) => this.api.deleteExpense(this.trip.id, id));
+
+        this.budgetSelectedIds = [];
+        this.budgetBulkOpen = false;
+
+        if (failed) toast.error(`Deleted ${deleted} — ${failed} could not be removed`);
+        else toast.success(`Deleted ${deleted} expense${deleted === 1 ? '' : 's'}`);
+
         await this.reload();
-      } catch (error) {
-        toast.error(error.fullMessage);
-        this.deletingExpense = null;
-      }
-    },
-
-    // ── display currency and rates ──────────────────
-    async setDisplayCurrency(currency) {
-      try {
-        await this.api.updateTrip(this.trip.id, { displayCurrency: currency });
-        await this.reload();
-      } catch (error) {
-        toast.error(error.fullMessage);
-      }
-    },
-
-    openRates() {
-      this.ratesDraft = Object.entries(this.budget.exchangeRates || {})
-        .map(([currency, rate]) => ({ currency, rate: String(rate) }));
-      this.ratesCurrency = '';
-      this.ratesError = '';
-      this.ratesOpen = true;
-    },
-
-    addRateRow() {
-      const currency = this.ratesCurrency.trim().toUpperCase();
-      if (!currency) return;
-      if (this.ratesDraft.some((row) => row.currency === currency)) {
-        this.ratesError = `There is already a rate for ${currency}.`;
-        return;
-      }
-      this.ratesDraft.push({ currency, rate: '' });
-      this.ratesCurrency = '';
-      this.ratesError = '';
-    },
-
-    removeRateRow(index) {
-      this.ratesDraft.splice(index, 1);
-    },
-
-    async saveRates() {
-      const rates = {};
-      for (const row of this.ratesDraft) {
-        const value = Number(row.rate);
-        if (!row.currency) continue;
-        if (!Number.isFinite(value) || value <= 0) {
-          this.ratesError = `The rate for ${row.currency} needs to be a number above zero.`;
-          return;
-        }
-        rates[row.currency.toUpperCase()] = value;
-      }
-
-      this.ratesError = '';
-      this.ratesBusy = true;
-      try {
-        await this.api.updateTrip(this.trip.id, { exchangeRates: rates });
-        this.ratesOpen = false;
-        toast.success('Exchange rates saved');
-        await this.reload();
-      } catch (error) {
-        this.ratesError = error.fullMessage;
       } finally {
-        this.ratesBusy = false;
+        this.budgetBulkBusy = false;
       }
     },
 
-    /** Currencies in use that still have no rate — offered as one-click adds. */
+    // ── exchange rates ───────────────────────────────
+    // Read-only. Rates are fetched daily for the whole install (see
+    // RatesRefresher), so there is nothing here for a member to maintain and
+    // no endpoint to maintain it with — the editor and its PATCH are gone.
+
+    /**
+     * Currencies in use with no rate in today's table, so their rows are left
+     * out of the total rather than counted at 1:1.
+     *
+     * Nearly unreachable now — the provider carries 166 currencies and the
+     * catalogue is 35 — so this means either the daily fetch has never
+     * succeeded on this install or a code was stored that the provider does not
+     * quote. Reported rather than silently absorbed either way.
+     */
     get missingRates() {
       return this.budget.currenciesMissingRates || [];
     },
 
-    addMissingRate(currency) {
-      this.openRates();
-      if (!this.ratesDraft.some((row) => row.currency === currency)) {
-        this.ratesDraft.push({ currency, rate: '' });
-      }
+    /**
+     * "Rates updated Mon, 14 Sep 2026 00:02:31" — the read-only note.
+     *
+     * Keyed on the date and nothing else. It used to guard on `ratesBase` and
+     * then branch on the date, which left a branch that could only ever render
+     * an empty string: a base is set only by a successful fetch, and that same
+     * fetch sets the date. Both branches here are reachable — a fresh install
+     * has no rates until the first refresh lands, and that is worth saying
+     * rather than leaving a blank space where a date should be.
+     *
+     * The provider's own stamp, minus its "+0000" suffix. Which currency the
+     * rates are quoted in goes unmentioned: the total beside this already names
+     * the currency the numbers are in.
+     */
+    ratesNote() {
+      const date = (this.budget.ratesDate || '').replace(/ \+\d{4}$/, '');
+      return date ? `Rates updated ${date}` : 'Exchange rates not fetched yet';
     },
+
 
     // ── display helpers ─────────────────────────────
     categoryOf: (value) => category(value),
     expenseDate: (item) => (item.date ? shortDate(item.date) : '—'),
     fmt: (amount, currency) => money(amount, currency),
 
+    /** The headline total: "Total: 900.00 EUR". */
+    totalLabel() {
+      return `Total: ${this.fmt(this.budget.total, this.budget.totalsCurrency)}`;
+    },
+
     sourcePlan(item) {
       if (!item.itineraryItemId) return null;
       return this.itinerary.find((plan) => plan.id === item.itineraryItemId)?.description || 'a plan';
+    },
+
+    // ── location picker (shared with the checklist and itinerary forms) ──
+    toggleLocation,
+
+    countryLabels(countryCodes) {
+      return locationNames(this.destinations, countryCodes);
+    },
+
+    /** Comma-joined, for chip/label text; empty when nothing is linked. */
+    countryLabel(countryCodes) {
+      return this.countryLabels(countryCodes).join(', ');
     },
   };
 }

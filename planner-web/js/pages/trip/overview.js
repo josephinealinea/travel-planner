@@ -12,7 +12,7 @@ export function overviewTab() {
         { label: 'Destinations', value: this.destinations.length },
         { label: 'Checklist done', value: `${done} / ${this.checklist.length}` },
         { label: 'Itinerary entries', value: this.itinerary.length },
-        { label: 'Budget', value: money(this.budget.total, this.budget.displayCurrency) || '—' },
+        { label: 'Budget', value: money(this.budget.total, this.budget.totalsCurrency) || '—' },
         { label: 'Departure', value: this.departureLabel() },
       ];
     },

@@ -1,8 +1,11 @@
 package com.josephinealinea.planner.identity.web;
 
+import com.josephinealinea.planner.identity.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 public final class AuthDtos {
 
@@ -17,7 +20,21 @@ public final class AuthDtos {
             String email,
             String screenName,
             String displayName,
-            boolean mustChangePassword) {}
+            boolean mustChangePassword,
+            List<String> currencies,
+            String displayCurrency) {
+
+        public static MeResponse from(User user) {
+            return new MeResponse(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getScreenName(),
+                    user.displayName(),
+                    user.isMustChangePassword(),
+                    user.getCurrencies(),
+                    user.getDisplayCurrency());
+        }
+    }
 
     public record ChangePasswordRequest(
             @NotBlank(message = "Enter your current password") String currentPassword,
@@ -26,4 +43,8 @@ public final class AuthDtos {
             String screenName) {}
 
     public record ProfileRequest(String screenName) {}
+
+    public record UpdateCurrenciesRequest(List<String> currencies) {}
+
+    public record UpdateDisplayCurrencyRequest(String displayCurrency) {}
 }

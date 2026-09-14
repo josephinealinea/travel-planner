@@ -35,15 +35,33 @@
 }
 
 // Filter chips are buttons, and show their state through aria-pressed.
+//
+// The selected fill is its own token rather than the accent, because a theme
+// can want its "this filter is on" colour to differ from its "this is the
+// primary action" colour. The fallback means a theme that has no opinion
+// keeps the accent, so only the themes that care define --tp-selected.
 button.chip { cursor: pointer; font-family: inherit; }
-button.chip:hover { border-color: var(--tp-accent); }
+button.chip:hover { border-color: var(--tp-selected, var(--tp-accent)); }
 button.chip[aria-pressed="true"] {
-  color: var(--tp-on-accent);
-  background: var(--tp-accent);
-  border-color: var(--tp-accent);
+  color: var(--tp-on-selected, var(--tp-on-accent));
+  background: var(--tp-selected, var(--tp-accent));
+  border-color: var(--tp-selected, var(--tp-accent));
 }
 
 .chip-group { display: flex; gap: t.$space-1; flex-wrap: wrap; }
+
+.chip-remove {
+  padding: 0;
+  margin-left: 2px;
+  font-size: 0.85em;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.chip-remove:hover { color: var(--tp-danger); }
 
 .cat-dot {
   display: inline-block;

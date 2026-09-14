@@ -5,6 +5,7 @@ import com.josephinealinea.planner.notification.EmailSender;
 import com.josephinealinea.planner.notification.MailTemplates;
 import com.josephinealinea.planner.publish.domain.PublishRequest;
 import com.josephinealinea.planner.shared.ApiException;
+import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.api.TripViewAssembler;
@@ -57,7 +58,7 @@ public class PublishService {
     /** Owner only. Re-publishing an already published trip just re-renders it. */
     public Trip publish(String tripId, String userId, String theme) {
         Trip trip = access.requireOwner(tripId, userId);
-        return publishInternal(trip, theme);
+        return publishInternal(trip, userId, theme);
     }
 
     public Trip unpublish(String tripId, String userId) {
@@ -65,6 +66,7 @@ public class PublishService {
         renderer.remove(trip.getSlug());
         trip.setStatus(TripStatus.DRAFT);
         trip.setPublishedAt(null);
+        Audit.touched(trip, userId);
         return trips.save(trip);
     }
 
@@ -86,6 +88,7 @@ public class PublishService {
         request.setNote(note == null || note.isBlank() ? null : note.trim());
         request.setRequestedAt(Instant.now());
         trip.getPublishRequests().add(request);
+        Audit.touched(trip, userId);
 
         Trip saved = trips.save(trip);
 
@@ -109,6 +112,7 @@ public class PublishService {
         request.setStatus(PublishRequest.Status.CANCELLED);
         request.setDecidedAt(Instant.now());
         request.setDecidedByUserId(userId);
+        Audit.touched(trip, userId);
         return trips.save(trip);
     }
 
@@ -121,7 +125,7 @@ public class PublishService {
         request.setDecidedAt(Instant.now());
         request.setDecidedByUserId(userId);
 
-        Trip published = publishInternal(trip, theme);
+        Trip published = publishInternal(trip, userId, theme);
 
         var requester = users.require(request.getRequestedByUserId());
         email.send(templates.publishApproved(
@@ -136,6 +140,7 @@ public class PublishService {
         request.setStatus(PublishRequest.Status.REJECTED);
         request.setDecidedAt(Instant.now());
         request.setDecidedByUserId(userId);
+        Audit.touched(trip, userId);
         Trip saved = trips.save(trip);
 
         var requester = users.require(request.getRequestedByUserId());
@@ -143,12 +148,13 @@ public class PublishService {
         return saved;
     }
 
-    private Trip publishInternal(Trip trip, String theme) {
+    private Trip publishInternal(Trip trip, String userId, String theme) {
         if (theme != null && !theme.isBlank()) {
             trip.setPublishedTheme(StaticSiteRenderer.safeTheme(theme));
         }
         trip.setStatus(TripStatus.PUBLISHED);
         trip.setPublishedAt(Instant.now());
+        Audit.touched(trip, userId);
         Trip saved = trips.save(trip);
         renderer.render(saved);
         return saved;

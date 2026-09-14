@@ -28,6 +28,9 @@ import java.util.Map;
  * Some places have no entry under the name travellers use at all — Peru's Aguas
  * Calientes is registered as Machupicchu — so an empty result is a normal
  * outcome and the caller falls back to manual coordinates.
+ *
+ * That same place is why /places is also asked for the query with its spaces
+ * removed: see placeTerms.
  */
 @Service
 public class GeocodingClient {
@@ -56,8 +59,10 @@ public class GeocodingClient {
         for (CountriesDevDtos.Place place : cities(q)) {
             if (place.geonameId() != null) merged.putIfAbsent(place.geonameId(), place);
         }
-        for (CountriesDevDtos.Place place : places(q)) {
-            if (place.geonameId() != null) merged.putIfAbsent(place.geonameId(), place);
+        for (String term : placeTerms(q)) {
+            for (CountriesDevDtos.Place place : places(term)) {
+                if (place.geonameId() != null) merged.putIfAbsent(place.geonameId(), place);
+            }
         }
 
         return merged.values().stream()
@@ -73,6 +78,25 @@ public class GeocodingClient {
     /** Cleanly ranked, but only larger settlements. */
     private List<CountriesDevDtos.Place> cities(String query) {
         return fetch("/cities", query, cityLimit, null);
+    }
+
+    /**
+     * The query as typed, and — when it has spaces — the same thing without
+     * them.
+     *
+     * The gazetteer stores some two-word places as one word, and matching is
+     * not forgiving about it: "Machu Picchu" returns a research base in
+     * Antarctica and a hamlet in Bolivia, while the Peruvian town it means is
+     * filed as "Machupicchu" and never appears. Asking for both spellings and
+     * merging on geonameId is what makes the obvious thing to type work.
+     *
+     * Only /places gets the second term. A place that needs this trick is a
+     * small one — Machupicchu has 4,446 people — and /places is the endpoint
+     * without the population floor, so /cities would have nothing to add.
+     */
+    private static List<String> placeTerms(String query) {
+        String squashed = query.replaceAll("\\s+", "");
+        return squashed.equalsIgnoreCase(query) ? List.of(query) : List.of(query, squashed);
     }
 
     /** The full gazetteer, filtered down to populated places. */

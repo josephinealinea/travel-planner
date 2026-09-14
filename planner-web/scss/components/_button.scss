@@ -32,16 +32,19 @@
   cursor: not-allowed;
 }
 
+// The solid fill is its own token, separate from --tp-accent, because a theme
+// can want its primary button a different colour from its link/active-tab
+// ink. Falls back to the accent, so a theme with no opinion is unaffected.
 .btn-primary {
-  color: var(--tp-on-accent);
-  background: var(--tp-accent);
-  border-color: var(--tp-accent);
+  color: var(--tp-on-primary, var(--tp-on-accent));
+  background: var(--tp-primary-bg, var(--tp-accent));
+  border-color: var(--tp-primary-bg, var(--tp-accent));
 }
 
 .btn-primary:hover:not(:disabled) {
-  color: var(--tp-on-accent);
-  background: var(--tp-accent-strong);
-  border-color: var(--tp-accent-strong);
+  color: var(--tp-on-primary, var(--tp-on-accent));
+  background: var(--tp-primary-bg-strong, var(--tp-accent-strong));
+  border-color: var(--tp-primary-bg-strong, var(--tp-accent-strong));
 }
 
 .btn-danger { color: var(--tp-danger); border-color: var(--tp-border); }

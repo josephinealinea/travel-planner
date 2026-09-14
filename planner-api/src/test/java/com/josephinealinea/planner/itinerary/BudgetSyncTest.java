@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BudgetSyncTest {
 
     private static final String SLUG = "latam-trip-2026";
+    private static final String USER_ID = "user-1";
 
     private BudgetRepository budget;
     private BudgetSync sync;
@@ -37,7 +39,10 @@ class BudgetSyncTest {
                 new AppProperties.Security(null, null, false),
                 new AppProperties.Cors(null),
                 new AppProperties.Geocoding(null, null, 0, 0),
-                new AppProperties.Bootstrap(null, null));
+                new AppProperties.Weather(null, null, null, null, 0, 0, null),
+                new AppProperties.Rates(null, null, "0 0 0 * * *", null),
+                new AppProperties.Bootstrap(null, null),
+                new AppProperties.Currencies(null, null, null));
 
         budget = new BudgetRepository(new YamlStore(), new YamlPaths(props), new TripLocks());
         sync = new BudgetSync(budget);
@@ -58,7 +63,7 @@ class BudgetSyncTest {
     @Test
     void aCostCreatesAMatchingBudgetRecord() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
 
         assertThat(item.getBudgetItemId()).isNotNull();
         BudgetItem created = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
@@ -74,7 +79,7 @@ class BudgetSyncTest {
     @Test
     void changingTheCostUpdatesTheAmountButNotTheEditedDescription() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
 
         // Somebody tidies up the budget row by hand.
         BudgetItem edited = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
@@ -84,7 +89,7 @@ class BudgetSyncTest {
 
         item.setCost(new BigDecimal("300.00"));
         item.setCurrency("EUR");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
 
         BudgetItem after = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
         assertThat(after.getAmount()).isEqualByComparingTo("300.00");
@@ -97,12 +102,12 @@ class BudgetSyncTest {
     @Test
     void clearingTheCostRemovesTheBudgetRecord() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
         String budgetId = item.getBudgetItemId();
 
         item.setCost(null);
         item.setCurrency(null);
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
 
         assertThat(budget.findById(SLUG, budgetId)).isEmpty();
         assertThat(item.getBudgetItemId()).isNull();
@@ -111,7 +116,7 @@ class BudgetSyncTest {
     @Test
     void aZeroCostIsTreatedAsNoCost() {
         ItineraryItem item = plan(BigDecimal.ZERO, "USD");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
 
         assertThat(item.getBudgetItemId()).isNull();
         assertThat(budget.findAll(SLUG)).isEmpty();
@@ -120,7 +125,7 @@ class BudgetSyncTest {
     @Test
     void deletingThePlanRemovesTheBudgetRecordItCreated() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
         String budgetId = item.getBudgetItemId();
 
         sync.afterDelete(SLUG, item);
@@ -138,7 +143,7 @@ class BudgetSyncTest {
         budget.save(SLUG, manual);
 
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
         sync.afterDelete(SLUG, item);
 
         assertThat(budget.findById(SLUG, "manual-1")).isPresent();
@@ -146,9 +151,47 @@ class BudgetSyncTest {
     }
 
     @Test
+    void aCostCreatesABudgetRecordCarryingThePlansLocations() {
+        ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
+        item.setCountryCodes(List.of("dest-1", "dest-2"));
+        sync.afterSave(SLUG, item, USER_ID);
+
+        BudgetItem created = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
+        assertThat(created.getCountryCodes()).containsExactly("dest-1", "dest-2");
+    }
+
+    /**
+     * The one-way, narrow sync rule applies to locations too: a later cost
+     * change never overwrites locations someone has since corrected on the
+     * budget row, exactly like it never overwrites the description or
+     * category.
+     */
+    @Test
+    void changingTheCostNeverOverwritesLocationsEditedOnTheBudgetRow() {
+        ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
+        item.setCountryCodes(List.of("dest-1"));
+        sync.afterSave(SLUG, item, USER_ID);
+
+        // Somebody corrects the row's locations by hand on the budget tab.
+        BudgetItem edited = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
+        edited.setCountryCodes(List.of("dest-2"));
+        budget.save(SLUG, edited);
+
+        // The plan itself still (or now) points somewhere else entirely.
+        item.setCost(new BigDecimal("300.00"));
+        item.setCountryCodes(List.of("dest-3"));
+        sync.afterSave(SLUG, item, USER_ID);
+
+        BudgetItem after = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
+        assertThat(after.getAmount()).isEqualByComparingTo("300.00");
+        // The hand-edited locations survive; the plan's own change is not applied.
+        assertThat(after.getCountryCodes()).containsExactly("dest-2");
+    }
+
+    @Test
     void aBudgetRowWhoseBackLinkWasLostIsStillCleanedUp() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item);
+        sync.afterSave(SLUG, item, USER_ID);
 
         // Simulate the plan losing its back-link but the row still pointing at it.
         item.setBudgetItemId(null);

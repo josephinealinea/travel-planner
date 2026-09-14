@@ -43,6 +43,19 @@
 
 .toolbar select { width: auto; padding: 5px 9px; font-size: 0.85rem; }
 
+// Bulk actions get a row of their own beneath the filters.
+//
+// flex-basis: 100% inside the wrapping .toolbar is what forces the break, so
+// the button lands at the same left edge on every tab rather than trailing
+// whichever filters happen to precede it — which is what made it sit in a
+// different place per tab once Shopping and Food widened the category chips.
+.toolbar-actions {
+  flex-basis: 100%;
+  display: flex;
+  gap: t.$space-2;
+  align-items: center;
+}
+
 // The overview's "needs planning" list, linking straight into the Plan form.
 .needs-planning-row {
   display: flex;

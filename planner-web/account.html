@@ -5,15 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Account — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=1"     id="minima-css">
-<link rel="stylesheet" href="assets/css/retro-game.css?v=1" id="retro-game-css" disabled>
-<link rel="stylesheet" href="assets/css/y2k.css?v=1"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/manila.css?v=1"     id="manila-css"     disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=57"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=57"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=57"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
   (function () {
-    var registry = { minima: 'minima-css', 'retro-game': 'retro-game-css', y2k: 'y2k-css', manila: 'manila-css' };
+    var registry = { minima: 'minima-css', y2k: 'y2k-css', dark: 'dark-css' };
     var theme = 'minima';
     try { if (registry[localStorage.getItem('selectedTheme')]) theme = localStorage.getItem('selectedTheme'); } catch (e) {}
     Object.keys(registry).forEach(function (name) {
@@ -86,8 +85,47 @@
 
     <section class="card">
       <div class="card-header"><h2 class="card-title">Appearance</h2></div>
-      <p class="small muted">Your theme is remembered in this browser.</p>
-      <div id="theme-radios" class="stack-sm"></div>
+      <p class="small muted">These are remembered in this browser.</p>
+
+      <div class="field">
+        <span class="label">Theme</span>
+        <div id="theme-radios" class="stack-sm"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">Currencies</h2></div>
+      <div id="currency-alert" class="alert" hidden></div>
+
+      <div class="field">
+        <label for="display-currency">Allowed currencies</label>
+        <div id="currency-chips" class="chip-group" style="margin-bottom:12px"></div>
+        <form id="currency-form" class="field-inline">
+          <div class="field grow field-narrow">
+            <label for="new-currency">Add a currency</label>
+            <select id="new-currency"></select>
+          </div>
+          <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
+            <button type="submit" class="btn" id="add-currency">Add</button>
+          </div>
+        </form>
+        <p class="field-hint">
+          Offered when you record a cost — a plan, an itinerary entry, an expense,
+          or a trip's own budget currency.
+        </p>
+      </div>
+
+      <div class="field">
+        <label for="display-currency">Show totals in</label>
+        <select id="display-currency" class="control-narrow"></select>
+        <p class="field-hint">
+          Budget totals show in this currency on every trip you can see. A trip with
+          no exchange rate for it says so rather than guessing, and this has no bearing
+          on the currency a trip's own exchange rates are quoted against.
+        </p>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="save-currencies">Save currencies</button>
     </section>
   </div>
 </main>
@@ -196,6 +234,110 @@
   document.addEventListener('themechange', (event) => {
     const radio = radios.querySelector(`input[value="${event.detail.theme}"]`);
     if (radio) radio.checked = true;
+  });
+
+  // ── currencies ──────────────────────────
+  let currencyDraft = [...(user.currencies || [])];
+
+  // The catalogue comes from the API rather than a list kept here, so
+  // application.yml stays the one place it is configured.
+  let currencyCatalogue = [];
+  try {
+    currencyCatalogue = (await api.config()).currencies || [];
+  } catch {
+    // Offline or an older API: fall back to what this account already has, so
+    // the page still works and simply offers nothing new to add.
+    currencyCatalogue = [...currencyDraft];
+  }
+
+  /** Only what is not already on the list — adding a duplicate is not a thing. */
+  function renderCurrencyChoices() {
+    const select = document.querySelector('#new-currency');
+    const remaining = currencyCatalogue.filter((code) => !currencyDraft.includes(code));
+    select.innerHTML = remaining.length
+      ? remaining.map((code) => `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`).join('')
+      : '<option value="">Every currency is already on your list</option>';
+    select.disabled = !remaining.length;
+    document.querySelector('#add-currency').disabled = !remaining.length;
+  }
+
+  function renderCurrencyChips() {
+    const box = document.querySelector('#currency-chips');
+    box.innerHTML = currencyDraft.length
+      ? currencyDraft.map((code) => `
+          <span class="chip">
+            ${escapeHtml(code)}
+            <button type="button" class="chip-remove" data-code="${escapeHtml(code)}"
+                    aria-label="Remove ${escapeHtml(code)}">✕</button>
+          </span>`).join('')
+      : '<span class="small muted">No currencies yet — add one below.</span>';
+  }
+  renderCurrencyChips();
+  renderCurrencyChoices();
+
+  document.querySelector('#currency-chips').addEventListener('click', (event) => {
+    const code = event.target.closest('.chip-remove')?.dataset.code;
+    if (!code) return;
+    currencyDraft = currencyDraft.filter((c) => c !== code);
+    renderCurrencyChips();
+    renderCurrencyChoices();
+    renderDisplayCurrencyOptions();
+  });
+
+  document.querySelector('#currency-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const code = document.querySelector('#new-currency').value;
+    if (!code || currencyDraft.includes(code)) return;
+    currencyDraft.push(code);
+    currencyDraft.sort();
+    renderCurrencyChips();
+    renderCurrencyChoices();
+    renderDisplayCurrencyOptions();
+  });
+
+  const displayCurrencySelect = document.querySelector('#display-currency');
+
+  /**
+   * Keeps the "show totals in" options in step with the chips above it, so the
+   * dropdown can never offer a currency the draft no longer has.
+   *
+   * The current value is always kept as an option even when it is not in the
+   * draft — a select whose value matches no option silently falls back to the
+   * first one, which is how a member ends up saving a currency they never
+   * chose. Same mismatch the trip workspace's entryCurrencies guards against.
+   */
+  function renderDisplayCurrencyOptions() {
+    const chosen = displayCurrencySelect.value || user.displayCurrency || '';
+    const options = [...currencyDraft];
+    if (chosen && !options.includes(chosen)) options.push(chosen);
+    // An account from before this field existed, with an empty currency list.
+    if (!options.length) options.push('EUR');
+
+    displayCurrencySelect.innerHTML = options
+      .map((code) => `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`).join('');
+    displayCurrencySelect.value = options.includes(chosen) ? chosen : options[0];
+  }
+  renderDisplayCurrencyOptions();
+
+  // One button saves both halves: the list and the currency picked out of it
+  // are one setting as far as anyone using this page is concerned.
+  document.querySelector('#save-currencies').addEventListener('click', async () => {
+    const button = document.querySelector('#save-currencies');
+    button.disabled = true;
+    try {
+      await api.updateCurrencies({ currencies: currencyDraft });
+      const updated = await api.updateDisplayCurrency({
+        displayCurrency: displayCurrencySelect.value,
+      });
+      clearCachedUser();
+      alertIn('#currency-alert', 'Saved.', 'info');
+      toast.success('Currencies updated');
+      renderChrome({ user: updated, active: 'account' });
+    } catch (error) {
+      alertIn('#currency-alert', error.fullMessage, 'error');
+    } finally {
+      button.disabled = false;
+    }
   });
 </script>
 </body>

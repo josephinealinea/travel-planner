@@ -16,7 +16,7 @@
   padding: t.$space-1;
   margin: 0;
   list-style: none;
-  background: var(--tp-surface);
+  @include m.opaque-surface;
   border: 1px solid var(--tp-border);
   border-radius: var(--tp-radius);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -50,10 +50,22 @@
   color: var(--tp-muted);
 }
 
-// Shown when a lookup finds nothing, to make clear that typing it anyway works.
+// The way out of the list when none of the suggestions is the place you mean.
+// Free text has always saved; this is what says so while the list is still
+// covering the rest of the form.
 .autocomplete-freetext {
+  display: block;
+  width: 100%;
   padding: 9px;
+  font: inherit;
   font-size: 0.8rem;
   color: var(--tp-muted);
+  text-align: left;
+  background: none;
+  border: 0;
   border-top: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  cursor: pointer;
 }
+
+.autocomplete-freetext:hover { background: var(--tp-surface-alt); color: var(--tp-text); }

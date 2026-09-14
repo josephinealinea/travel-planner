@@ -30,13 +30,13 @@ public class AccountController {
 
     @PatchMapping("/profile")
     AuthDtos.MeResponse updateProfile(@RequestBody AuthDtos.ProfileRequest request) {
-        return toMe(users.updateScreenName(currentUser.userId(), request.screenName()));
+        return AuthDtos.MeResponse.from(users.updateScreenName(currentUser.userId(), request.screenName()));
     }
 
     /**
      * Also the exit from the forced-change gate, and it takes an optional screen
-     * name so the first-run screen can set both in one request. A fresh cookie
-     * goes out so the session clock restarts from the new password.
+     * name so the first-run screen can do both in a single request. A fresh
+     * cookie goes out so the session clock restarts from the new password.
      */
     @PostMapping("/password")
     AuthDtos.MeResponse changePassword(@Valid @RequestBody AuthDtos.ChangePasswordRequest request,
@@ -44,15 +44,27 @@ public class AccountController {
         User updated = users.changePassword(
                 currentUser.userId(), request.currentPassword(), request.newPassword(), request.screenName());
         cookies.setSession(response, jwt.issue(updated.getId()), jwt.ttl().toSeconds());
-        return toMe(updated);
+        return AuthDtos.MeResponse.from(updated);
     }
 
-    private AuthDtos.MeResponse toMe(User user) {
-        return new AuthDtos.MeResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getScreenName(),
-                user.displayName(),
-                user.isMustChangePassword());
+    /**
+     * Replaces the caller's own currency list wholesale — the same shape as
+     * updateProfile, not a partial add/remove. This is what the "record a
+     * cost" forms offer; it has no bearing on a trip's own "Show totals in"
+     * list, which is derived from that trip's data instead.
+     */
+    @PatchMapping("/currencies")
+    AuthDtos.MeResponse updateCurrencies(@RequestBody AuthDtos.UpdateCurrenciesRequest request) {
+        return AuthDtos.MeResponse.from(users.updateCurrencies(currentUser.userId(), request.currencies()));
+    }
+
+    /**
+     * The single currency this account's budget totals are shown in, on every
+     * trip. It has no bearing on a trip's own displayCurrency, which stays the
+     * anchor its exchange-rate table is quoted against.
+     */
+    @PatchMapping("/display-currency")
+    AuthDtos.MeResponse updateDisplayCurrency(@RequestBody AuthDtos.UpdateDisplayCurrencyRequest request) {
+        return AuthDtos.MeResponse.from(users.updateDisplayCurrency(currentUser.userId(), request.displayCurrency()));
     }
 }

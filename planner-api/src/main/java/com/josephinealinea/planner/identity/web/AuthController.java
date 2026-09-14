@@ -44,7 +44,7 @@ public class AuthController {
                               HttpServletResponse response) {
         User user = auth.authenticate(request.email(), request.password());
         cookies.setSession(response, jwt.issue(user.getId()), jwt.ttl().toSeconds());
-        return toMe(user);
+        return AuthDtos.MeResponse.from(user);
     }
 
     @PostMapping("/logout")
@@ -59,15 +59,6 @@ public class AuthController {
      */
     @GetMapping("/me")
     AuthDtos.MeResponse me() {
-        return toMe(userService.require(currentUser.userId()));
-    }
-
-    private AuthDtos.MeResponse toMe(User user) {
-        return new AuthDtos.MeResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getScreenName(),
-                user.displayName(),
-                user.isMustChangePassword());
+        return AuthDtos.MeResponse.from(userService.require(currentUser.userId()));
     }
 }

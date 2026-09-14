@@ -17,12 +17,16 @@ public final class PublishStyle {
             ChecklistCategory.TRANSPORTATION, "✈️",
             ChecklistCategory.LODGING, "🏨",
             ChecklistCategory.ACTIVITIES, "🎟️",
+            ChecklistCategory.SHOPPING, "🛍️",
+            ChecklistCategory.FOOD, "🍽️",
             ChecklistCategory.OTHERS, "💰");
 
     private static final Map<ChecklistCategory, String> COLORS = Map.of(
             ChecklistCategory.TRANSPORTATION, "#F76707",
             ChecklistCategory.LODGING, "#4C6EF5",
             ChecklistCategory.ACTIVITIES, "#E64980",
+            ChecklistCategory.SHOPPING, "#AE3EC9",
+            ChecklistCategory.FOOD, "#2F9E44",
             ChecklistCategory.OTHERS, "#868E96");
 
     public static final String TODO_ICON = "▫️";

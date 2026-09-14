@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.ArrayList;
+
 /**
  * There is no self-signup — accounts only come into being when someone adds you
  * to a trip. That leaves a chicken-and-egg problem on a fresh install, so the
@@ -47,6 +49,7 @@ public class BootstrapOwner {
             owner.setId(Ids.newId());
             owner.setEmail(normalised);
             owner.setPasswordHash(encoder.encode(plaintext));
+            owner.setCurrencies(new ArrayList<>(props.currencies().defaults()));
             // A configured password is deliberate, so do not force a change;
             // a generated one must be replaced on first sign-in.
             owner.setMustChangePassword(password == null || password.isBlank());

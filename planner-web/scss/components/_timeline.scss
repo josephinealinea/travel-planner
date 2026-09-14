@@ -26,6 +26,16 @@
 }
 
 .timeline-entry:last-child { border-bottom: 0; }
+
+// The timeline row already supplies its own padding, so the checkbox cell
+// only needs to align with the first line of text.
+.select-box-tight {
+  padding: 0;
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+}
 .timeline-entry:hover { background: var(--tp-surface-alt); }
 
 .timeline-time {
@@ -36,10 +46,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-.timeline-icon { flex: none; font-size: 1.05rem; line-height: 1.4; }
 .timeline-body { flex: 1; min-width: 0; }
 .timeline-desc { font-size: 0.94rem; font-weight: 500; }
-.timeline-meta { margin-top: 2px; font-size: 0.8rem; color: var(--tp-muted); }
+
+// Carries the category chip, so it lays out like the checklist's tag row
+// rather than as a run of plain text.
+.timeline-meta {
+  display: flex;
+  gap: t.$space-1;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: t.$space-1;
+  font-size: 0.8rem;
+  color: var(--tp-muted);
+}
 .timeline-cost { flex: none; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .timeline-actions { flex: none; }
 
@@ -47,4 +67,95 @@
   .timeline-entry { flex-wrap: wrap; }
   .timeline-time { width: auto; }
   .timeline-actions, .timeline-cost { margin-left: auto; }
+}
+
+// ── weather cards ─────────────────────────────────────────────
+// Where the trip is on a given day, above that day's planned entries.
+//
+// Deliberately a different surface from .timeline-entries: these are not
+// itinerary entries. Nothing about them is stored, so nothing is selectable,
+// editable or deletable, and a row that looked like the ones below it would
+// invite a click that has nowhere to go. Hence no checkbox column, no hover
+// state and no action buttons.
+.weather-locations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: t.$space-2;
+  margin-bottom: t.$space-2;
+}
+
+// The odd one out leads the block at full width, rather than dangling alone in
+// the left column at the end. So 1 card spans, 2 sit side by side, 3 are
+// one-then-two, 4 are two-then-two, 5 are one-then-two-then-two.
+//
+// The class is applied by the template, not matched structurally here. The
+// obvious selector — :first-child:nth-last-child(odd), which is true of the
+// first element exactly when the count is odd — silently never matches,
+// because Alpine's x-for leaves its <template> in the DOM as the grid's real
+// first child. See CLAUDE.md, Traps.
+.weather-card-wide { grid-column: 1 / -1; }
+
+.weather-card {
+  @include m.card-surface;
+  padding: t.$space-2 t.$space-3;
+  background: var(--tp-weather-bg, var(--tp-surface-alt));
+  min-width: 0;
+}
+
+.weather-card-head {
+  display: flex;
+  gap: t.$space-2;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.weather-place { font-size: 0.9rem; font-weight: 500; }
+
+// The reading, or the one-line explanation standing in for it.
+.weather-line {
+  display: flex;
+  gap: t.$space-2;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: t.$space-1;
+  font-size: 0.82rem;
+  color: var(--tp-muted);
+}
+
+.weather-line-muted { font-size: 0.78rem; }
+
+.weather-icon { font-size: 1.05rem; line-height: 1; }
+
+.weather-temps {
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--tp-text);
+}
+
+.weather-condition { color: var(--tp-muted); }
+
+.weather-note { margin-top: 2px; }
+
+// Says which source answered. "Typical" is the one that matters — a climate
+// projection is not a forecast — so it is the one that gets a tint.
+.weather-badge {
+  padding: 1px t.$space-1;
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.weather-badge-typical {
+  border-color: var(--tp-weather-typical-border, var(--tp-border));
+  color: var(--tp-weather-typical-fg, var(--tp-muted));
+}
+
+// Two columns is already tight on a phone, so the cards stack and every one of
+// them is full width — which makes the odd-first rule a no-op rather than
+// something that has to be undone.
+@include m.mobile {
+  .weather-locations { grid-template-columns: minmax(0, 1fr); }
 }

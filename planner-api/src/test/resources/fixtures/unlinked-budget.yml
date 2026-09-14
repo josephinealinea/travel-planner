@@ -1,0 +1,28 @@
+- id: df7f52af-9c4e-4f89-8ecf-595e55be7f42
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  itineraryItemId: ddb2c94f-ba60-49bc-a772-161de07d5fa8
+  category: LODGING
+  description: "Hotel in Luxembourg — check-in 24 Dec, check-out 25 Dec"
+  amount: 80
+  currency: EUR
+  date: 2026-12-24
+  destinationIds: []
+  createdAt: 2026-09-13T07:20:50.099519Z
+- id: cd640f7d-4d45-4188-8eaf-ef8fea33c8af
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  category: OTHERS
+  description: Yellow fever vaccine
+  amount: 10
+  currency: EUR
+  destinationIds: []
+  createdAt: 2026-09-13T07:21:23.502124Z
+- id: c6ba5441-0fa0-4276-b656-031714c391ad
+  tripId: b7d9501a-96b9-415f-8ab7-f50f32e887f5
+  itineraryItemId: 555ac900-89a4-45f8-bd02-b056170093b3
+  category: OTHERS
+  description: Delta flight (DL 6071) from LAX to LIM
+  amount: 90
+  currency: EUR
+  date: 2026-12-24
+  destinationIds: []
+  createdAt: 2026-09-13T07:21:43.212060Z

@@ -66,6 +66,24 @@ export function nightsBetween(startIso, endIso) {
   return nights > 0 ? nights : null;
 }
 
+/**
+ * Days a destination is visited, counting both ends — Cusco 25-Oct to 31-Oct
+ * is 7, and a day trip on 24-Oct is 1.
+ *
+ * Deliberately not `nightsBetween() + 1`: nights is null for a day trip on
+ * purpose (that null is what tells the API a destination needs no room), and
+ * adding one to it would turn the trip's only single-day stop into "—" instead
+ * of the 1D it plainly is. The two answer different questions, so they count
+ * separately from the same two dates. See CLAUDE.md, "Nights versus days".
+ */
+export function daysBetween(startIso, endIso) {
+  const start = parseDate(startIso);
+  const end = parseDate(endIso);
+  if (!start || !end) return null;
+  const days = Math.round((end - start) / 86400000) + 1;
+  return days > 0 ? days : null;
+}
+
 export function money(amount, currency) {
   if (amount == null || amount === '') return '';
   const value = Number(amount);
@@ -93,10 +111,21 @@ export function countdownLabel(iso) {
   return `${Math.abs(days)} days ago`;
 }
 
+/**
+ * Mirrors ChecklistCategory on the API, in declaration order — which is the
+ * order every picker, filter and legend here shows.
+ *
+ * The icons and colours are not chosen here: they come from the Jekyll site's
+ * _data/travels/budget_categories.yml, the same file PublishStyle reads, so a
+ * category looks identical in the planner, on a published page, and next to
+ * the hand-written trips. Adding one means adding it there first.
+ */
 export const CATEGORIES = [
   { value: 'TRANSPORTATION', label: 'Transportation', icon: '✈️', color: '#F76707' },
   { value: 'LODGING',        label: 'Lodging',        icon: '🏨', color: '#4C6EF5' },
   { value: 'ACTIVITIES',     label: 'Activities',     icon: '🎟️', color: '#E64980' },
+  { value: 'SHOPPING',       label: 'Shopping',       icon: '🛍️', color: '#AE3EC9' },
+  { value: 'FOOD',           label: 'Food',           icon: '🍽️', color: '#2F9E44' },
   { value: 'OTHERS',         label: 'Others',         icon: '💰', color: '#868E96' },
 ];
 
@@ -105,6 +134,3 @@ const BY_VALUE = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));
 export function category(value) {
   return BY_VALUE[value] || BY_VALUE.OTHERS;
 }
-
-/** Currencies offered in the pickers. Any code the API accepts still works. */
-export const CURRENCIES = ['EUR', 'USD', 'GBP', 'PEN', 'BOB', 'BRL', 'SGD', 'CHF', 'JPY', 'AUD', 'CAD'];

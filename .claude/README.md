@@ -5,6 +5,7 @@ travel planner belongs here, not in `~/.claude/`.
 
 ```
 memory/     project memory  ->  MEMORY.md is the index
+briefs/     mission-control briefs (job / why / guardrails / done means)
 plans/      implementation plans
 commands/   slash commands  ->  /<filename-without-.md>
 skills/     skills          ->  skills/<name>/SKILL.md

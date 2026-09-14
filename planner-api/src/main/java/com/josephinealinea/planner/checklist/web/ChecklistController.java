@@ -25,10 +25,10 @@ public class ChecklistController {
             @NotBlank(message = "Describe what needs doing")
             @Size(max = 300, message = "That description is too long") String description,
             String note,
-            String destinationId) {
+            List<String> countryCodes) {
 
         ChecklistService.Input toInput() {
-            return new ChecklistService.Input(category, description, note, destinationId);
+            return new ChecklistService.Input(category, description, note, countryCodes);
         }
     }
 
@@ -36,10 +36,10 @@ public class ChecklistController {
             ChecklistCategory category,
             @Size(max = 300, message = "That description is too long") String description,
             String note,
-            String destinationId) {
+            List<String> countryCodes) {
 
         ChecklistService.Input toInput() {
-            return new ChecklistService.Input(category, description, note, destinationId);
+            return new ChecklistService.Input(category, description, note, countryCodes);
         }
     }
 

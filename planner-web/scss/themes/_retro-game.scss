@@ -1,39 +1,98 @@
-// Retro-Game FF7 — dark, high-contrast, monospaced display face.
+// Retro-Game FF7 — the palette from the main site's own retro theme
+// (josephinealinea.dev /assets/retro-game.css):
+//
+//   bg #0a0a0a   primary #4a9eff   secondary #ff6b9d   accent #ffd700
+//   text #ffffff   border #4a9eff   highlight #ff8800   shadow #1a4a8a
+//
+// Mapped onto this app's tokens the way that site maps them onto its own
+// travel panel: cards are its --travel-card-bg (a translucent blue over the
+// near-black), secondary text is the pink of --travel-secondary-text, and a
+// switched-on filter is the blue of --travel-active-toggle-bg with black
+// text. Links and the other text accents take its gold
+// --travel-link-accent; only the solid primary button departs, taking the
+// same blue as the toggle rather than the gold.
+//
+// Three deliberate departures, each because this app puts the token somewhere
+// that site does not:
+//
+//   --tp-border is the blue at 45% rather than solid #4a9eff. There it edges a
+//   handful of cards; here the same token draws every table row divider, and
+//   a full-strength line on each one buries the content.
+//
+//   The source's --travel-panel-bg is a green wash, rgba(0, 255, 0, 0.1). Its
+//   equivalent here, --tp-surface-alt, is not one panel — it is every chip,
+//   badge, hover row and progress track, and green on all of them reads as a
+//   status rather than a surface. It takes a stronger pour of the same blue
+//   as the cards instead.
+//
+//   --tp-success and --tp-danger have no counterpart in the source at all.
+//   They are a phosphor green and a bright red, both chosen to sit on the
+//   near-black and to carry the dark --tp-on-accent as toast text.
+//
+// Every pairing clears AA, the tightest being red on the chip fill at 4.58:1.
+//
+// A theme file only ever defines tokens (plus the occasional flourish); all
+// structure lives in _core.scss and reads these values.
 body.theme-retro-game {
-  --tp-bg: #0b1020;
-  --tp-surface: #131d38;
-  --tp-surface-alt: #1c2a50;
-  --tp-header-bg: rgba(11, 16, 32, 0.94);
-  --tp-input-bg: #0e1732;
-  --tp-backdrop: rgba(2, 5, 14, 0.72);
-  --tp-toast-bg: #1c2a50;
+  --tp-bg: #0a0a0a;
+  --tp-surface: rgba(74, 158, 255, 0.12);
+  --tp-surface-alt: rgba(74, 158, 255, 0.22);
+  --tp-header-bg: rgba(10, 10, 10, 0.94);
+  --tp-input-bg: rgba(74, 158, 255, 0.08);
+  --tp-backdrop: rgba(0, 0, 0, 0.75);
+  // The primary blue rather than the source's deeper #1a4a8a: --tp-on-accent
+  // is the toast's text as well as its own, and dark ink on that deeper blue
+  // is 2.25:1. On this one it is 7.19:1, and it still clears on the success
+  // and error toasts, which swap in their own bright fills underneath it.
+  --tp-toast-bg: #4a9eff;
 
-  --tp-text: #e8f0ff;
-  --tp-muted: #93a6cc;
-  --tp-border: #2a3d6e;
+  --tp-text: #ffffff;
+  --tp-muted: #ff6b9d;
+  --tp-border: rgba(74, 158, 255, 0.45);
 
-  --tp-accent: #5ad1ff;
-  --tp-accent-strong: #8ae0ff;
-  --tp-on-accent: #06182b;
+  // Text-weight accent roles — links, the active tab, the owner badge, the
+  // focus ring — take the source's gold. The solid primary button does not:
+  // it is the blue of a switched-on filter, matching that site's
+  // "By Category" toggle, which is why the fill is its own token below.
+  --tp-accent: #ffd700;
+  --tp-accent-strong: #ffe44d;
+  --tp-on-accent: #0a0a0a;
 
-  --tp-success: #7bdc8b;
-  --tp-danger: #ff7b7b;
-  --tp-danger-bg: rgba(255, 123, 123, 0.1);
-  --tp-warning: #ffd479;
-  --tp-warning-bg: rgba(255, 212, 121, 0.1);
-  --tp-warning-text: #ffd479;
+  --tp-primary-bg: #4a9eff;
+  --tp-primary-bg-strong: #6fb3ff;
+  --tp-on-primary: #000000;
 
-  --tp-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  // The source's --travel-active-toggle-bg / -text exactly.
+  --tp-selected: #4a9eff;
+  --tp-on-selected: #000000;
+
+  --tp-success: #4dff91;
+  --tp-danger: #ff5555;
+  --tp-danger-bg: rgba(255, 85, 85, 0.12);
+  --tp-warning: #ffd700;
+  --tp-warning-bg: rgba(255, 215, 0, 0.12);
+  --tp-warning-text: #ffd700;
+
+  // The source sets Courier on the body, not just on headings.
+  --tp-font-body: "Courier New", Courier, monospace;
   --tp-font-display: "Courier New", Courier, monospace;
   --tp-font-mono: "Courier New", Courier, monospace;
 
-  --tp-radius: 4px;
-  --tp-radius-sm: 3px;
-  --tp-shadow: 0 0 0 1px rgba(90, 209, 255, 0.14);
+  --tp-radius: 12px;
+  --tp-radius-sm: 8px;
+  --tp-shadow: 0 0 12px rgba(74, 158, 255, 0.22);
 
-  // Squared-off, uppercase headings suit the era.
-  .page-title, .modal-title, .drawer-title, h1, h2 {
+  // The CRT glow the source puts on its body, inherited by everything below.
+  // Kept well under its 5px: at full strength the 0.78rem labels this app
+  // leans on smear into themselves.
+  text-shadow: 0 0 3px rgba(74, 158, 255, 0.35);
+
+  // Headings are the source's signature: the primary blue, uppercase, widely
+  // tracked, over a hard offset shadow in its deep blue rather than a blur.
+  .page-title, .modal-title, .drawer-title, h1, h2, h3 {
+    color: #4a9eff;
+    text-shadow: 2px 2px 0 #1a4a8a;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 2px;
   }
 }

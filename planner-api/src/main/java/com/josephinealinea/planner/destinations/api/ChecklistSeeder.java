@@ -7,14 +7,26 @@ import com.josephinealinea.planner.shared.Ids;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Adding a destination seeds the three things every place needs planning for.
+ * Adding a destination seeds the things that place needs planning for.
  *
- * The accommodation line counts nights when both dates are known — Cusco
- * 25-Oct to 31-Oct becomes "Plan 6N accommodation in Cusco" — and falls back to
- * the plain wording when it is not calculable, because both dates are optional.
+ * Transport and activities always apply. Accommodation only does when the dates
+ * say somebody sleeps there: `Nights.between` (via Destination.nights) is null
+ * unless both dates exist and the end is after the start, so a destination with
+ * no dates yet, or a day trip like 24-Oct to 24-Oct, seeds two items rather
+ * than three. There is nothing to book for a day you do not stay over.
+ *
+ * The accommodation line counts those nights — Cusco 25-Oct to 31-Oct becomes
+ * "Plan 6N accommodation in Cusco" — which is only ever written when a count
+ * exists, so the old un-numbered fallback wording is gone with it.
+ *
+ * When dates are added later, DestinationService.update seeds the missing
+ * accommodation item then. It does that once and only once, tracked on the
+ * destination, so an item somebody deleted on purpose does not come back the
+ * next time the dates are touched.
  *
  * These are ordinary checklist items once created. Nothing re-derives them, so
  * renaming the destination later does not overwrite text a member has edited.
@@ -24,19 +36,28 @@ public class ChecklistSeeder {
 
     public List<ChecklistItem> seedFor(Destination destination, int startingSortOrder) {
         String name = destination.getName();
-        Long nights = destination.nights();
+        List<ChecklistItem> seeded = new ArrayList<>();
 
-        String accommodation = nights == null
-                ? "Plan accommodation in %s".formatted(name)
-                : "Plan %dN accommodation in %s".formatted(nights, name);
+        seeded.add(item(destination, ChecklistCategory.TRANSPORTATION,
+                "Plan transportation to %s".formatted(name), startingSortOrder));
+        if (needsAccommodation(destination)) {
+            seeded.add(accommodationFor(destination, startingSortOrder + seeded.size()));
+        }
+        seeded.add(item(destination, ChecklistCategory.ACTIVITIES,
+                "Plan activities in %s".formatted(name), startingSortOrder + seeded.size()));
+        return List.copyOf(seeded);
+    }
 
-        return List.of(
-                item(destination, ChecklistCategory.TRANSPORTATION,
-                        "Plan transportation to %s".formatted(name), startingSortOrder),
-                item(destination, ChecklistCategory.LODGING,
-                        accommodation, startingSortOrder + 1),
-                item(destination, ChecklistCategory.ACTIVITIES,
-                        "Plan activities in %s".formatted(name), startingSortOrder + 2));
+    /** True when the dates cover at least one night somebody has to sleep. */
+    public boolean needsAccommodation(Destination destination) {
+        return destination.nights() != null;
+    }
+
+    /** The accommodation line on its own, for dates that arrive later. */
+    public ChecklistItem accommodationFor(Destination destination, int sortOrder) {
+        return item(destination, ChecklistCategory.LODGING,
+                "Plan %dN accommodation in %s".formatted(destination.nights(), destination.getName()),
+                sortOrder);
     }
 
     private ChecklistItem item(Destination destination,
@@ -46,7 +67,15 @@ public class ChecklistSeeder {
         ChecklistItem item = new ChecklistItem();
         item.setId(Ids.newId());
         item.setTripId(destination.getTripId());
-        item.setDestinationId(destination.getId());
+        // The link a member sees and filters by is the country. The city is
+        // kept alongside it as provenance: PlanTemplates needs it to suggest a
+        // name and the stay's own dates, and the Destinations table counts the
+        // items each city produced. A destination with no country simply
+        // contributes no link.
+        if (destination.getCountryCode() != null && !destination.getCountryCode().isBlank()) {
+            item.setCountryCodes(List.of(destination.getCountryCode().trim().toUpperCase()));
+        }
+        item.setSeededFromDestinationId(destination.getId());
         item.setCategory(category);
         item.setDescription(description);
         item.setAutoSeeded(true);

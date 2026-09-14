@@ -22,13 +22,16 @@
   white-space: nowrap;
 }
 
+// The header row's fill and text are their own tokens, distinct from the
+// hover/wash pair below, so a theme can give its headers more weight without
+// every hover state following along.
 .table thead th {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--tp-muted);
+  color: var(--tp-table-header-text, var(--tp-muted));
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--tp-surface-alt);
+  background: var(--tp-table-header, var(--tp-surface-alt));
   position: sticky;
   top: 0;
 }
@@ -39,6 +42,15 @@
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table .wrap { white-space: normal; min-width: 220px; }
 .table .actions { text-align: right; }
+
+// The bulk-select column: only as wide as its checkbox, and the whole cell is
+// the hit area so the row does not need a precise click.
+.table .select-cell {
+  width: 1%;
+  padding-right: 0;
+  text-align: center;
+}
+.table .select-cell input { cursor: pointer; }
 
 // Rows that open a detail view.
 .table tbody tr.clickable { cursor: pointer; }
