@@ -34,6 +34,13 @@
   white-space: nowrap;
 }
 
+// A budget row's charged/pending state. Colour rather than wording alone,
+// because the distinction changes what the total above the table means — and
+// only the pending one is tinted: "charged" is the ordinary case, and a table
+// where every row shouts says nothing.
+.chip-charged { color: var(--tp-muted); }
+.chip-pending { color: var(--tp-warning); border-color: var(--tp-warning); }
+
 // Filter chips are buttons, and show their state through aria-pressed.
 //
 // The selected fill is its own token rather than the accent, because a theme

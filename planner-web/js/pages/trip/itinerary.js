@@ -61,6 +61,8 @@ export function itineraryTab() {
     endTime: '',
     cost: '',
     currency: '',
+    // Unticked by default, like the Plan form — see checklist.js.
+    costCharged: false,
     countryCodes: [],
   });
 
@@ -241,6 +243,7 @@ export function itineraryTab() {
         endTime: timeOf(item.endAt),
         cost: item.cost ?? '',
         currency: item.currency || this.budget.displayCurrency || '',
+        costCharged: this.chargedOfPlan(item),
         countryCodes: [...(item.countryCodes || [])],
       };
       this.entryError = '';
@@ -286,6 +289,7 @@ export function itineraryTab() {
           // the row shows "—" instead of a misleading 00:00.
           allDay: !this.entryForm.startTime,
           currency: cost == null ? null : (this.entryForm.currency || null),
+          costCharged: this.entryForm.costCharged,
           countryCodes: this.entryForm.countryCodes,
         };
         if (this.entryForm.id) {

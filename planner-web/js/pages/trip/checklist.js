@@ -24,6 +24,10 @@ export function checklistTab() {
     endTime: '',
     cost: '',
     currency: '',
+    // Unticked for a new plan, the reverse of the budget's own form: a plan is
+    // something you intend to do, and its cost is usually money still to
+    // leave. See BudgetSync on the API.
+    costCharged: false,
     countryCodes: [],
   });
 
@@ -331,6 +335,7 @@ export function checklistTab() {
         endTime: timeOf(plan.endAt),
         cost: plan.cost ?? '',
         currency: plan.currency || this.budget.displayCurrency || '',
+        costCharged: this.chargedOfPlan(plan),
         countryCodes: [...(plan.countryCodes || [])],
       };
       this.planOpen = true;
@@ -373,6 +378,7 @@ export function checklistTab() {
             // Zero is how the API is told to clear a cost and drop its budget row.
             cost: cost == null ? 0 : cost,
             currency: this.planForm.currency || null,
+            costCharged: this.planForm.costCharged,
             // An empty array clears every link server-side.
             countryCodes: this.planForm.countryCodes,
           });
@@ -390,6 +396,7 @@ export function checklistTab() {
           // the row shows "—" instead of a misleading 00:00.
           allDay: !this.planForm.startTime,
           currency: cost == null ? null : (this.planForm.currency || null),
+            costCharged: this.planForm.costCharged,
             countryCodes: this.planForm.countryCodes,
           });
           toast.success(cost == null

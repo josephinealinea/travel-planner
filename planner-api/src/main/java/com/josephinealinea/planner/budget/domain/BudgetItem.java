@@ -24,6 +24,10 @@ import java.util.List;
  * or not it names a place, and it survives any of its destinations being
  * deleted (see DestinationService.delete, which unlinks it the same way it
  * unlinks a checklist item or itinerary entry).
+ *
+ * `status` says whether the money has actually left yet, and is the one field
+ * here that changes what the rollup above the table counts — see BudgetStatus
+ * and markCharged.
  */
 public class BudgetItem implements Audited {
 
@@ -37,6 +41,21 @@ public class BudgetItem implements Audited {
     private LocalDate date;
     private List<String> countryCodes = new ArrayList<>();
     private transient List<String> legacyDestinationIds = new ArrayList<>();
+
+    /**
+     * Charged already, or still to come. CONFIRMED by default so a record
+     * written before this field existed reads as the charge it was — see
+     * BudgetStatus.
+     */
+    private BudgetStatus status = BudgetStatus.CONFIRMED;
+
+    /**
+     * When it was marked charged. Kept rather than derived: a row can be
+     * confirmed long after it was created and long after its own date, and
+     * updatedAt already means something else (any edit at all).
+     */
+    private Instant confirmedAt;
+
     private Instant createdAt;
     // Who made this and who changed it last, for the question that only ever
     // gets asked after something looks wrong. Both are user ids — see Audited.
@@ -50,6 +69,36 @@ public class BudgetItem implements Audited {
     @JsonIgnore
     public boolean isFromPlan() {
         return itineraryItemId != null;
+    }
+
+    @JsonIgnore
+    public boolean isConfirmed() {
+        return status != BudgetStatus.PENDING;
+    }
+
+    /**
+     * The one place the charged/pending transition is written, because both
+     * doors into it — the budget's own form and a plan's cost (see BudgetSync)
+     * — have to agree about what the two states mean.
+     *
+     * Named for the action rather than with a set prefix Jackson would bind to
+     * a property of its own: this writes two fields, and a phantom `charged`
+     * key in the YAML that deserialised into neither of them would be a lie on
+     * disk. See ItineraryItem.coversWholeDay in CLAUDE.md, Traps.
+     *
+     * Confirming stamps {@code confirmedAt} only when there is nothing there
+     * already, so editing the description of a charge made in March does not
+     * restamp it as September. Un-confirming clears it outright: a pending row
+     * carrying a confirmation date would be a row claiming to have been paid.
+     */
+    public void markCharged(boolean charged, Instant now) {
+        if (!charged) {
+            this.status = BudgetStatus.PENDING;
+            this.confirmedAt = null;
+            return;
+        }
+        this.status = BudgetStatus.CONFIRMED;
+        if (this.confirmedAt == null) this.confirmedAt = now;
     }
 
     public String getId() { return id; }
@@ -97,6 +146,15 @@ public class BudgetItem implements Audited {
 
     @JsonIgnore
     public List<String> legacyDestinationIds() { return legacyDestinationIds; }
+
+    public BudgetStatus getStatus() { return status; }
+    /** A record whose YAML predates this field has no status; that is a charge. */
+    public void setStatus(BudgetStatus status) {
+        this.status = status == null ? BudgetStatus.CONFIRMED : status;
+    }
+
+    public Instant getConfirmedAt() { return confirmedAt; }
+    public void setConfirmedAt(Instant confirmedAt) { this.confirmedAt = confirmedAt; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

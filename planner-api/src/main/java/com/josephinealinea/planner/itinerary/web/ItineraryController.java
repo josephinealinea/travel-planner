@@ -37,12 +37,14 @@ public class ItineraryController {
             Boolean allDay,
             BigDecimal cost,
             String currency,
+            /** "Expense already charged" for the budget row a cost creates. */
+            Boolean costCharged,
             List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
-                    countryCodes);
+                    costCharged, countryCodes);
         }
     }
 
@@ -54,12 +56,13 @@ public class ItineraryController {
             Boolean allDay,
             BigDecimal cost,
             String currency,
+            Boolean costCharged,
             List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     null, category, description, startAt, endAt, allDay, cost, currency,
-                    countryCodes);
+                    costCharged, countryCodes);
         }
     }
 

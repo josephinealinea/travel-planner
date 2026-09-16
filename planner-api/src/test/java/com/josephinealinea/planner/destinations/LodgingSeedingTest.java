@@ -94,11 +94,15 @@ class LodgingSeedingTest {
                 new CountryCatalog(RestClient.create()), new TripCountries(destinations));
     }
 
-    private DestinationService.Input input(String start, String end) {
+    private DestinationService.Input suppressed(String start, String end) {
         return new DestinationService.Input("Cusco", "PE", "Peru", null, null, null, null,
                 start == null ? null : LocalDate.parse(start),
                 end == null ? null : LocalDate.parse(end),
-                null);
+                null, true);
+    }
+
+    private DestinationService.Input input(String start, String end) {
+        return new DestinationService.Input("Cusco", "PE", "Peru", null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
     }
 
     private List<ChecklistCategory> seededCategories() {
@@ -196,5 +200,71 @@ class LodgingSeedingTest {
         assertThat(checklist.findAllOrdered(SLUG))
                 .extracting(ChecklistItem::getDescription)
                 .contains("Plan 6N accommodation in Cusco");
+    }
+
+    // ── suppressing the checklist entirely ──────────
+
+    /**
+     * "Suppress auto-generated checklist" on the destination form. Nothing is
+     * seeded — not the accommodation item the dates would otherwise produce,
+     * and not the transport and activities ones either.
+     */
+    @Test
+    void aSuppressedDestinationSeedsNothing() {
+        service.create(TRIP_ID, USER_ID, suppressed("2026-10-25", "2026-10-31"));
+
+        assertThat(checklist.findAll(SLUG)).isEmpty();
+    }
+
+    /**
+     * The reason the flag is stored rather than read once off the form.
+     *
+     * The accommodation item is seeded on a later edit too, when dates arrive
+     * that cover a night. Without remembering the answer, suppressing the
+     * checklist and then filling in the dates would quietly produce the one
+     * item the member said they did not want.
+     */
+    @Test
+    void fillingInDatesLaterStillSeedsNothingForASuppressedDestination() {
+        Destination created = service.create(TRIP_ID, USER_ID, suppressed(null, null)).destination();
+        assertThat(checklist.findAll(SLUG)).isEmpty();
+
+        service.update(TRIP_ID, USER_ID, created.getId(),
+                new DestinationService.Input(null, null, null, null, null, null, null,
+                        LocalDate.parse("2026-10-25"), LocalDate.parse("2026-10-31"), null, null));
+
+        assertThat(checklist.findAll(SLUG)).isEmpty();
+        assertThat(destinations.findById(SLUG, created.getId()).orElseThrow().seedsNoChecklist())
+                .isTrue();
+    }
+
+    /** Unticking it later lets the accommodation item appear, since the dates need one. */
+    @Test
+    void clearingTheFlagLetsTheAccommodationItemAppear() {
+        Destination created = service.create(TRIP_ID, USER_ID,
+                suppressed("2026-10-25", "2026-10-31")).destination();
+        assertThat(checklist.findAll(SLUG)).isEmpty();
+
+        service.update(TRIP_ID, USER_ID, created.getId(),
+                new DestinationService.Input(null, null, null, null, null, null, null,
+                        null, null, null, false));
+
+        // Only the lodging one: transport and activities are seeded at create
+        // time and nothing re-derives them later, exactly as renaming a
+        // destination does not rewrite its items.
+        assertThat(checklist.findAll(SLUG))
+                .extracting(ChecklistItem::getCategory)
+                .containsExactly(ChecklistCategory.LODGING);
+    }
+
+    /** The flag is absent rather than false when nobody asked for it. */
+    @Test
+    void anOrdinaryDestinationStoresNoSuppressionFlagAtAll() {
+        Destination created = service.create(TRIP_ID, USER_ID,
+                input("2026-10-25", "2026-10-31")).destination();
+
+        assertThat(destinations.findById(SLUG, created.getId()).orElseThrow()
+                .getSuppressChecklist()).isNull();
+        assertThat(checklist.findAll(SLUG)).hasSize(3);
     }
 }

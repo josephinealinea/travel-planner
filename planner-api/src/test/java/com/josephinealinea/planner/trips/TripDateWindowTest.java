@@ -125,10 +125,7 @@ class TripDateWindowTest {
     // ── destinations ────────────────────────────────
 
     private DestinationService.Input stay(String start, String end) {
-        return new DestinationService.Input("Cusco", "PE", "Peru", null, null, null, null,
-                start == null ? null : LocalDate.parse(start),
-                end == null ? null : LocalDate.parse(end),
-                null);
+        return new DestinationService.Input("Cusco", "PE", "Peru", null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
     }
 
     @Test
@@ -163,8 +160,7 @@ class TripDateWindowTest {
         trip.setStartDate(LocalDate.parse("2026-11-01"));
         trips.save(trip);
 
-        DestinationService.Input renameOnly = new DestinationService.Input(
-                "Cusco (renamed)", null, null, null, null, null, null, null, null, null);
+        DestinationService.Input renameOnly = new DestinationService.Input("Cusco (renamed)", null, null, null, null, null, null, null, null, null, null);
         Destination updated = destinationService.update(TRIP_ID, USER_ID, destinationId, renameOnly);
 
         assertThat(updated.getName()).isEqualTo("Cusco (renamed)");
@@ -174,7 +170,7 @@ class TripDateWindowTest {
     // ── itinerary, and the checklist's Plan form behind it ──
 
     private ItineraryService.Input plan(String startAt, String endAt) {
-        return new ItineraryService.Input(null, ChecklistCategory.TRANSPORTATION, "Flight LIM to CUZ", startAt == null ? null : LocalDateTime.parse(startAt), endAt == null ? null : LocalDateTime.parse(endAt), null, null, null, List.of());
+        return new ItineraryService.Input(null, ChecklistCategory.TRANSPORTATION, "Flight LIM to CUZ", startAt == null ? null : LocalDateTime.parse(startAt), endAt == null ? null : LocalDateTime.parse(endAt), null, null, null, null, List.of());
     }
 
     @Test
@@ -207,7 +203,7 @@ class TripDateWindowTest {
     private BudgetService.Input expense(String date) {
         return new BudgetService.Input("Yellow fever vaccine", ChecklistCategory.OTHERS,
                 new BigDecimal("60.00"), "EUR",
-                date == null ? null : LocalDate.parse(date), List.of());
+                date == null ? null : LocalDate.parse(date), List.of(), null);
     }
 
     @Test
@@ -231,7 +227,7 @@ class TripDateWindowTest {
         BudgetItem item = budgetRepository.findAll(SLUG).get(0);
 
         BudgetService.Input amountOnly = new BudgetService.Input(
-                null, null, new BigDecimal("75.00"), null, null, null);
+                null, null, new BigDecimal("75.00"), null, null, null, null);
 
         assertThat(budgetService.update(TRIP_ID, USER_ID, item.getId(), amountOnly).getAmount())
                 .isEqualByComparingTo("75.00");

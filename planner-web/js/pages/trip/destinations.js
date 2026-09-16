@@ -26,6 +26,10 @@ export function destinationsTab() {
     startDate: '',
     endDate: '',
     notes: '',
+    // Ticked, nothing is seeded for this destination. Stored on the record
+    // rather than acted on once, because the accommodation item is also seeded
+    // on a later date edit — see DestinationService.
+    suppressChecklist: false,
   });
 
   return {
@@ -181,6 +185,7 @@ export function destinationsTab() {
         startDate: destination.startDate || '',
         endDate: destination.endDate || '',
         notes: destination.notes || '',
+        suppressChecklist: !!destination.suppressChecklist,
       };
       this.destError = '';
       this.suggestions = [];
@@ -307,6 +312,7 @@ export function destinationsTab() {
         startDate: this.destForm.startDate || null,
         endDate: this.destForm.endDate || null,
         notes: this.destForm.notes || null,
+        suppressChecklist: this.destForm.suppressChecklist,
       };
 
       this.destBusy = true;

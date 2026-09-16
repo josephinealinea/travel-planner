@@ -7,6 +7,8 @@ import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+
 
 /**
  * Keeps the budget in step with plan costs. The sync is deliberately one-way
@@ -17,6 +19,12 @@ import org.springframework.stereotype.Component;
  *  - a later cost or currency change updates only the amount and currency, so
  *    a description, category or set of locations somebody has since corrected
  *    in the budget is never clobbered;
+ *  - the row it creates starts <b>pending</b>, not charged: a plan is
+ *    something you intend to do, and its cost is money still to leave. That is
+ *    the opposite default from an expense typed into the budget by hand, and
+ *    it is why the Plan form's own "Expense already charged" box starts
+ *    unticked. Whoever adds the plan can tick it there, or later in the
+ *    budget;
  *  - clearing the cost, or deleting the plan, removes the row it created;
  *  - a manually added expense has no plan behind it and is never touched.
  */
@@ -35,7 +43,7 @@ public class BudgetSync {
      * the budget by anybody, so without it the only expenses on the trip with
      * no author would be exactly the automatic ones.
      */
-    public void afterSave(String tripSlug, ItineraryItem plan, String userId) {
+    public void afterSave(String tripSlug, ItineraryItem plan, String userId, Boolean charged) {
         if (!plan.hasCost()) {
             removeLinked(tripSlug, plan);
             return;
@@ -56,12 +64,20 @@ public class BudgetSync {
             created.setCurrency(plan.getCurrency());
             created.setDate(plan.getStartAt() == null ? null : plan.getStartAt().toLocalDate());
             created.setCountryCodes(plan.getCountryCodes());
+            // Pending unless the form said otherwise — the reverse of a manual
+            // expense's default. See the class comment.
+            created.markCharged(Boolean.TRUE.equals(charged), Instant.now());
             Audit.created(created, userId);
             budget.save(tripSlug, created);
             plan.setBudgetItemId(created.getId());
         } else {
             existing.setAmount(plan.getCost());
             existing.setCurrency(plan.getCurrency());
+            // The one field beyond amount and currency a plan edit may touch,
+            // and only when the form actually sent it. The Plan form shows the
+            // linked row's real status, so submitting it is the member saying
+            // what that status should be — not this sync deciding for them.
+            if (charged != null) existing.markCharged(charged, Instant.now());
             Audit.touched(existing, userId);
             budget.save(tripSlug, existing);
         }

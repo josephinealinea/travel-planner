@@ -142,6 +142,16 @@ Rules that are easy to break by accident, all with tests:
     France and Belgium is 50/50 even when the trip has two French stops. The
     old per-destination weighting went with the link, and a country cannot be
     named twice.
+- **"Suppress auto-generated checklist" is stored on the destination, not just
+  read off the form.** `Destination.suppressChecklist`, honoured in
+  `DestinationService.create` *and* in `seedLodgingIfTheDatesNowNeedIt` — that
+  second one is the reason it has to be remembered: the accommodation item is
+  seeded on a later date edit, so a flag read once at create time would let
+  suppressing the checklist and then filling in the dates quietly produce the
+  one item the member said they did not want. Clearing it afterwards lets the
+  accommodation item appear (the dates justify it) but never back-fills
+  transport and activities, which are create-time only — the same reason
+  renaming a destination does not rewrite its seeded text.
 - **Deleting a destination unlinks its checklist items, it does not delete
   them.** Losing a place must never discard the planning done against it. With
   country links most deletions now unlink *nothing*: dropping Cusco leaves a
@@ -192,10 +202,42 @@ Rules that are easy to break by accident, all with tests:
   `allDay` then never reaches the YAML and a stay's nights come back timed.
   See Traps.
 - **`BudgetSync` is one-way and narrow.** A later cost change updates only
-  amount and currency, so a description someone has since corrected in the
-  budget is never clobbered. Clearing the cost, or deleting the plan, removes
-  the row it created. A manual expense has no `itineraryItemId` and is never
-  touched.
+  amount and currency — plus `status`, and only when the form actually sends it
+  — so a description someone has since corrected in the budget is never
+  clobbered. Clearing the cost, or deleting the plan, removes the row it
+  created. A manual expense has no `itineraryItemId` and is never touched.
+- **An expense is charged or pending, and the two defaults point opposite
+  ways.** `BudgetStatus` on `BudgetItem`, with `confirmedAt` beside it. An
+  expense typed into the budget by hand starts **charged** — the form's box is
+  ticked — because money entered after the fact has usually already left. A
+  plan's cost starts **pending**: a plan is something you intend to do. Both
+  forms carry the same "Expense already charged" label and both write through
+  `BudgetItem.markCharged`, the one place the transition lives, so the two
+  doors cannot disagree about what the states mean. Three rules are easy to
+  break:
+  - **`CONFIRMED` is the field's default, so a record with no `status` in its
+    YAML reads as a charge.** Every row written before this existed was money
+    already spent, and a budget that reclassified a whole trip as speculative
+    the day the field shipped would be worse than one that never knew the
+    difference. `BudgetStatusTest` asserts this against a hand-written file,
+    not an object.
+  - **`confirmedAt` is stamped once and never moved.** Correcting the
+    description of a charge made in March must leave March alone, so
+    `markCharged` only stamps when there is nothing there. Un-ticking clears it
+    outright — a pending row carrying a confirmation date would be a row
+    claiming to have been paid.
+  - **A pending row is excluded, never hidden.** It is listed in the table and
+    labelled Pending; it is only left out of the figures that claim to be money
+    spent.
+- **The budget rollup is computed twice, and the two halves never mix.**
+  `BudgetService.Summary` carries `charged` and `forecast`, each a whole
+  `Breakdown` — category slices, country slices, native totals, total and
+  missing rates over one set of rows. Group by chooses between them
+  (`budgetView` in `js/pages/trip/budget.js` resolves it in one place) and
+  every number on the panel follows together, which is the point: a total from
+  one set of rows shown above a breakdown of another is the single way this
+  panel can lie. The headline says which it is — `Total:` or `Forecast
+  total:` — rather than leaving a reader to infer it from the selector.
 - **The trip's dates bound every date recorded against it.** `TripWindow`
   (`trips/api`) is the one check, applied in `DestinationService`,
   `ItineraryService` — which is also what the checklist's Plan form writes
@@ -309,6 +351,68 @@ lookup — from `resources/publish/page.css` and `page.js`. Those assets live in
 the API on purpose, so publishing never depends on the frontend having been
 built. Output is a plain static directory; copying it to a CDN is the whole
 deployment.
+
+**A publish request builds the page; approving it only reveals it.** A member
+who is not the owner cannot publish, and their request now renders the page
+immediately — in **their** theme and **their** published-page settings — into
+`data/published-pending/<slug>/`. Approving *moves* that file into
+`data/published/<slug>/` untouched, so what goes public is what they asked to
+publish rather than a rebuild using whatever the owner has configured. The
+`theme` argument to `approveRequest` is deliberately ignored, and
+`PublishRequest.theme` records the requester's, which is the only surviving
+record of what the live page looks like.
+
+- **Staging is a sibling directory, not a subdirectory of the publish dir.**
+  That directory means exactly one thing — everything in it is public, which is
+  what lets it be copied to a CDN unchanged. A staged page living there, however
+  well hidden by the UI, would be a leak waiting for somebody to guess a slug,
+  and slugs come from trip titles. `PublicPageController` is untouched: it still
+  just serves files, because nothing unapproved is ever among them.
+- **No URL exists before approval** for free: `TripViewAssembler.publicUrl`
+  already answers null for a trip that is not `PUBLISHED`.
+- **The page is a snapshot.** Changes made between request and approval are not
+  picked up — approving publishes what was asked for. `goLive` falls back to
+  rendering (still with the *requester's* settings) when nothing is staged, so
+  a request made before staging existed cannot leave an owner with an approval
+  that did nothing.
+- **Three paths throw the staged page away**, and forgetting any of them would
+  leave a page to go live later or outlive its trip: reject, withdraw, and the
+  owner publishing directly — plus `TripService.delete`, which removes both
+  directories.
+- `/api/v1/trips/{id}/publish/preview` serves the staged page to **members
+  only**, `no-store`. That is what building it early buys: the owner sees
+  exactly what would go public before deciding.
+
+**What a published page shows is an account setting, and every one of them
+defaults to off.** `Account → Appearance → Published page`, stored on the
+`User` (so `users.yml`, not `localStorage` like the theme beside it) and read
+from the *publishing* member at publish time — so ticking a box applies to the
+next publish, not retroactively, because a published page is a rendered file.
+`AuthDtos.PublishedPage` groups them and `PATCH /account/published-page` takes
+only the flags being changed, so the next checkbox is one field in three
+places rather than a new endpoint. There are three:
+`publishItineraryCost`, `publishDestinationDays` and
+`publishForecastExpenses` — the last gating whether a published page offers
+its two Forecast options under Group by at all. **The planner's own Budget tab
+always offers all four**; the setting is about what a public page reveals, and
+what a trip is still going to cost is a more private number than what it has
+cost so far. `PublishOptions` carries them into
+`StaticSiteRenderer`, so `render` does not grow a boolean parameter per
+feature — `render(trip, false, true)` says nothing about which is which.
+
+The rule that matters: **"not displayed" has to mean "not shipped".** A
+published page is public, so a value left in `window.TRIP` is readable by
+anyone who opens the source even when nothing renders it — hiding with CSS or
+JS would be theatre. `StaticSiteRenderer` therefore leaves a gated value out of
+the snapshot, and the test asserts the number appears nowhere in the file
+rather than just nowhere in the markup. The payload's mapper is not
+`NON_NULL`, so what a reader sees is the key with a `null` — the figure itself
+is absent, which is what matters; `page.js` gates on the falsy value
+(`budget.forecast`, `destination.nights`) exactly as it would on a missing
+key. `publishItineraryCost` is a
+primitive `boolean` for the same kind of reason: `YamlStore` serialises
+NON_NULL, so a `Boolean` would be absent from `users.yml` until first set, and
+a setting you cannot see in the file is one nobody knows is there.
 
 **Nobody is asked which theme to publish in.** The page uses whatever theme the
 publishing member is looking at, read from `savedTheme()` at the moment they

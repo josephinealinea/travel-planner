@@ -173,8 +173,12 @@
 
       var name = el('div', 'dest-name');
       name.textContent = (destination.flag ? destination.flag + ' ' : '') + destination.name;
-      if (destination.nights) {
-        name.appendChild(el('span', 'nights-badge', destination.nights + 'N'));
+      // Whichever the publishing account asked for arrives; the other is
+      // absent, so there is no flag to read here — see PublishedTrip.Destination.
+      if (destination.nights || destination.days) {
+        name.appendChild(el('span', 'nights-badge', destination.days
+          ? destination.days + 'D'
+          : destination.nights + 'N'));
       }
       card.appendChild(name);
 
@@ -333,11 +337,11 @@
    * it. Its own colours come from the category data, so a pie here matches the
    * one in the app and on the main site.
    */
-  function pieChart(categories) {
+  function pieChart(categories, label) {
     var wrap = el('div', 'budget-pie');
     var canvas = document.createElement('canvas');
     canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', 'Spend by category');
+    canvas.setAttribute('aria-label', label || 'Spend by category');
     wrap.appendChild(canvas);
 
     var total = categories.reduce(function (sum, c) { return sum + (Number(c.amount) || 0); }, 0);
@@ -382,10 +386,16 @@
   var COUNTRY_COLOURS = ['#4C6EF5', '#F76707', '#E64980', '#12B886', '#7048E8',
                          '#FAB005', '#15AABF', '#868E96'];
 
-  /** The slices for one breakdown, in the shape pieChart and the bars want. */
-  function budgetSlices(budget, mode) {
-    if (mode === 'country') {
-      return list(budget.byCountry).map(function (country, i) {
+  /**
+   * The slices for one breakdown, in the shape pieChart and the bars want.
+   *
+   * `rollup` is one of budget.charged / budget.forecast — the same figures over
+   * the charges alone, and over the charges plus everything still to be paid.
+   * `dimension` picks category or country within it.
+   */
+  function budgetSlices(rollup, dimension) {
+    if (dimension === 'country') {
+      return list(rollup.byCountry).map(function (country, i) {
         return {
           label: (country.flag ? country.flag + ' ' : '') + country.label,
           amount: Number(country.amount) || 0,
@@ -393,7 +403,7 @@
         };
       });
     }
-    return list(budget.byCategory).map(function (category) {
+    return list(rollup.byCategory).map(function (category) {
       return {
         label: (category.icon ? category.icon + ' ' : '') + category.label,
         amount: Number(category.amount) || 0,
@@ -402,11 +412,28 @@
     });
   }
 
+  /**
+   * A Group by key, "<dimension>" or "<dimension>-forecast", resolved into the
+   * rollup it names and the dimension within it. One control choosing two
+   * things, because they are one question: what am I looking at.
+   */
+  function budgetRollup(budget, key) {
+    var forecast = key.indexOf('-forecast') > 0;
+    return {
+      rollup: (forecast ? budget.forecast : budget.charged) || budget.charged || {},
+      dimension: key.indexOf('country') === 0 ? 'country' : 'category',
+      forecast: forecast
+    };
+  }
+
   function budgetPanel() {
     var budget = trip.budget || {};
     var panel = section('budget', '💰 Budget');
 
-    if (!list(budget.byCategory).length) {
+    // Charged is always shipped; forecast only when the publishing account
+    // asked for it, so its absence is what hides the two extra buttons.
+    var charged = budget.charged || {};
+    if (!list(charged.byCategory).length && !list((budget.forecast || {}).byCategory).length) {
       panel.appendChild(el('p', 'empty', 'No costs recorded yet.'));
       return panel;
     }
@@ -418,7 +445,12 @@
     // row of buttons.
     var modes = el('div', 'panel-toggle budget-modes');
     modes.appendChild(el('span', 'panel-toggle-label', 'Group by'));
-    [['category', 'Category'], ['country', 'Country']].forEach(function (pair) {
+    var modeList = [['category', 'Category'], ['country', 'Country']];
+    if (budget.forecast) {
+      modeList.push(['category-forecast', 'Category (Forecast)']);
+      modeList.push(['country-forecast', 'Country (Forecast)']);
+    }
+    modeList.forEach(function (pair) {
       var button = el('button', 'panel-btn', pair[1]);
       button.type = 'button';
       button.setAttribute('data-breakdown', pair[0]);
@@ -433,30 +465,48 @@
     layout.appendChild(chartHolder);
 
     var details = el('div', 'budget-details');
-    details.appendChild(el('div', 'budget-total',
-      'Total: ' + money(budget.total, budget.displayCurrency)));
-
-    // What was actually spent, in the currencies it was actually spent in —
-    // native_totals already comes from the API summed and sorted, so this
-    // only formats and joins.
-    var nativeLabel = list(budget.nativeTotals)
-      .filter(function (n) { return Number(n.amount) > 0; })
-      .map(function (n) { return money(n.amount, n.currency); })
-      .join(' + ');
-    if (nativeLabel) {
-      details.appendChild(el('div', 'budget-native-totals', 'Native: ' + nativeLabel));
-    }
+    // Redrawn with the rest of the panel: a forecast total beside charged-only
+    // slices would be the one way this panel can mislead.
+    var totalLine = el('div', 'budget-total');
+    details.appendChild(totalLine);
+    var nativeLine = el('div', 'budget-native-totals');
+    details.appendChild(nativeLine);
 
     var legend = el('ul', 'budget-legend');
     details.appendChild(legend);
     layout.appendChild(details);
     card.appendChild(layout);
 
+    var warning = el('div', 'warn');
+    card.appendChild(warning);
+
     function draw(mode) {
-      var slices = budgetSlices(budget, mode);
+      var chosen = budgetRollup(budget, mode);
+      var rollup = chosen.rollup;
+      var slices = budgetSlices(rollup, chosen.dimension);
+
+      totalLine.textContent = (chosen.forecast ? 'Forecast total: ' : 'Total: ')
+        + money(rollup.total, budget.displayCurrency);
+
+      // What was actually spent, in the currencies it was actually spent in —
+      // nativeTotals already comes from the API summed and sorted, so this
+      // only formats and joins.
+      var nativeLabel = list(rollup.nativeTotals)
+        .filter(function (n) { return Number(n.amount) > 0; })
+        .map(function (n) { return money(n.amount, n.currency); })
+        .join(' + ');
+      nativeLine.textContent = nativeLabel ? 'Native: ' + nativeLabel : '';
+      nativeLine.hidden = !nativeLabel;
+
+      var missing = list(rollup.currenciesMissingRates);
+      warning.textContent = missing.length
+        ? 'Not included in the total — no exchange rate set for: ' + missing.join(', ')
+        : '';
+      warning.hidden = !missing.length;
 
       chartHolder.textContent = '';
-      chartHolder.appendChild(pieChart(slices));
+      chartHolder.appendChild(pieChart(slices,
+        (chosen.forecast ? 'Forecast spend by ' : 'Spend by ') + chosen.dimension));
 
       legend.textContent = '';
       var total = slices.reduce(function (sum, s) { return sum + s.amount; }, 0);
@@ -501,12 +551,6 @@
     });
 
     draw('category');
-
-    if (list(budget.currenciesMissingRates).length) {
-      card.appendChild(el('div', 'warn',
-        'Not included in the total — no exchange rate set for: '
-        + budget.currenciesMissingRates.join(', ')));
-    }
 
     panel.appendChild(card);
     return panel;

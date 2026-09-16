@@ -70,8 +70,17 @@ public class PublishService {
         return trips.save(trip);
     }
 
-    /** Any member who is not the owner. One pending request at a time. */
-    public Trip requestPublish(String tripId, String userId, String note) {
+    /**
+     * Any member who is not the owner. One pending request at a time.
+     *
+     * The page is built now, from the requesting member's own theme and
+     * account settings, into the staging directory — so what eventually goes
+     * public is what they asked to publish, not a rebuild using whatever the
+     * owner happens to have configured. Nothing is reachable at the public URL
+     * until the owner approves, and no URL is shown until then either
+     * (TripViewAssembler.publicUrl answers null while the trip is a draft).
+     */
+    public Trip requestPublish(String tripId, String userId, String note, String theme) {
         Trip trip = access.requireMember(tripId, userId);
         if (trip.isOwner(userId)) {
             throw ApiException.badRequest("You own this trip — publish it directly.");
@@ -87,14 +96,18 @@ public class PublishService {
         request.setStatus(PublishRequest.Status.PENDING);
         request.setNote(note == null || note.isBlank() ? null : note.trim());
         request.setRequestedAt(Instant.now());
+        request.setTheme(StaticSiteRenderer.safeTheme(theme));
         trip.getPublishRequests().add(request);
         Audit.touched(trip, userId);
 
         Trip saved = trips.save(trip);
 
+        var requester = users.require(userId);
+        renderer.renderPending(saved, optionsFor(requester), request.getTheme());
+
         var owner = users.require(trip.getOwnerUserId());
         email.send(templates.publishRequested(
-                owner.getEmail(), trip.getTitle(), users.require(userId).displayName()));
+                owner.getEmail(), trip.getTitle(), requester.displayName()));
         return saved;
     }
 
@@ -113,6 +126,8 @@ public class PublishService {
         request.setDecidedAt(Instant.now());
         request.setDecidedByUserId(userId);
         Audit.touched(trip, userId);
+        // Withdrawn, so the page built for it is not going to be published.
+        renderer.removePending(trip.getSlug());
         return trips.save(trip);
     }
 
@@ -125,7 +140,10 @@ public class PublishService {
         request.setDecidedAt(Instant.now());
         request.setDecidedByUserId(userId);
 
-        Trip published = publishInternal(trip, userId, theme);
+        // The staged page goes live as it was built, so the theme recorded on
+        // the trip is the requester's, not the approving owner's. The `theme`
+        // argument is ignored for an approval for exactly that reason.
+        Trip published = goLive(trip, request, userId);
 
         var requester = users.require(request.getRequestedByUserId());
         email.send(templates.publishApproved(
@@ -141,11 +159,49 @@ public class PublishService {
         request.setDecidedAt(Instant.now());
         request.setDecidedByUserId(userId);
         Audit.touched(trip, userId);
+        renderer.removePending(trip.getSlug());
         Trip saved = trips.save(trip);
 
         var requester = users.require(request.getRequestedByUserId());
         email.send(templates.publishRejected(requester.getEmail(), trip.getTitle()));
         return saved;
+    }
+
+    /**
+     * Takes an approved request's staged page live.
+     *
+     * A move, not a rebuild — see StaticSiteRenderer.promotePending. The
+     * fallback matters: a request made before staging existed, or one whose
+     * staged page was cleared, has nothing to move, and refusing to publish
+     * would leave the owner with an approval that did nothing. It renders
+     * instead, still using the *requester's* settings so the outcome does not
+     * depend on which path ran.
+     */
+    private Trip goLive(Trip trip, PublishRequest request, String approverId) {
+        trip.setPublishedTheme(StaticSiteRenderer.safeTheme(request.getTheme()));
+        trip.setStatus(TripStatus.PUBLISHED);
+        trip.setPublishedAt(Instant.now());
+        Audit.touched(trip, approverId);
+        Trip saved = trips.save(trip);
+
+        if (!renderer.promotePending(saved.getSlug())) {
+            var requester = users.require(request.getRequestedByUserId());
+            renderer.render(saved, optionsFor(requester));
+        }
+        return saved;
+    }
+
+    /** A member's own published-page settings. */
+    private PublishOptions optionsFor(com.josephinealinea.planner.identity.domain.User user) {
+        return new PublishOptions(user.isPublishItineraryCost(),
+                user.isPublishDestinationDays(),
+                user.isPublishForecastExpenses());
+    }
+
+    /** The staged page's HTML for a members-only preview, or null if none. */
+    public String previewPending(String tripId, String userId) {
+        Trip trip = access.requireMember(tripId, userId);
+        return renderer.readPending(trip.getSlug());
     }
 
     private Trip publishInternal(Trip trip, String userId, String theme) {
@@ -156,7 +212,14 @@ public class PublishService {
         trip.setPublishedAt(Instant.now());
         Audit.touched(trip, userId);
         Trip saved = trips.save(trip);
-        renderer.render(saved);
+        // The publishing member's own setting, not the owner's: they are the
+        // one choosing to put this page up. Read at publish time, so changing
+        // the checkbox takes effect on the next publish rather than
+        // retroactively — a published page is a rendered file.
+        renderer.render(saved, optionsFor(users.require(userId)));
+        // Publishing directly supersedes anything staged for an undecided
+        // request, so it must not be left behind to go live later.
+        renderer.removePending(saved.getSlug());
         return saved;
     }
 

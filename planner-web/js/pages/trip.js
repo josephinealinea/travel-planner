@@ -51,7 +51,15 @@ export function tripPage() {
     destinations: [],
     checklist: [],
     itinerary: [],
-    budget: { items: [], byCategory: {}, byCountry: [], exchangeRates: {}, total: 0,
+    // charged and forecast are the same rollup over different rows — the
+    // charges alone, and the charges plus everything still to be paid. Both are
+    // shaped here so the Budget tab's getters have something to read before the
+    // first load lands. See BudgetService.Breakdown.
+    budget: { items: [], exchangeRates: {},
+             charged: { byCategory: {}, byCountry: [], nativeTotals: [], total: 0,
+                        currenciesMissingRates: [] },
+             forecast: { byCategory: {}, byCountry: [], nativeTotals: [], total: 0,
+                         currenciesMissingRates: [] },
              displayCurrency: 'EUR', totalsCurrency: 'EUR' },
     publish: { status: 'DRAFT', requests: [] },
     currentUserId: null,

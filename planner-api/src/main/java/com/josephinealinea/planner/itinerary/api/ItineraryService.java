@@ -37,6 +37,12 @@ public class ItineraryService {
                         Boolean allDay,
                         BigDecimal cost,
                         String currency,
+                        /**
+                         * "Expense already charged", for the budget row a cost
+                         * creates. Unticked by default on a plan — see
+                         * BudgetSync. Null on a patch means "leave it".
+                         */
+                        Boolean costCharged,
                         List<String> countryCodes) {}
 
     private final ItineraryRepository itinerary;
@@ -133,7 +139,7 @@ public class ItineraryService {
         Audit.created(plan, userId);
 
         itinerary.save(trip.getSlug(), plan);
-        budgetSync.afterSave(trip.getSlug(), plan, userId);
+        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged());
         // Saved again because the sync writes back the new budget row's id.
         itinerary.save(trip.getSlug(), plan);
 
@@ -228,7 +234,7 @@ public class ItineraryService {
         Audit.touched(plan, userId);
 
         itinerary.save(trip.getSlug(), plan);
-        budgetSync.afterSave(trip.getSlug(), plan, userId);
+        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged());
         return itinerary.save(trip.getSlug(), plan);
     }
 

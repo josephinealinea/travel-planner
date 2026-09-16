@@ -115,16 +115,81 @@ public class StaticSiteRenderer {
     }
 
     /** Writes index.html and trip.json into the trip's publish directory. */
-    public void render(Trip trip) {
-        PublishedTrip snapshot = snapshot(trip);
+    /**
+     * @param options the publishing member's own account settings. Anything
+     *   switched off is left out of the payload entirely rather than hidden in
+     *   the page, because a published page is public: a value still in
+     *   window.TRIP is readable by anybody who opens the source, so "not
+     *   displayed" has to mean "not shipped".
+     */
+    public void render(Trip trip, PublishOptions options) {
+        write(trip, options, safeTheme(trip.getPublishedTheme()),
+                paths.publishedTrip(trip.getSlug()));
+        log.info("Published \"{}\"", trip.getTitle());
+    }
+
+    /**
+     * Renders to the staging directory instead, for a publish request the
+     * owner has not decided yet.
+     *
+     * Rendered now, with the requesting member's own theme and account
+     * settings, and moved into place untouched when the request is approved —
+     * so what goes public is exactly what they asked to publish. Nothing in
+     * the public directory until then; see YamlPaths.pendingDir.
+     */
+    public void renderPending(Trip trip, PublishOptions options, String theme) {
+        write(trip, options, safeTheme(theme), paths.pendingTrip(trip.getSlug()));
+        log.info("Staged \"{}\" for approval", trip.getTitle());
+    }
+
+    private void write(Trip trip, PublishOptions options, String theme, java.nio.file.Path dir) {
+        PublishedTrip snapshot = snapshot(trip, options);
         String payload = writeJson(snapshot);
-
-        var dir = paths.publishedTrip(trip.getSlug());
-        store.writeText(dir.resolve("index.html"),
-                page(trip, snapshot, payload, safeTheme(trip.getPublishedTheme())));
+        store.writeText(dir.resolve("index.html"), page(trip, snapshot, payload, theme));
         store.writeText(dir.resolve("trip.json"), payload);
+    }
 
-        log.info("Published \"{}\" to {}", trip.getTitle(), dir);
+    /**
+     * Moves an approved staged page into the public directory, replacing
+     * whatever was there.
+     *
+     * A move rather than a re-render: the page was built when the request was
+     * sent, and approving it is not an invitation to rebuild it from data that
+     * may have changed since. Returns false when nothing was staged, which is
+     * how the caller knows to fall back to rendering.
+     */
+    public boolean promotePending(String slug) {
+        var staged = paths.pendingTrip(slug);
+        if (!java.nio.file.Files.exists(staged.resolve("index.html"))) return false;
+
+        var live = paths.publishedTrip(slug);
+        // Files.move refuses to replace a non-empty directory, so the old page
+        // goes first. A crash between the two leaves no page rather than a
+        // half-merged one, which is the safe direction to fail in.
+        store.deleteTree(live);
+        try {
+            java.nio.file.Files.createDirectories(live.getParent());
+            java.nio.file.Files.move(staged, live);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("Could not publish " + slug, e);
+        }
+        return true;
+    }
+
+    /** Throws the staged page away — a request that was rejected or withdrawn. */
+    public void removePending(String slug) {
+        store.deleteTree(paths.pendingTrip(slug));
+    }
+
+    /** The staged page's HTML, for the members-only preview. Null if none. */
+    public String readPending(String slug) {
+        var file = paths.pendingTrip(slug).resolve("index.html");
+        if (!java.nio.file.Files.exists(file)) return null;
+        try {
+            return java.nio.file.Files.readString(file);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("Could not read the staged page", e);
+        }
     }
 
     public void remove(String slug) {
@@ -133,7 +198,7 @@ public class StaticSiteRenderer {
 
     // ── snapshot ────────────────────────────────────────────────────────────
 
-    private PublishedTrip snapshot(Trip trip) {
+    private PublishedTrip snapshot(Trip trip, PublishOptions options) {
         String slug = trip.getSlug();
         var allDestinations = destinations.findAllOrdered(slug);
         var allChecklist = checklist.findAllOrdered(slug);
@@ -176,16 +241,17 @@ public class StaticSiteRenderer {
                         .map(e -> new PublishedTrip.Country(e.getKey(), e.getValue()))
                         .toList(),
                 String.join(" → ", route),
-                allDestinations.stream().map(this::toView).toList(),
-                days(allItinerary, allDestinations),
+                allDestinations.stream().map(d -> toView(d, options)).toList(),
+                days(allItinerary, allDestinations, options.itineraryCost()),
                 allChecklist.stream()
                         .map(item -> toView(item, countryNames))
                         .toList(),
-                toView(budget));
+                toView(budget, options));
     }
 
     private PublishedTrip.Destination toView(
-            com.josephinealinea.planner.destinations.domain.Destination destination) {
+            com.josephinealinea.planner.destinations.domain.Destination destination,
+            PublishOptions options) {
         String mapUrl = destination.hasCoordinates()
                 ? "https://www.google.com/maps/search/?api=1&query=%s,%s"
                         .formatted(destination.getLatitude(), destination.getLongitude())
@@ -198,7 +264,10 @@ public class StaticSiteRenderer {
                 destination.getLongitude(),
                 iso(destination.getStartDate()),
                 iso(destination.getEndDate()),
-                destination.nights(),
+                // Nights unless the account asked for days, and only ever
+                // one of them — see PublishedTrip.Destination.
+                options.destinationDays() ? null : destination.nights(),
+                options.destinationDays() ? destination.days() : null,
                 destination.getNotes(),
                 mapUrl);
     }
@@ -220,7 +289,8 @@ public class StaticSiteRenderer {
 
     /** Groups itinerary entries by day; undated plans are left out of the timeline. */
     private List<PublishedTrip.Day> days(List<ItineraryItem> items,
-                                        List<Destination> allDestinations) {
+                                        List<Destination> allDestinations,
+                                        boolean showItineraryCost) {
         // Sorted by day rather than by insertion. The stream above already
         // walks items in start order and a stay only ever adds days forward
         // from its own first, so insertion order happens to come out
@@ -238,7 +308,7 @@ public class StaticSiteRenderer {
                 .sorted(Comparator.comparing(ItineraryItem::getStartAt))
                 .forEach(item -> byDay.computeIfAbsent(item.getStartAt().toLocalDate(),
                                 key -> new ArrayList<>())
-                        .add(entryFor(item)));
+                        .add(entryFor(item, showItineraryCost)));
 
         // Where the trip is on each day, from the destinations' own dates —
         // both ends counted, the same reading as the app's Days column. This is
@@ -280,7 +350,7 @@ public class StaticSiteRenderer {
      * cost rides on the check-in entry alone, which is the only one that
      * carries it — one booking, one charge.
      */
-    private PublishedTrip.Entry entryFor(ItineraryItem item) {
+    private PublishedTrip.Entry entryFor(ItineraryItem item, boolean showItineraryCost) {
         LocalTime shown = item.coversWholeDay() ? null : item.getStartAt().toLocalTime();
         LocalTime until = item.coversWholeDay() || item.getEndAt() == null
                 ? null
@@ -293,13 +363,24 @@ public class StaticSiteRenderer {
                 item.getDescription(),
                 time(shown),
                 time(until),
-                item.getCost() != null ? item.getCost().toPlainString() : null,
-                item.getCurrency());
+                // Off by default, and omitted rather than hidden — see render().
+                showItineraryCost && item.getCost() != null
+                        ? item.getCost().toPlainString() : null,
+                showItineraryCost ? item.getCurrency() : null);
     }
 
-    private PublishedTrip.Budget toView(BudgetService.Summary summary) {
+    private PublishedTrip.Budget toView(BudgetService.Summary summary, PublishOptions options) {
+        return new PublishedTrip.Budget(
+                summary.displayCurrency(),
+                toView(summary.charged()),
+                // Off by default, and left null rather than shipped and then
+                // hidden — see render().
+                options.forecastExpenses() ? toView(summary.forecast()) : null);
+    }
+
+    private PublishedTrip.Budget.Breakdown toView(BudgetService.Breakdown breakdown) {
         List<PublishedTrip.Budget.Category> categories = new ArrayList<>();
-        summary.byCategory().forEach((key, amount) -> {
+        breakdown.byCategory().forEach((key, amount) -> {
             if (amount.signum() == 0) return;
             ChecklistCategory category = ChecklistCategory.valueOf(key);
             categories.add(new PublishedTrip.Budget.Category(
@@ -310,23 +391,22 @@ public class StaticSiteRenderer {
                     amount));
         });
 
-        List<PublishedTrip.Budget.Country> countries = summary.byCountry().stream()
+        List<PublishedTrip.Budget.Country> countries = breakdown.byCountry().stream()
                 .filter(country -> country.amount() != null && country.amount().signum() != 0)
                 .map(country -> new PublishedTrip.Budget.Country(
                         country.key(), country.name(), country.flag(), country.amount()))
                 .toList();
 
-        List<PublishedTrip.Budget.Native> nativeTotals = summary.nativeTotals().stream()
+        List<PublishedTrip.Budget.Native> nativeTotals = breakdown.nativeTotals().stream()
                 .map(n -> new PublishedTrip.Budget.Native(n.currency(), n.amount()))
                 .toList();
 
-        return new PublishedTrip.Budget(
-                summary.displayCurrency(),
-                summary.total(),
+        return new PublishedTrip.Budget.Breakdown(
+                breakdown.total(),
                 categories,
                 countries,
                 nativeTotals,
-                summary.currenciesMissingRates());
+                breakdown.currenciesMissingRates());
     }
 
     // ── page assembly ───────────────────────────────────────────────────────

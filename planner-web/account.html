@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Account — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=57"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=57"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=57"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=62"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=62"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=62"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -85,11 +85,23 @@
 
     <section class="card">
       <div class="card-header"><h2 class="card-title">Appearance</h2></div>
-      <p class="small muted">These are remembered in this browser.</p>
 
       <div class="field">
         <span class="label">Theme</span>
+        <!-- localStorage, unlike the settings below, which are on the
+             account — so the caption sits here rather than on the card. -->
+        <p class="small muted" style="margin:0 0 8px">Remembered in this browser.</p>
         <div id="theme-radios" class="stack-sm"></div>
+      </div>
+
+      <div class="field">
+        <span class="label">Published page</span>
+        <p class="small muted" style="margin:0 0 8px">
+          Saved to your account. Applies the next time you publish a trip —
+          a published page is a file, so it keeps whatever it was written with.
+        </p>
+        <div id="published-page-alert" class="alert" hidden></div>
+        <div id="published-page-settings" class="stack-sm"></div>
       </div>
     </section>
 
@@ -234,6 +246,54 @@
   document.addEventListener('themechange', (event) => {
     const radio = radios.querySelector(`input[value="${event.detail.theme}"]`);
     if (radio) radio.checked = true;
+  });
+
+  // ── published page ────────────────────────────────
+  // Every one of these is a flag defaulting to off: a published page is
+  // public, so anything extra it reveals is asked for rather than assumed.
+  const PUBLISHED_PAGE_SETTINGS = [
+    { key: 'itineraryCost', label: 'Display expense cost per itinerary' },
+    { key: 'destinationDays', label: "Display destination's total number of days (instead of nights)" },
+    { key: 'forecastExpenses', label: 'Display forecasted expenses' },
+  ];
+
+  const publishedPageBox = document.querySelector('#published-page-settings');
+  const publishedPageAlert = document.querySelector('#published-page-alert');
+  let publishedPage = { ...(user.publishedPage || {}) };
+
+  function renderPublishedPage() {
+    publishedPageBox.innerHTML = PUBLISHED_PAGE_SETTINGS.map((setting) => `
+      <label class="checkbox">
+        <input type="checkbox" data-setting="${setting.key}"
+               ${publishedPage[setting.key] ? 'checked' : ''}>
+        ${escapeHtml(setting.label)}
+      </label>`).join('');
+  }
+  renderPublishedPage();
+
+  publishedPageBox.addEventListener('change', async (event) => {
+    const box = event.target.closest('input[data-setting]');
+    if (!box) return;
+    const key = box.dataset.setting;
+    const wanted = box.checked;
+
+    publishedPageAlert.hidden = true;
+    try {
+      // Only the one that changed is sent; the API leaves the rest alone.
+      const updated = await api.updatePublishedPage({ [key]: wanted });
+      // Deliberately no re-render: the box the member just clicked is already
+      // showing the right thing, and rebuilding the group with innerHTML would
+      // replace that element underneath them — losing keyboard focus, and
+      // swapping the node mid-interaction if they tick two in quick
+      // succession. Only a failure needs the DOM corrected, below.
+      publishedPage = { ...(updated.publishedPage || {}) };
+      toast.success('Published page settings saved');
+    } catch (error) {
+      // Put the box back: it is showing a change that did not happen.
+      box.checked = !wanted;
+      publishedPageAlert.textContent = error.fullMessage;
+      publishedPageAlert.hidden = false;
+    }
   });
 
   // ── currencies ──────────────────────────

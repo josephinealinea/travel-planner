@@ -5,6 +5,10 @@ import com.josephinealinea.planner.publish.api.PublishService;
 import com.josephinealinea.planner.trips.api.TripViewAssembler;
 import com.josephinealinea.planner.trips.api.TripViews;
 import com.josephinealinea.planner.trips.domain.Trip;
+import com.josephinealinea.planner.shared.ApiException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -12,7 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class PublishController {
 
     public record PublishRequestBody(String theme) {}
-    public record RequestPublishBody(String note) {}
+    /**
+     * The theme travels with the request because the page is built then, in the
+     * requesting member's own theme — which lives in their browser, so only
+     * they can tell us what it is.
+     */
+    public record RequestPublishBody(String note, String theme) {}
 
     private final PublishService publish;
     private final TripViewAssembler views;
@@ -45,8 +54,28 @@ public class PublishController {
     TripViews.PublishView request(@PathVariable String tripId,
                                   @RequestBody(required = false) RequestPublishBody body) {
         Trip trip = publish.requestPublish(tripId, currentUser.userId(),
-                body == null ? null : body.note());
+                body == null ? null : body.note(),
+                body == null ? null : body.theme());
         return views.publish(trip);
+    }
+
+    /**
+     * The page a pending request built, for trip members only.
+     *
+     * The whole point of building it at request time: the owner can see
+     * exactly what would go public before deciding. Served from here rather
+     * than from /p/{slug} so it stays behind the session — nothing unapproved
+     * is ever in the public directory, let alone reachable without signing in.
+     */
+    @GetMapping(value = "/publish/preview", produces = MediaType.TEXT_HTML_VALUE)
+    ResponseEntity<String> preview(@PathVariable String tripId) {
+        String html = publish.previewPending(tripId, currentUser.userId());
+        if (html == null) throw ApiException.notFound("Staged page");
+        return ResponseEntity.ok()
+                // Never cached: a request can be re-sent, and a stale preview
+                // would show the owner something they are not approving.
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(html);
     }
 
     @GetMapping("/publish-requests")

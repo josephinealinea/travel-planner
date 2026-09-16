@@ -32,7 +32,16 @@ public record PublishedTrip(
                               Double longitude,
                               String startDate,
                               String endDate,
+                              /**
+                               * Exactly one of these is ever set — whichever
+                               * the publishing account asked for. Shipping only
+                               * the one that is shown keeps page.js free of a
+                               * flag to interpret, and matches the rule that a
+                               * setting which is off puts nothing in the
+                               * payload.
+                               */
                               Long nights,
+                              Long days,
                               String notes,
                               String mapUrl) {}
 
@@ -73,12 +82,24 @@ public record PublishedTrip(
                             String statusIcon,
                             List<String> countries) {}
 
+    /**
+     * `charged` is what the trip has actually cost; `forecast` counts the
+     * expenses still to be paid alongside it, and is <b>null unless the
+     * publishing account asked for it</b> — the page carries no such figure at
+     * all rather than shipping one it then hides, the same way a destination's
+     * unused nights/days half is left null. page.js offers its two extra Group
+     * by buttons only when this is present.
+     */
     public record Budget(String displayCurrency,
-                         BigDecimal total,
-                         List<Category> byCategory,
-                         List<Country> byCountry,
-                         List<Native> nativeTotals,
-                         List<String> currenciesMissingRates) {
+                         Breakdown charged,
+                         Breakdown forecast) {
+
+        /** One rollup over one set of rows. See BudgetService.Breakdown. */
+        public record Breakdown(BigDecimal total,
+                                List<Category> byCategory,
+                                List<Country> byCountry,
+                                List<Native> nativeTotals,
+                                List<String> currenciesMissingRates) {}
 
         public record Category(String key, String label, String icon, String color, BigDecimal amount) {}
 

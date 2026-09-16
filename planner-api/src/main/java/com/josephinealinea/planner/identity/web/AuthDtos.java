@@ -22,7 +22,9 @@ public final class AuthDtos {
             String displayName,
             boolean mustChangePassword,
             List<String> currencies,
-            String displayCurrency) {
+            String displayCurrency,
+            /** Published-page settings, grouped so adding the next is one field. */
+            PublishedPage publishedPage) {
 
         public static MeResponse from(User user) {
             return new MeResponse(
@@ -32,9 +34,26 @@ public final class AuthDtos {
                     user.displayName(),
                     user.isMustChangePassword(),
                     user.getCurrencies(),
-                    user.getDisplayCurrency());
+                    user.getDisplayCurrency(),
+                    new PublishedPage(user.isPublishItineraryCost(),
+                            user.isPublishDestinationDays(),
+                            user.isPublishForecastExpenses()));
         }
     }
+
+    /**
+     * What a published page shows. All flags, all defaulting to off: a
+     * published page is public, so anything extra it reveals should be asked
+     * for rather than assumed.
+     */
+    public record PublishedPage(boolean itineraryCost,
+                                boolean destinationDays,
+                                boolean forecastExpenses) {}
+
+    /** Absent fields are left as they are, so one checkbox can post alone. */
+    public record UpdatePublishedPageRequest(Boolean itineraryCost,
+                                            Boolean destinationDays,
+                                            Boolean forecastExpenses) {}
 
     public record ChangePasswordRequest(
             @NotBlank(message = "Enter your current password") String currentPassword,

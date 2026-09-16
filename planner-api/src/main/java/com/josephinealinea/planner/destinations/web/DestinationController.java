@@ -29,11 +29,13 @@ public class DestinationController {
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
-            String notes) {
+            String notes,
+            Boolean suppressChecklist) {
 
         DestinationService.Input toInput() {
             return new DestinationService.Input(name, countryCode, countryName, latitude,
-                    longitude, geonameId, timezone, startDate, endDate, notes);
+                    longitude, geonameId, timezone, startDate, endDate, notes,
+                    suppressChecklist);
         }
     }
 
@@ -48,11 +50,13 @@ public class DestinationController {
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
-            String notes) {
+            String notes,
+            Boolean suppressChecklist) {
 
         DestinationService.Input toInput() {
             return new DestinationService.Input(name, countryCode, countryName, latitude,
-                    longitude, geonameId, timezone, startDate, endDate, notes);
+                    longitude, geonameId, timezone, startDate, endDate, notes,
+                    suppressChecklist);
         }
     }
 

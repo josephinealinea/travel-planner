@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.publish;
 
 import com.josephinealinea.planner.budget.api.BudgetService;
+import com.josephinealinea.planner.publish.api.PublishOptions;
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
@@ -165,6 +166,19 @@ class StaticSiteRendererTest {
         vaccine.setCurrency("USD");
         vaccine.setDate(LocalDate.of(2026, 10, 20));
         budget.save(SLUG, vaccine);
+
+        // One expense nobody has paid yet, so the charged and forecast rollups
+        // differ by a known amount and a test can tell which one it is reading.
+        BudgetItem deposit = new BudgetItem();
+        deposit.setId("budget-3");
+        deposit.setTripId("trip-1");
+        deposit.setCategory(ChecklistCategory.ACTIVITIES);
+        deposit.setDescription("Salt flats tour deposit");
+        deposit.setAmount(new BigDecimal("100.00"));
+        deposit.setCurrency("USD");
+        deposit.setDate(LocalDate.of(2026, 10, 30));
+        deposit.markCharged(false, java.time.Instant.now());
+        budget.save(SLUG, deposit);
     }
 
     private static ItineraryItem night(String id, LocalDateTime startAt,
@@ -198,8 +212,17 @@ class StaticSiteRendererTest {
         return trip;
     }
 
+    /** Costs off, matching the account default, unless a test says otherwise. */
     private String render(String theme) throws Exception {
-        renderer.render(trip(theme));
+        return render(theme, false);
+    }
+
+    private String render(String theme, boolean showItineraryCost) throws Exception {
+        return render(theme, new PublishOptions(showItineraryCost, false, false));
+    }
+
+    private String render(String theme, PublishOptions options) throws Exception {
+        renderer.render(trip(theme), options);
         return Files.readString(publishDir.resolve(SLUG).resolve("index.html"));
     }
 
@@ -228,7 +251,7 @@ class StaticSiteRendererTest {
 
     @Test
     void writesThePageAndItsDataFile() {
-        renderer.render(trip("minima"));
+        renderer.render(trip("minima"), PublishOptions.hidden());
 
         assertThat(publishDir.resolve(SLUG).resolve("index.html")).exists();
         assertThat(publishDir.resolve(SLUG).resolve("trip.json")).exists();
@@ -338,6 +361,60 @@ class StaticSiteRendererTest {
         return matcher.find() ? matcher.group(1) : null;
     }
 
+    /**
+     * Nights by default, days when the account asks — and never both, so
+     * page.js has no flag to interpret and the payload carries only what is
+     * shown. Cusco is 25-Oct to 31-Oct in this fixture: six nights, seven days
+     * — the two counts differ by one, which is the whole reason the setting
+     * exists.
+     */
+    @Test
+    void aDestinationCountsNightsUnlessTheAccountAsksForDays() throws Exception {
+        JsonNode nights = destination(payload(render("minima", PublishOptions.hidden())), "Cusco");
+        assertThat(nights.get("nights").asLong()).isEqualTo(6);
+        assertThat(nights.get("days").isNull()).isTrue();
+
+        JsonNode days = destination(
+                payload(render("minima", new PublishOptions(false, true, false))), "Cusco");
+        assertThat(days.get("days").asLong()).isEqualTo(7);
+        assertThat(days.get("nights").isNull()).isTrue();
+    }
+
+    private static JsonNode destination(JsonNode payload, String name) {
+        for (JsonNode node : payload.get("destinations")) {
+            if (name.equals(node.get("name").asText())) return node;
+        }
+        throw new AssertionError("no destination named " + name);
+    }
+
+    // ── the budget's forecast rollup ────────────────────────────────────
+
+    /**
+     * The account setting is off by default, and the page then carries no
+     * forecast figure at all — null, the same way a destination's unused
+     * nights/days half is left null. A published page is public, and what a
+     * trip is still going to cost is a more private number than what it has
+     * cost so far, so it is not shipped and then hidden.
+     */
+    @Test
+    void withoutTheSettingThePageCarriesNoForecastRollupAtAll() throws Exception {
+        JsonNode budget = payload(render("minima", PublishOptions.hidden())).get("budget");
+
+        assertThat(budget.get("forecast").isNull()).isTrue();
+        // 246.22 + 45.00 USD at 1.17 per EUR. The pending deposit is not in it.
+        assertThat(budget.get("charged").get("total").decimalValue()).isEqualByComparingTo("248.90");
+    }
+
+    @Test
+    void withTheSettingTheForecastRollupShipsAlongsideTheCharges() throws Exception {
+        JsonNode budget = payload(render("minima", new PublishOptions(false, false, true)))
+                .get("budget");
+
+        assertThat(budget.get("charged").get("total").decimalValue()).isEqualByComparingTo("248.90");
+        // The same two, plus the 100.00 USD deposit nobody has paid: 85.47 more.
+        assertThat(budget.get("forecast").get("total").decimalValue()).isEqualByComparingTo("334.37");
+    }
+
     /** The data-theme on the html element, which is the one that styles the page. */
     private static String themeOf(String html) {
         var matcher = java.util.regex.Pattern
@@ -350,7 +427,7 @@ class StaticSiteRendererTest {
     void escapesTheTitleSoItCannotBreakOutOfTheMarkup() throws Exception {
         Trip trip = trip("minima");
         trip.setTitle("Trip <script>alert(1)</script> & co");
-        renderer.render(trip);
+        renderer.render(trip, PublishOptions.hidden());
 
         String html = Files.readString(publishDir.resolve(SLUG).resolve("index.html"));
         assertThat(html).contains("&lt;script&gt;");
@@ -359,7 +436,7 @@ class StaticSiteRendererTest {
 
     @Test
     void removeDeletesThePublishedDirectory() {
-        renderer.render(trip("minima"));
+        renderer.render(trip("minima"), PublishOptions.hidden());
         assertThat(publishDir.resolve(SLUG)).exists();
 
         renderer.remove(SLUG);
@@ -390,7 +467,9 @@ class StaticSiteRendererTest {
 
     @Test
     void aStayCarriesItsCostAndTimesOnlyWhereTheyApply() throws Exception {
-        Map<String, JsonNode> stay = entriesByDay(payload(render("minima")), "Hotel in Cusco");
+        // Costs on, since the point here is where the one charge lands.
+        Map<String, JsonNode> stay =
+                entriesByDay(payload(render("minima", true)), "Hotel in Cusco");
 
         // Check-in day: the arrival time, and the one and only cost.
         assertThat(stay.get("2026-10-25").get("startTime").asText()).isEqualTo("15:00");
@@ -407,6 +486,30 @@ class StaticSiteRendererTest {
         // One booking, one charge, however many days it shows on.
         long charged = stay.values().stream().filter(entry -> !entry.get("cost").isNull()).count();
         assertThat(charged).isEqualTo(1);
+    }
+
+    /**
+     * The account setting behind this is off by default, and "not displayed"
+     * has to mean "not shipped": a published page is public, so a cost left in
+     * window.TRIP is readable by anyone who opens the source even if nothing
+     * renders it. So the assertion is about the payload, not the markup.
+     */
+    @Test
+    void anItineraryCostIsAbsentFromThePayloadUnlessTheSettingIsOn() throws Exception {
+        Map<String, JsonNode> withoutIt =
+                entriesByDay(payload(render("minima", false)), "Hotel in Cusco");
+        assertThat(withoutIt.get("2026-10-25").get("cost").isNull()).isTrue();
+        assertThat(withoutIt.get("2026-10-25").get("currency").isNull()).isTrue();
+        // The entry itself still shows, times and all — only the money goes.
+        assertThat(withoutIt.get("2026-10-25").get("startTime").asText()).isEqualTo("15:00");
+
+        // And the number never appears anywhere in the file, inlined JSON
+        // included — the check the markup alone could not make.
+        assertThat(render("minima", false)).doesNotContain("240.00");
+
+        Map<String, JsonNode> withIt =
+                entriesByDay(payload(render("minima", true)), "Hotel in Cusco");
+        assertThat(withIt.get("2026-10-25").get("cost").asText()).isEqualTo("240.00");
     }
 
     @Test

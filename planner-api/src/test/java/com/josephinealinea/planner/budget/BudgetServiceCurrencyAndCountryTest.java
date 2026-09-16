@@ -155,7 +155,7 @@ class BudgetServiceCurrencyAndCountryTest {
 
         assertThat(summary.displayCurrency()).isEqualTo("EUR");
         assertThat(summary.totalsCurrency()).isEqualTo("EUR");
-        assertThat(summary.total()).isEqualByComparingTo("100.00");
+        assertThat(summary.charged().total()).isEqualByComparingTo("100.00");
     }
 
     @Test
@@ -168,7 +168,7 @@ class BudgetServiceCurrencyAndCountryTest {
         BudgetService.Summary summary = service.summarise(trip, user);
 
         assertThat(summary.totalsCurrency()).isEqualTo("EUR");
-        assertThat(summary.total()).isEqualByComparingTo("50.00");
+        assertThat(summary.charged().total()).isEqualByComparingTo("50.00");
     }
 
     @Test
@@ -182,8 +182,8 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip, user);
 
-        assertThat(summary.total()).isEqualByComparingTo("75.00");
-        assertThat(summary.currenciesMissingRates()).isEmpty();
+        assertThat(summary.charged().total()).isEqualByComparingTo("75.00");
+        assertThat(summary.charged().currenciesMissingRates()).isEmpty();
     }
 
     @Test
@@ -195,7 +195,7 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip, user);
 
-        assertThat(summary.total()).isEqualByComparingTo("85.00");
+        assertThat(summary.charged().total()).isEqualByComparingTo("85.00");
     }
 
     @Test
@@ -208,7 +208,7 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip, user);
 
-        assertThat(summary.total()).isEqualByComparingTo("85.00");
+        assertThat(summary.charged().total()).isEqualByComparingTo("85.00");
     }
 
     @Test
@@ -222,8 +222,8 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip, user);
 
-        assertThat(summary.total()).isEqualByComparingTo("0.00");
-        assertThat(summary.currenciesMissingRates()).containsExactly("GBP");
+        assertThat(summary.charged().total()).isEqualByComparingTo("0.00");
+        assertThat(summary.charged().currenciesMissingRates()).containsExactly("GBP");
     }
 
     // ── country breakdown ───────────────────────────────────────────────
@@ -235,9 +235,9 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip);
 
-        assertThat(summary.byCountry()).hasSize(1);
-        assertThat(summary.byCountry().get(0).key()).isEqualTo("NO_LOCATION");
-        assertThat(summary.byCountry().get(0).amount()).isEqualByComparingTo("40.00");
+        assertThat(summary.charged().byCountry()).hasSize(1);
+        assertThat(summary.charged().byCountry().get(0).key()).isEqualTo("NO_LOCATION");
+        assertThat(summary.charged().byCountry().get(0).amount()).isEqualByComparingTo("40.00");
     }
 
     @Test
@@ -252,10 +252,10 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip);
 
-        assertThat(summary.byCountry()).hasSize(1);
-        assertThat(summary.byCountry().get(0).key()).isEqualTo("PE");
-        assertThat(summary.byCountry().get(0).name()).isEqualTo("Peru");
-        assertThat(summary.byCountry().get(0).amount()).isEqualByComparingTo("60.00");
+        assertThat(summary.charged().byCountry()).hasSize(1);
+        assertThat(summary.charged().byCountry().get(0).key()).isEqualTo("PE");
+        assertThat(summary.charged().byCountry().get(0).name()).isEqualTo("Peru");
+        assertThat(summary.charged().byCountry().get(0).amount()).isEqualByComparingTo("60.00");
     }
 
     @Test
@@ -268,10 +268,10 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip);
 
-        assertThat(summary.byCountry()).hasSize(2);
-        assertThat(summary.byCountry()).allSatisfy(
+        assertThat(summary.charged().byCountry()).hasSize(2);
+        assertThat(summary.charged().byCountry()).allSatisfy(
                 slice -> assertThat(slice.amount()).isEqualByComparingTo("15.00"));
-        assertThat(summary.byCountry()).extracting(BudgetService.CountryAmount::key)
+        assertThat(summary.charged().byCountry()).extracting(BudgetService.CountryAmount::key)
                 .containsExactlyInAnyOrder("PE", "BO");
     }
 
@@ -292,7 +292,7 @@ class BudgetServiceCurrencyAndCountryTest {
         // not a statement about where the money went. When the link was a city
         // the split was per destination and France did carry two thirds — that
         // weighting went with the link, and a country cannot be named twice.
-        assertThat(summary.byCountry()).hasSize(2);
+        assertThat(summary.charged().byCountry()).hasSize(2);
         assertThat(slice(summary, "FR")).isEqualByComparingTo("45.00");
         assertThat(slice(summary, "BE")).isEqualByComparingTo("45.00");
     }
@@ -309,17 +309,17 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip);
 
-        BigDecimal summed = summary.byCountry().stream()
+        BigDecimal summed = summary.charged().byCountry().stream()
                 .map(BudgetService.CountryAmount::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         assertThat(summed).isEqualByComparingTo("10.00");
-        assertThat(summed).isEqualByComparingTo(summary.total());
+        assertThat(summed).isEqualByComparingTo(summary.charged().total());
         // No slice is silently rounded away.
-        assertThat(summary.byCountry()).hasSize(3);
+        assertThat(summary.charged().byCountry()).hasSize(3);
     }
 
     private static BigDecimal slice(BudgetService.Summary summary, String key) {
-        return summary.byCountry().stream()
+        return summary.charged().byCountry().stream()
                 .filter(c -> c.key().equals(key))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("no slice for " + key))
@@ -340,17 +340,17 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip);
 
-        BigDecimal countrySum = summary.byCountry().stream()
+        BigDecimal countrySum = summary.charged().byCountry().stream()
                 .map(BudgetService.CountryAmount::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal categorySum = summary.byCategory().values().stream()
+        BigDecimal categorySum = summary.charged().byCategory().values().stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        assertThat(summary.currenciesMissingRates()).containsExactly("GBP");
-        assertThat(summary.total()).isEqualByComparingTo("110.00");
-        assertThat(countrySum).isEqualByComparingTo(summary.total());
-        assertThat(categorySum).isEqualByComparingTo(summary.total());
-        assertThat(summary.byCountry()).hasSize(3);
+        assertThat(summary.charged().currenciesMissingRates()).containsExactly("GBP");
+        assertThat(summary.charged().total()).isEqualByComparingTo("110.00");
+        assertThat(countrySum).isEqualByComparingTo(summary.charged().total());
+        assertThat(categorySum).isEqualByComparingTo(summary.charged().total());
+        assertThat(summary.charged().byCountry()).hasSize(3);
     }
 
     // ── native totals ──────────────────────────────────────────────────
@@ -377,9 +377,9 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip);
 
-        assertThat(summary.currenciesMissingRates()).containsExactly("GBP");
-        assertThat(summary.total()).isEqualByComparingTo("0.00");
-        assertThat(summary.nativeTotals()).hasSize(1);
+        assertThat(summary.charged().currenciesMissingRates()).containsExactly("GBP");
+        assertThat(summary.charged().total()).isEqualByComparingTo("0.00");
+        assertThat(summary.charged().nativeTotals()).hasSize(1);
         assertThat(nativeAmount(summary, "GBP")).isEqualByComparingTo("15.00");
     }
 
@@ -394,7 +394,7 @@ class BudgetServiceCurrencyAndCountryTest {
 
         BudgetService.Summary summary = service.summarise(trip);
 
-        assertThat(summary.nativeTotals().stream().map(BudgetService.NativeAmount::currency).toList())
+        assertThat(summary.charged().nativeTotals().stream().map(BudgetService.NativeAmount::currency).toList())
                 .containsExactly("USD", "EUR", "JPY");
     }
 
@@ -411,7 +411,7 @@ class BudgetServiceCurrencyAndCountryTest {
     }
 
     private static BigDecimal nativeAmount(BudgetService.Summary summary, String currency) {
-        return summary.nativeTotals().stream()
+        return summary.charged().nativeTotals().stream()
                 .filter(n -> n.currency().equals(currency))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("no native total for " + currency))

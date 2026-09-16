@@ -117,6 +117,21 @@ public class UserService {
      * quoted against; see TripService.rebase). A trip with no rate for this
      * currency reports it in currenciesMissingRates rather than guessing.
      */
+    /**
+     * The account's published-page settings. Null leaves a flag as it is, so a
+     * single checkbox can post on its own without the caller having to send
+     * the whole group back.
+     */
+    public User updatePublishedPageSettings(String userId, Boolean itineraryCost,
+                                           Boolean destinationDays,
+                                           Boolean forecastExpenses) {
+        User user = require(userId);
+        if (itineraryCost != null) user.setPublishItineraryCost(itineraryCost);
+        if (destinationDays != null) user.setPublishDestinationDays(destinationDays);
+        if (forecastExpenses != null) user.setPublishForecastExpenses(forecastExpenses);
+        return users.save(user);
+    }
+
     public User updateDisplayCurrency(String userId, String currency) {
         User user = require(userId);
         if (currency == null || !currency.trim().matches("[A-Za-z]{3}")) {

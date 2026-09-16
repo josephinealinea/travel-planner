@@ -63,9 +63,14 @@ public final class TripViews {
     /**
      * displayCurrency is the trip's own anchor (what its exchange-rate table
      * is quoted against, and what "record a cost" forms default to);
-     * totalsCurrency is what byCategory, byCountry and total are actually
-     * expressed in — the signed-in member's own display-currency preference,
-     * falling back to the anchor. See BudgetService.Summary.
+     * totalsCurrency is what both breakdowns are actually expressed in — the
+     * signed-in member's own display-currency preference, falling back to the
+     * anchor. See BudgetService.Summary.
+     *
+     * `charged` and `forecast` are the same rollup over different rows: the
+     * charges alone, and the charges plus everything still to be paid. They are
+     * passed through whole rather than flattened, so a total can never be shown
+     * against a breakdown of some other set of rows — see BudgetService.Breakdown.
      */
     public record BudgetView(List<BudgetItem> items,
                              String displayCurrency,
@@ -80,18 +85,14 @@ public final class TripViews {
                              String ratesBase,
                              String ratesDate,
                              Map<String, BigDecimal> exchangeRates,
-                             Map<String, BigDecimal> byCategory,
-                             List<BudgetService.CountryAmount> byCountry,
-                             List<BudgetService.NativeAmount> nativeTotals,
-                             BigDecimal total,
-                             List<String> currenciesMissingRates) {
+                             BudgetService.Breakdown charged,
+                             BudgetService.Breakdown forecast) {
 
         public static BudgetView from(BudgetService.Summary summary,
                                       com.josephinealinea.planner.rates.domain.RateTable table) {
             return new BudgetView(summary.items(), summary.displayCurrency(), summary.totalsCurrency(),
                     table.getBase(), table.getDate(), table.getRates(),
-                    summary.byCategory(), summary.byCountry(), summary.nativeTotals(),
-                    summary.total(), summary.currenciesMissingRates());
+                    summary.charged(), summary.forecast());
         }
     }
 

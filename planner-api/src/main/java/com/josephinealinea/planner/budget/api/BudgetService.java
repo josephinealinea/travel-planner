@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -43,29 +44,59 @@ public class BudgetService {
                         BigDecimal amount,
                         String currency,
                         LocalDate date,
-                        List<String> countryCodes) {}
+                        List<String> countryCodes,
+                        /**
+                         * "Expense already charged". Null on a patch means
+                         * "leave the status alone"; null on a create means
+                         * charged, which is what adding an expense by hand
+                         * nearly always records.
+                         */
+                        Boolean charged) {}
 
     /**
-     * The rollup. Currencies with no configured rate are reported separately
-     * rather than silently dropped or counted at 1:1, so a missing rate is
-     * visible instead of quietly wrong.
+     * One rollup over one set of rows. Currencies with no configured rate are
+     * reported separately rather than silently dropped or counted at 1:1, so a
+     * missing rate is visible instead of quietly wrong.
+     *
+     * Every field here is derived from the same rows, so they always agree:
+     * the slices of either breakdown add up to `total`, and `nativeTotals`
+     * says what those same rows cost in the currencies they were actually
+     * spent in. That is the reason this is a record rather than six more
+     * fields on Summary — a total from one set of rows next to a breakdown
+     * from another is the one way this panel can lie.
+     */
+    public record Breakdown(Map<String, BigDecimal> byCategory,
+                            List<CountryAmount> byCountry,
+                            List<NativeAmount> nativeTotals,
+                            BigDecimal total,
+                            List<String> currenciesMissingRates) {}
+
+    /**
+     * The rollup, twice over.
+     *
+     * `charged` counts only what has actually been paid — the trip's headline
+     * total and the pie it draws. `forecast` counts the pending rows too, so
+     * "what will this trip have cost" is a question the same panel can answer
+     * without either number pretending to be the other. Both are always
+     * computed; which one a reader sees is the Group by selector's business.
      *
      * displayCurrency is the trip's own anchor — what its exchange-rate table
      * is quoted against (see TripService.rebase) — and is what "record a
      * cost" forms use as their sensible default. totalsCurrency is the
-     * currency the rollup below (byCategory, byCountry, total) is actually
-     * expressed in: the signed-in user's own display-currency preference,
-     * falling back to the anchor when they have none. The two are equal for
-     * most users most of the time, but are never the same field.
+     * currency both breakdowns are actually expressed in: the signed-in user's
+     * own display-currency preference, falling back to the anchor when they
+     * have none. The two are equal for most users most of the time, but are
+     * never the same field.
+     *
+     * `items` is every row regardless of status. A pending expense is never
+     * hidden — it is listed and labelled, and only excluded from the totals
+     * that claim to be money spent.
      */
     public record Summary(List<BudgetItem> items,
                           String displayCurrency,
                           String totalsCurrency,
-                          Map<String, BigDecimal> byCategory,
-                          List<CountryAmount> byCountry,
-                          List<NativeAmount> nativeTotals,
-                          BigDecimal total,
-                          List<String> currenciesMissingRates) {}
+                          Breakdown charged,
+                          Breakdown forecast) {}
 
     /**
      * How much was actually spent in one currency, before any conversion —
@@ -160,6 +191,30 @@ public class BudgetService {
             }
         });
 
+        // Twice over the same rows: once over the charges, once over
+        // everything. Two passes rather than one pass filling two sets of
+        // buckets — the arithmetic is a few dozen BigDecimal operations, and a
+        // single pass would have to thread "which buckets does this row
+        // belong in" through the country split and the native sums as well.
+        return new Summary(items, tripCurrency, target,
+                breakdown(items.stream().filter(BudgetItem::isConfirmed).toList(),
+                        target, tripCurrency, pivot, table, countrySamples),
+                breakdown(items, target, tripCurrency, pivot, table, countrySamples));
+    }
+
+    /**
+     * The rollup over one set of rows, in `target`.
+     *
+     * byCategory always names every category, including the ones at zero: it
+     * keys the legend, and a category that drops out of the map entirely
+     * cannot be told apart by a reader from one that was never spent on.
+     */
+    private static Breakdown breakdown(List<BudgetItem> items,
+                                       String target,
+                                       String tripCurrency,
+                                       String pivot,
+                                       RateTable table,
+                                       Map<String, Destination> countrySamples) {
         Map<String, BigDecimal> byCategory = new LinkedHashMap<>();
         for (ChecklistCategory category : ChecklistCategory.values()) {
             byCategory.put(category.name(), BigDecimal.ZERO);
@@ -217,7 +272,7 @@ public class BudgetService {
                         .thenComparing(NativeAmount::currency))
                 .toList();
 
-        return new Summary(items, tripCurrency, target, byCategory, byCountry, nativeTotals,
+        return new Breakdown(byCategory, byCountry, nativeTotals,
                 total.setScale(2, RoundingMode.HALF_UP), new ArrayList<>(missing));
     }
 
@@ -391,6 +446,11 @@ public class BudgetService {
                 : input.currency().trim().toUpperCase());
         item.setDate(input.date());
         item.setCountryCodes(countries.validate(trip, input.countryCodes()));
+        // Charged unless said otherwise: an expense typed into the budget by
+        // hand is nearly always one that has already been paid, which is why
+        // the form's own box starts ticked. A plan's cost is the other way
+        // round — see BudgetSync.
+        item.markCharged(input.charged() == null || input.charged(), Instant.now());
         Audit.created(item, userId);
 
         return budget.save(trip.getSlug(), item);
@@ -423,6 +483,12 @@ public class BudgetService {
         if (input.countryCodes() != null) {
             // An empty list is how the client clears every link.
             item.setCountryCodes(countries.validate(trip, input.countryCodes()));
+        }
+        if (input.charged() != null) {
+            // Ticking the box on save is what confirms the charge and stamps
+            // the time; markCharged keeps an existing stamp rather than moving
+            // it to now on every later edit.
+            item.markCharged(input.charged(), Instant.now());
         }
         Audit.touched(item, userId);
 

@@ -104,6 +104,9 @@ public class TripService {
     public void delete(String tripId, String userId) {
         Trip trip = access.requireOwner(tripId, userId);
         renderer.remove(trip.getSlug());
+        // And anything staged for an undecided request, which is just as
+        // readable a copy of the plan as the live one.
+        renderer.removePending(trip.getSlug());
         trips.delete(trip);
     }
 

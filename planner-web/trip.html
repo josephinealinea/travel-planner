@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trip — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=57"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=57"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=57"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=62"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=62"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=62"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -353,8 +353,11 @@
                       <span x-text="categoryOf(item.category).icon"></span>
                       <span x-text="categoryOf(item.category).label"></span>
                     </span>
-                    <span class="chip" x-show="countryLabel(item.countryCodes)"
-                          x-text="countryLabel(item.countryCodes)"></span>
+                    <!-- One chip per country. Comma-joining them into a single
+                         pill read as one long place name. -->
+                    <template x-for="label in countryLabels(item.countryCodes)" :key="label">
+                      <span class="chip" x-text="label"></span>
+                    </template>
                     <span class="chip" x-show="planCountFor(item)"
                           x-text="`${planCountFor(item)} plan${planCountFor(item) === 1 ? '' : 's'}`"></span>
                   </span>
@@ -501,8 +504,9 @@
                         <span x-text="categoryOf(entry.item.category).icon"></span>
                         <span x-text="categoryOf(entry.item.category).label"></span>
                       </span>
-                      <span class="chip" x-show="countryLabel(entry.item.countryCodes)"
-                            x-text="countryLabel(entry.item.countryCodes)"></span>
+                      <template x-for="label in countryLabels(entry.item.countryCodes)" :key="label">
+                        <span class="chip" x-text="label"></span>
+                      </template>
                       <span x-show="sourceChecklist(entry.item)">
                         from “<span x-text="sourceChecklist(entry.item)"></span>”
                       </span>
@@ -542,11 +546,20 @@
             </template>
           </div>
 
-          <label class="toolbar-label" for="budget-group-by">Group by</label>
-          <select id="budget-group-by" x-model="budgetPieMode">
-            <option value="category">Category</option>
-            <option value="country">Country</option>
-          </select>
+          <!-- One at a time, unlike the Category filter beside it: these are
+               four views of the same money, not four things to combine. The two
+               Forecast ones count the expenses nobody has paid yet alongside
+               the charges; the plain two count charges only. Every figure on
+               the panel below follows this one control. -->
+          <span class="toolbar-label" id="budget-show-label">Show</span>
+          <div class="chip-group" role="group" aria-labelledby="budget-show-label">
+            <template x-for="option in budgetShowOptions" :key="option.value">
+              <button type="button" class="chip"
+                      :aria-pressed="budgetShow === option.value"
+                      @click="budgetShow = option.value"
+                      x-text="option.label"></button>
+            </template>
+          </div>
 
           <div class="toolbar-actions">
             <button type="button" class="btn btn-sm btn-danger"
@@ -575,7 +588,7 @@
               <div class="budget-pie" x-effect="renderBudgetPie()"
                    x-show="budgetBreakdown.length">
                 <canvas x-ref="budgetPie" role="img"
-                        :aria-label="budgetPieMode === 'country' ? 'Spend by country' : 'Spend by category'"></canvas>
+                        :aria-label="`${budgetForecast ? 'Forecast spend' : 'Spend'} by ${budgetShow.startsWith('country') ? 'country' : 'category'}`"></canvas>
               </div>
 
               <div class="budget-details">
@@ -631,6 +644,7 @@
                   <th>Description</th><th>Category</th>
                   <th class="num">Amount</th>
                   <th class="num" x-text="`In ${budget.totalsCurrency}`"></th>
+                  <th>Status</th>
                   <th>Date</th><th>Source</th><th class="actions"></th>
                 </tr>
               </thead>
@@ -651,12 +665,19 @@
                           <span x-text="categoryOf(item.category).icon"></span>
                           <span x-text="categoryOf(item.category).label"></span>
                         </span>
-                        <span class="chip" x-show="countryLabel(item.countryCodes)"
-                              x-text="countryLabel(item.countryCodes)"></span>
+                        <template x-for="label in countryLabels(item.countryCodes)" :key="label">
+                          <span class="chip" x-text="label"></span>
+                        </template>
                       </div>
                     </td>
                     <td class="num" x-text="fmt(item.amount, item.currency)"></td>
                     <td class="num" x-text="convertedOf(item) == null ? '—' : fmt(convertedOf(item))"></td>
+                    <!-- A pending row is listed like any other. It is only
+                         left out of the total that claims to be money spent. -->
+                    <td>
+                      <span class="chip" :class="item.status === 'PENDING' ? 'chip-pending' : 'chip-charged'"
+                            x-text="statusLabel(item)"></span>
+                    </td>
                     <td class="muted" x-text="expenseDate(item)"></td>
                     <td class="tiny muted">
                       <span x-show="item.itineraryItemId"
@@ -733,7 +754,10 @@
           <div class="card-header"><h3 class="card-title">Ask the owner to publish</h3></div>
           <p class="small muted">
             Only <span x-text="ownerName()"></span> can publish this trip. Send a request and
-            they can approve it.
+            they can approve it. The page is built now, in your theme
+            (<strong x-text="themeToPublishLabel"></strong>) and your own
+            published-page settings — nothing is public, and there is no link,
+            until they approve.
           </p>
 
           <template x-if="myPendingRequest">
@@ -751,7 +775,7 @@
               <div class="field">
                 <label for="request-note">Note for the owner (optional)</label>
                 <input id="request-note" x-model="requestNote"
-                       placeholder="Ready to share with family">
+                       placeholder="Ready to share with travel buddies">
               </div>
               <button type="submit" class="btn btn-primary" :disabled="publishBusy"
                       x-text="publishBusy ? 'Sending…' : 'Request to Publish'"></button>
@@ -772,6 +796,13 @@
                 <div class="tiny muted" x-text="requestedAtLabel(request)"></div>
               </div>
               <span class="btn-row">
+                <!-- The page already exists, built in the requester's own theme
+                     and settings when they asked. Approving moves it into
+                     place unchanged, so this is the last chance to see what
+                     goes public. Members only, and not the public URL — there
+                     is no public URL until it is approved. -->
+                <a class="btn btn-sm" :href="publishPreviewUrl"
+                   target="_blank" rel="noopener">Preview</a>
                 <button type="button" class="btn btn-sm btn-primary" :disabled="publishBusy"
                         @click="approveRequest(request)">Approve &amp; publish</button>
                 <button type="button" class="btn btn-sm btn-danger"
@@ -931,6 +962,15 @@
                   <p class="field-hint" style="margin-top:-8px">
                     Adding a cost creates a matching budget entry.
                   </p>
+                  <!-- Unticked by default, the reverse of the budget's own
+                       form: a plan is something you intend to do, and its cost
+                       is usually money still to leave. -->
+                  <div class="field" x-show="planForm.cost">
+                    <label class="checkbox">
+                      <input type="checkbox" x-model="planForm.costCharged">
+                      Expense already charged
+                    </label>
+                  </div>
 
                   <div class="field">
                     <label id="plan-destination-label">Location (optional)</label>
@@ -1202,15 +1242,27 @@
               </div>
             </div>
             <p class="field-hint" style="margin-top:-8px" x-show="!destForm.id">
-              Dates that cover a night add an accommodation checklist item with the
-              count — “Plan 6N accommodation in Cusco”. Leave them empty, or arrive
-              and leave the same day, and none is added; fill them in later and it
-              appears then.
+              Transportation and activities checklist items are added either way.
+              Accommodation is added only if the dates cover a night, with the count
+              — “Plan 6N accommodation in Cusco”. Leave them empty, or arrive and
+              leave the same day, and there is nothing to book; fill them in later
+              and it appears then.
             </p>
             <p class="field-hint" style="margin-top:-8px" x-show="destForm.id">
               If these dates come to cover a night, an accommodation checklist item
               is added now. Shortening the stay never removes one.
             </p>
+
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" x-model="destForm.suppressChecklist">
+                Suppress auto-generated checklist
+              </label>
+              <p class="field-hint" x-show="destForm.suppressChecklist">
+                Nothing is added for this destination — not even the accommodation
+                item, now or when its dates change.
+              </p>
+            </div>
 
             <div class="field">
               <label for="dest-notes">Notes</label>
@@ -1383,6 +1435,12 @@
             <p class="field-hint" style="margin-top:-8px">
               A cost here creates or updates its budget entry. Clearing it removes that entry.
             </p>
+            <div class="field" x-show="entryForm.cost">
+              <label class="checkbox">
+                <input type="checkbox" x-model="entryForm.costCharged">
+                Expense already charged
+              </label>
+            </div>
             <div class="modal-footer">
               <button type="button" class="btn" @click="entryOpen = false">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="entryBusy"
@@ -1565,6 +1623,17 @@
             <div class="field">
               <label for="expense-date">Date (optional)</label>
               <input id="expense-date" type="date" x-model="expenseForm.date" :min="trip.startDate" :max="trip.endDate">
+            </div>
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" x-model="expenseForm.charged">
+                Expense already charged
+              </label>
+              <p class="field-hint">
+                Leave this unticked for money still to be paid. Pending expenses
+                are listed here but left out of the total and the chart, which
+                the Forecast options under Show count in.
+              </p>
             </div>
             <p class="field-hint" x-show="expenseForm.id && expenseForm.amount">
               Changing the cost on an expense that came from a plan updates that plan's cost too.

@@ -16,14 +16,19 @@ const COUNTRY_PALETTE = [
 /**
  * The Budget tab.
  *
- * Rows created by a plan's cost stay editable here like any other. The
- * rollup — byCategory, byCountry and total — converts into the signed-in
- * member's own display-currency preference (budget.totalsCurrency), pivoting
- * through the trip's own displayCurrency where the two differ; anything in a
- * currency with no rate for that pivot is listed as excluded rather than
- * folded in at some guessed value. budget.displayCurrency is a different
- * thing entirely — the trip's own anchor currency — and stays what "record a
- * cost" forms default to.
+ * Rows created by a plan's cost stay editable here like any other.
+ *
+ * The rollup arrives twice — budget.charged and budget.forecast, the same
+ * figures over the charges alone and over the charges plus everything still to
+ * be paid. The Show pills choose between them and budgetView resolves it, so
+ * every number on the panel comes from one of the two and never from both.
+ *
+ * Either rollup converts into the signed-in member's own display-currency
+ * preference (budget.totalsCurrency), pivoting through the trip's own
+ * displayCurrency where the two differ; anything in a currency with no rate
+ * for that pivot is listed as excluded rather than folded in at some guessed
+ * value. budget.displayCurrency is a different thing entirely — the trip's own
+ * anchor currency — and stays what "record a cost" forms default to.
  */
 export function budgetTab() {
   // The Chart instance is held here rather than on the component: Alpine deep
@@ -39,6 +44,10 @@ export function budgetTab() {
     currency: '',
     date: '',
     countryCodes: [],
+    // "Expense already charged", ticked by default: an expense typed in here
+    // by hand is nearly always one that has already been paid. A plan's cost
+    // is the other way round — see BudgetSync on the API.
+    charged: true,
   });
 
   return {
@@ -50,8 +59,33 @@ export function budgetTab() {
     // filtering
     budgetCategoryFilters: [],
 
-    // Which breakdown the pie (and the bars beside it) show.
-    budgetPieMode: 'category',
+    /**
+     * Which rollup the panel shows, as "<dimension>" or
+     * "<dimension>-forecast".
+     *
+     * One control choosing two things, because they are one question: what am
+     * I looking at. The dimension picks category or country; the -forecast
+     * suffix picks which rows are counted — the charges alone, or those plus
+     * everything still to be paid. Every number on the panel follows it
+     * together, so a forecast total is never shown above charged-only slices.
+     *
+     * Not `budgetPieMode` any more: it selects the total, the native totals and
+     * the legend as much as the pie, and a name claiming otherwise is how the
+     * four come apart again.
+     */
+    budgetShow: 'category',
+
+    /**
+     * The Show pills, in order. A list rather than a ternary chain in the
+     * markup the way the itinerary's three-way Show does it — four options make
+     * that unreadable, and a label belongs next to the mode it names.
+     */
+    budgetShowOptions: [
+      { value: 'category',          label: 'Category' },
+      { value: 'country',           label: 'Country' },
+      { value: 'category-forecast', label: 'Category (Forecast)' },
+      { value: 'country-forecast',  label: 'Country (Forecast)' },
+    ],
 
     // bulk selection — like the checklist and itinerary, removing is a
     // select-then-delete job rather than a button on every row
@@ -80,17 +114,39 @@ export function budgetTab() {
     },
 
     // ── rollup ──────────────────────────────────────
+
+    /** True while a forecast breakdown is selected. */
+    get budgetForecast() {
+      return this.budgetShow.endsWith('-forecast');
+    },
+
+    /**
+     * The one rollup everything on this panel reads — total, slices, native
+     * totals and missing rates alike. Resolving it in a single place is what
+     * keeps them consistent: they are all derived from the same rows, and the
+     * only way the panel can lie is by mixing a figure from one set with a
+     * breakdown from another.
+     *
+     * Falls back to the charged rollup if a forecast one is somehow absent,
+     * rather than rendering a panel of blanks.
+     */
+    get budgetView() {
+      const charged = this.budget.charged || {};
+      if (!this.budgetForecast) return charged;
+      return this.budget.forecast || charged;
+    },
+
     get budgetCategories() {
-      const totals = this.budget.byCategory || {};
+      const totals = this.budgetView.byCategory || {};
       return CATEGORIES
         .map((cat) => ({ key: cat.value, icon: cat.icon, label: cat.label, color: cat.color,
                          amount: Number(totals[cat.value] || 0) }))
         .filter((cat) => cat.amount > 0);
     },
 
-    /** budget.byCountry already comes sorted largest-first and excludes zero slices. */
+    /** byCountry already comes sorted largest-first and excludes zero slices. */
     get budgetCountries() {
-      return (this.budget.byCountry || [])
+      return (this.budgetView.byCountry || [])
         .filter((c) => Number(c.amount) > 0)
         .map((c, i) => ({
           key: c.key,
@@ -101,9 +157,9 @@ export function budgetTab() {
         }));
     },
 
-    /** What the pie and the bars beside it currently show, per budgetPieMode. */
+    /** What the pie and the bars beside it currently show, per budgetShow. */
     get budgetBreakdown() {
-      return this.budgetPieMode === 'country' ? this.budgetCountries : this.budgetCategories;
+      return this.budgetShow.startsWith('country') ? this.budgetCountries : this.budgetCategories;
     },
 
     get budgetLargest() {
@@ -133,7 +189,7 @@ export function budgetTab() {
      * (converted) contribution first, so this only has to format and join.
      */
     get nativeTotalsLabel() {
-      return (this.budget.nativeTotals || [])
+      return (this.budgetView.nativeTotals || [])
         .filter((n) => Number(n.amount) > 0)
         .map((n) => this.fmt(n.amount, n.currency))
         .join(' + ');
@@ -141,9 +197,9 @@ export function budgetTab() {
 
     /**
      * Draws the spend-by-category-or-country pie with Chart.js, from whichever
-     * breakdown budgetPieMode currently selects.
+     * breakdown budgetShow currently selects.
      *
-     * Called from x-effect, so it re-runs whenever the rollup, the pie mode,
+     * Called from x-effect, so it re-runs whenever the rollup, the Show mode,
      * the totals currency or the tab changes — the reactive reads all happen
      * up front, before the frame wait, or the effect would not track them.
      *
@@ -244,6 +300,7 @@ export function budgetTab() {
         currency: item.currency || this.budget.displayCurrency || '',
         date: item.date || '',
         countryCodes: [...(item.countryCodes || [])],
+        charged: item.status !== 'PENDING',
       };
       this.expenseError = '';
       this.expenseOpen = true;
@@ -278,6 +335,7 @@ export function budgetTab() {
           date: this.expenseForm.date || null,
           // An empty array clears every link server-side.
           countryCodes: this.expenseForm.countryCodes,
+          charged: this.expenseForm.charged,
         };
         if (this.expenseForm.id) {
           await this.api.updateExpense(this.trip.id, this.expenseForm.id, payload);
@@ -353,7 +411,7 @@ export function budgetTab() {
      * quote. Reported rather than silently absorbed either way.
      */
     get missingRates() {
-      return this.budget.currenciesMissingRates || [];
+      return this.budgetView.currenciesMissingRates || [];
     },
 
     /**
@@ -381,9 +439,44 @@ export function budgetTab() {
     expenseDate: (item) => (item.date ? shortDate(item.date) : '—'),
     fmt: (amount, currency) => money(amount, currency),
 
-    /** The headline total: "Total: 900.00 EUR". */
+    /**
+     * The headline total: "Total: 900.00 EUR", or "Forecast total: …" while a
+     * forecast breakdown is selected.
+     *
+     * Named in the label rather than left to the reader to infer from the
+     * Group by selector above it. The two numbers differ by exactly the
+     * expenses nobody has paid yet, and an unlabelled figure that quietly
+     * grew is worse than no forecast at all.
+     */
     totalLabel() {
-      return `Total: ${this.fmt(this.budget.total, this.budget.totalsCurrency)}`;
+      const amount = this.fmt(this.budgetView.total, this.budget.totalsCurrency);
+      return this.budgetForecast ? `Forecast total: ${amount}` : `Total: ${amount}`;
+    },
+
+    /**
+     * "Charged" or "Pending", for the table's Status column. Read off `status`
+     * with PENDING as the only special case, so a row whose YAML predates the
+     * field reads as the charge it was — the same rule the API applies.
+     */
+    statusLabel(item) {
+      return item.status === 'PENDING' ? 'Pending' : 'Charged';
+    },
+
+    /**
+     * Whether the budget row a plan's cost created is already charged — what
+     * the Plan and Itinerary forms show in their own "Expense already charged"
+     * box.
+     *
+     * Read back off the budget rather than kept on the plan. The row is the
+     * thing that has a status, and it stays editable in the Budget tab, so a
+     * second copy on the plan could only ever disagree with it. A plan with no
+     * row yet answers false, which is also the default a new cost gets — see
+     * BudgetSync on the API.
+     */
+    chargedOfPlan(plan) {
+      if (!plan?.id) return false;
+      const row = (this.budget.items || []).find((item) => item.itineraryItemId === plan.id);
+      return row ? row.status !== 'PENDING' : false;
     },
 
     sourcePlan(item) {

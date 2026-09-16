@@ -36,7 +36,9 @@ public class DestinationService {
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
-            String notes) {}
+            String notes,
+            /** Null on a patch means "leave it as it is". */
+            Boolean suppressChecklist) {}
 
     /** Creating one also produces its three checklist items. */
     public record Created(Destination destination, List<ChecklistItem> seededChecklist) {}
@@ -95,6 +97,13 @@ public class DestinationService {
         apply(destination, input);
         Audit.created(destination, userId);
         destinations.save(trip.getSlug(), destination);
+
+        // Asked for on the form and remembered on the destination, because the
+        // accommodation item is also seeded later — see
+        // seedLodgingIfTheDatesNowNeedIt, which honours the same flag.
+        if (destination.seedsNoChecklist()) {
+            return new Created(destination, List.of());
+        }
 
         int nextSortOrder = checklist.findAll(trip.getSlug()).size();
         List<ChecklistItem> seeded = seeder.seedFor(destination, nextSortOrder);
@@ -207,6 +216,10 @@ public class DestinationService {
      * vanish because a date was corrected.
      */
     private void seedLodgingIfTheDatesNowNeedIt(Trip trip, String userId, Destination destination) {
+        // The whole point of storing the flag: without this, suppressing the
+        // checklist and then filling in the dates would produce the one item
+        // the member explicitly said they did not want.
+        if (destination.seedsNoChecklist()) return;
         if (destination.hasSeededLodging()) return;
         if (!seeder.needsAccommodation(destination)) return;
 
@@ -245,6 +258,11 @@ public class DestinationService {
 
     private void apply(Destination destination, Input input) {
         if (input.name() != null) destination.setName(input.name().trim());
+        // Absent leaves it alone; false clears it back to absent rather than
+        // writing "suppressChecklist: false" into every destination.
+        if (input.suppressChecklist() != null) {
+            destination.setSuppressChecklist(input.suppressChecklist() ? true : null);
+        }
         if (input.startDate() != null) destination.setStartDate(input.startDate());
         if (input.endDate() != null) destination.setEndDate(input.endDate());
         if (input.notes() != null) destination.setNotes(blankToNull(input.notes()));

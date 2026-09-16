@@ -24,10 +24,13 @@ public class BudgetController {
             @NotNull(message = "Enter an amount") BigDecimal amount,
             String currency,
             LocalDate date,
-            List<String> countryCodes) {
+            List<String> countryCodes,
+            /** "Expense already charged". Absent means charged — see BudgetService.Input. */
+            Boolean charged) {
 
         BudgetService.Input toInput() {
-            return new BudgetService.Input(description, category, amount, currency, date, countryCodes);
+            return new BudgetService.Input(description, category, amount, currency, date,
+                    countryCodes, charged);
         }
     }
 
@@ -37,10 +40,13 @@ public class BudgetController {
             BigDecimal amount,
             String currency,
             LocalDate date,
-            List<String> countryCodes) {
+            List<String> countryCodes,
+            /** Absent leaves the status as it is, like every other field here. */
+            Boolean charged) {
 
         BudgetService.Input toInput() {
-            return new BudgetService.Input(description, category, amount, currency, date, countryCodes);
+            return new BudgetService.Input(description, category, amount, currency, date,
+                    countryCodes, charged);
         }
     }
 

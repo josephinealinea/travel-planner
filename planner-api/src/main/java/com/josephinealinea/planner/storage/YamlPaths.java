@@ -38,6 +38,22 @@ public class YamlPaths {
 
     public Path publishDir() { return publishDir; }
 
+    /**
+     * Where a page waits while its publish request is undecided.
+     *
+     * A sibling of the publish directory rather than a subdirectory of it, so
+     * that directory keeps meaning exactly one thing: everything in it is
+     * public. Copy it to a CDN and you cannot accidentally ship a page the
+     * owner has not approved.
+     */
+    public Path pendingDir() {
+        return publishDir.resolveSibling(publishDir.getFileName() + "-pending");
+    }
+
+    public Path pendingTrip(String slug) {
+        return pendingDir().resolve(Slugs.requireSafe(slug));
+    }
+
     public Path publishedTrip(String slug) {
         return publishDir.resolve(Slugs.requireSafe(slug));
     }

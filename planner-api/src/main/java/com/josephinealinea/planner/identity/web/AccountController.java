@@ -59,6 +59,22 @@ public class AccountController {
     }
 
     /**
+     * What this account's published pages show. Grouped under one endpoint
+     * because more of these are coming, and every one of them is a checkbox.
+     *
+     * Takes effect on the next publish, not retroactively: a published page is
+     * a rendered file, so what it shows was decided when it was written.
+     */
+    @PatchMapping("/published-page")
+    AuthDtos.MeResponse updatePublishedPage(
+            @RequestBody AuthDtos.UpdatePublishedPageRequest request) {
+        return AuthDtos.MeResponse.from(
+                users.updatePublishedPageSettings(currentUser.userId(),
+                        request.itineraryCost(), request.destinationDays(),
+                        request.forecastExpenses()));
+    }
+
+    /**
      * The single currency this account's budget totals are shown in, on every
      * trip. It has no bearing on a trip's own displayCurrency, which stays the
      * anchor its exchange-rate table is quoted against.

@@ -31,6 +31,16 @@ export function publishTab() {
       return savedTheme();
     },
 
+    /**
+     * The staged page a pending request built. Members only, never cached.
+     *
+     * Linked rather than fetched: it is a whole page, and the point is to see
+     * it as a reader would before approving it.
+     */
+    get publishPreviewUrl() {
+      return this.api.publishPreviewUrl(this.trip.id);
+    },
+
     /** "Minima Theme", for the line that says what publishing will use. */
     get themeToPublishLabel() {
       return THEME_REGISTRY[this.themeToPublish]?.labelFull || this.themeToPublish;
@@ -89,7 +99,10 @@ export function publishTab() {
     async requestPublish() {
       this.publishBusy = true;
       try {
-        this.publish = await this.api.requestPublish(this.trip.id, this.requestNote.trim());
+        // The theme goes with it: the page is built now, in whatever theme
+        // the requester is looking at.
+        this.publish = await this.api.requestPublish(
+          this.trip.id, this.requestNote.trim(), this.themeToPublish);
         this.requestNote = '';
         toast.success('Request sent to the trip owner');
       } catch (error) {

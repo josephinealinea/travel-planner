@@ -20,6 +20,15 @@ public class PublishRequest {
     private Instant decidedAt;
     private String decidedByUserId;
 
+    /**
+     * The theme the staged page was rendered in — the requester's own, read
+     * from their browser when they asked.
+     *
+     * Kept because approving moves that page into place rather than rebuilding
+     * it, so this is the only record of what the live page actually looks like.
+     */
+    private String theme;
+
     public PublishRequest() {}
 
     @JsonIgnore
@@ -44,6 +53,9 @@ public class PublishRequest {
 
     public Instant getDecidedAt() { return decidedAt; }
     public void setDecidedAt(Instant decidedAt) { this.decidedAt = decidedAt; }
+
+    public String getTheme() { return theme; }
+    public void setTheme(String theme) { this.theme = theme; }
 
     public String getDecidedByUserId() { return decidedByUserId; }
     public void setDecidedByUserId(String decidedByUserId) { this.decidedByUserId = decidedByUserId; }

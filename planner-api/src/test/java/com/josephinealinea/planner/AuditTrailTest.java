@@ -164,10 +164,7 @@ class AuditTrailTest {
     }
 
     private DestinationService.Input place(String name, String code, String start, String end) {
-        return new DestinationService.Input(name, code, null, null, null, null, null,
-                start == null ? null : LocalDate.parse(start),
-                end == null ? null : LocalDate.parse(end),
-                null);
+        return new DestinationService.Input(name, code, null, null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
     }
 
     /** Asserts a record was made by one member and has not been edited since. */
@@ -221,7 +218,7 @@ class AuditTrailTest {
     void anExpenseRecordsWhoEnteredIt() {
         BudgetItem row = budgetService.create(TRIP_ID, SAM,
                 new BudgetService.Input("Yellow fever vaccine", ChecklistCategory.OTHERS,
-                        new BigDecimal("45.00"), "USD", null, null));
+                        new BigDecimal("45.00"), "USD", null, null, null));
 
         madeBy(budget.findById(SLUG, row.getId()).orElseThrow(), SAM);
     }
@@ -234,14 +231,14 @@ class AuditTrailTest {
      */
     @Test
     void theBudgetRowAPlanCostCreatesBelongsToThePlansAuthor() {
-        itineraryService.create(TRIP_ID, SAM, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.parse("2026-10-25T15:00"), null, null, new BigDecimal("240.00"), "USD", null));
+        itineraryService.create(TRIP_ID, SAM, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.parse("2026-10-25T15:00"), null, null, new BigDecimal("240.00"), "USD", null, null));
 
         assertThat(budget.findAll(SLUG)).singleElement().satisfies(row -> madeBy(row, SAM));
     }
 
     @Test
     void everyNightAStaySpreadsOverBelongsToThePlansAuthor() {
-        itineraryService.create(TRIP_ID, SAM, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.parse("2026-10-25T15:00"), LocalDateTime.parse("2026-10-28T10:00"), null, null, null, null));
+        itineraryService.create(TRIP_ID, SAM, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.parse("2026-10-25T15:00"), LocalDateTime.parse("2026-10-28T10:00"), null, null, null, null, null));
 
         // The plan's own row plus one per further day, all of them Sam's.
         assertThat(itinerary.findAll(SLUG)).hasSize(4).allSatisfy(day -> madeBy(day, SAM));
@@ -308,11 +305,11 @@ class AuditTrailTest {
 
     @Test
     void correctingAnAmountInTheBudgetStampsThePlanItPushesBackTo() {
-        ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.parse("2026-10-25T15:00"), null, null, new BigDecimal("240.00"), "USD", null));
+        ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.parse("2026-10-25T15:00"), null, null, new BigDecimal("240.00"), "USD", null, null));
         BudgetItem row = budget.findAll(SLUG).get(0);
 
         budgetService.update(TRIP_ID, SAM, row.getId(), new BudgetService.Input(
-                null, null, new BigDecimal("260.00"), null, null, null));
+                null, null, new BigDecimal("260.00"), null, null, null, null));
 
         madeByThenChangedBy(budget.findById(SLUG, row.getId()).orElseThrow(), ALEX, SAM);
         madeByThenChangedBy(itinerary.findById(SLUG, plan.getId()).orElseThrow(), ALEX, SAM);

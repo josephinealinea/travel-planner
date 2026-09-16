@@ -103,6 +103,8 @@ export const api = {
   updateCurrencies: (data) => patch('/api/v1/account/currencies', data),
   updateDisplayCurrency: (data) => patch('/api/v1/account/display-currency', data),
   changePassword: (data) => post('/api/v1/account/password', data),
+  // Only the flags being changed need sending; the rest are left as they are.
+  updatePublishedPage: (settings) => patch('/api/v1/account/published-page', settings),
 
   // ── trips ──────────────────────────────────────────
   trips: () => get('/api/v1/trips'),
@@ -156,7 +158,11 @@ export const api = {
   // ── publish ────────────────────────────────────────
   publish: (id, theme) => post(`${trip(id)}/publish`, { theme }),
   unpublish: (id) => del(`${trip(id)}/publish`),
-  requestPublish: (id, note) => post(`${trip(id)}/publish-requests`, { note }),
+  // The theme rides along: the page is built when the request is sent, in the
+  // requesting member's own theme, which only their browser knows.
+  requestPublish: (id, note, theme) => post(`${trip(id)}/publish-requests`, { note, theme }),
+  // Members only. The page a pending request built, before anyone approves it.
+  publishPreviewUrl: (id) => `${API_BASE}${trip(id)}/publish/preview`,
   publishRequests: (id) => get(`${trip(id)}/publish-requests`),
   cancelPublishRequest: (id, reqId) => post(`${trip(id)}/publish-requests/${reqId}/cancel`),
   approvePublish: (id, reqId, theme) => post(`${trip(id)}/publish-requests/${reqId}/approve`, { theme }),

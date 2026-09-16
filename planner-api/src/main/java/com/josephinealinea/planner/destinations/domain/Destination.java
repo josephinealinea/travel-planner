@@ -49,6 +49,20 @@ public class Destination implements Audited {
     // Boxed and NON_NULL so it is simply absent until it is true.
     private Boolean lodgingSeeded;
 
+    /**
+     * Whether this destination seeds checklist items at all.
+     *
+     * Stored rather than treated as a one-off form choice, because the
+     * accommodation item is seeded *later* too — when dates arrive that cover
+     * a night (see DestinationService.seedLodgingIfTheDatesNowNeedIt). Without
+     * remembering the answer, suppressing the checklist and then filling in
+     * the dates would quietly produce the one item the member said they did
+     * not want.
+     *
+     * Boxed and NON_NULL so it is simply absent until somebody asks for it.
+     */
+    private Boolean suppressChecklist;
+
     public Destination() {}
 
     public Boolean getLodgingSeeded() { return lodgingSeeded; }
@@ -60,8 +74,29 @@ public class Destination implements Audited {
      */
     public boolean hasSeededLodging() { return Boolean.TRUE.equals(lodgingSeeded); }
 
+    public Boolean getSuppressChecklist() { return suppressChecklist; }
+    public void setSuppressChecklist(Boolean suppressChecklist) {
+        this.suppressChecklist = suppressChecklist;
+    }
+
+    /** Named for the question, not as a get/is accessor — see coversWholeDay. */
+    public boolean seedsNoChecklist() { return Boolean.TRUE.equals(suppressChecklist); }
+
     public Long nights() {
         return Nights.between(startDate, endDate);
+    }
+
+    /**
+     * Days visited, counting both ends — 25-Oct to 31-Oct is 7, a day trip is 1.
+     *
+     * Deliberately not `nights() + 1`: nights is null for a day trip on
+     * purpose (that null is the accommodation test), so adding one would make
+     * the trip's only single-day stop count as nothing. See "Nights versus
+     * days" in CLAUDE.md, and daysBetween in js/format.js which mirrors this.
+     */
+    public Long days() {
+        if (startDate == null || endDate == null || endDate.isBefore(startDate)) return null;
+        return java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
     }
 
     @JsonIgnore
