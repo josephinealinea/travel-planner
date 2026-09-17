@@ -23,6 +23,13 @@ import java.util.Optional;
  * Only the owner can publish. Another member's Publish button instead raises a
  * request, and the owner's approval is what actually publishes.
  */
+
+import java.util.ArrayList;
+
+
+import java.util.List;
+
+
 @Service
 public class PublishService {
 
@@ -103,7 +110,8 @@ public class PublishService {
         Trip saved = trips.save(trip);
 
         var requester = users.require(userId);
-        renderer.renderPending(saved, optionsFor(requester), request.getTheme());
+        renderer.renderPending(saved, optionsFor(requester), request.getTheme(),
+                personalPagesFor(saved));
 
         var owner = users.require(trip.getOwnerUserId());
         email.send(templates.publishRequested(
@@ -186,9 +194,30 @@ public class PublishService {
 
         if (!renderer.promotePending(saved.getSlug())) {
             var requester = users.require(request.getRequestedByUserId());
-            renderer.render(saved, optionsFor(requester));
+            renderer.render(saved, optionsFor(requester), personalPagesFor(saved));
         }
         return saved;
+    }
+
+    /**
+     * The members who have asked for a page of their own, in trip-member order.
+     *
+     * Their settings, not the publishing member's: a personal page is theirs,
+     * so what it reveals is their choice. A member with the box unticked gets
+     * no file written anywhere, which is what "off" has to mean for something
+     * that ends up on a public URL.
+     *
+     * The directory name comes from the display name, so it changes if they
+     * change their screen name — a personal page is a file, and renaming
+     * yourself republishes to a new one.
+     */
+    private List<StaticSiteRenderer.PersonalPage> personalPagesFor(Trip trip) {
+        var accounts = users.byId(PersonalPages.memberIds(trip));
+        List<StaticSiteRenderer.PersonalPage> pages = new ArrayList<>();
+        PersonalPages.slugsFor(trip, accounts).forEach((memberId, memberSlug) ->
+                pages.add(new StaticSiteRenderer.PersonalPage(
+                        accounts.get(memberId), memberSlug, optionsFor(accounts.get(memberId)))));
+        return pages;
     }
 
     /** A member's own published-page settings. */
@@ -216,7 +245,7 @@ public class PublishService {
         // one choosing to put this page up. Read at publish time, so changing
         // the checkbox takes effect on the next publish rather than
         // retroactively — a published page is a rendered file.
-        renderer.render(saved, optionsFor(users.require(userId)));
+        renderer.render(saved, optionsFor(users.require(userId)), personalPagesFor(saved));
         // Publishing directly supersedes anything staged for an undecided
         // request, so it must not be left behind to go live later.
         renderer.removePending(saved.getSlug());

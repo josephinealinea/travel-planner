@@ -58,7 +58,19 @@ public final class TripViews {
                               String publicUrl,
                               Instant publishedAt,
                               String publishedTheme,
-                              List<PublishRequestView> requests) {}
+                              List<PublishRequestView> requests,
+                              /**
+                               * The signed-in member's own published page, or
+                               * null when they have not asked for one or the
+                               * trip has not been published since they did.
+                               *
+                               * Checked against the file rather than against
+                               * the setting: ticking the box takes effect on
+                               * the next publish, like every other
+                               * published-page setting, and a link offered
+                               * before then would simply 404.
+                               */
+                              String myPublicUrl) {}
 
     /**
      * displayCurrency is the trip's own anchor (what its exchange-rate table
@@ -85,6 +97,14 @@ public final class TripViews {
                              String ratesBase,
                              String ratesDate,
                              Map<String, BigDecimal> exchangeRates,
+                             /**
+                              * The signed-in member's part of each row they
+                              * share, keyed by row id. Which rows the Budget
+                              * tab lists is a lookup in here rather than a
+                              * filter on `items`, which stays whole for the
+                              * other tabs. See BudgetService.Summary.
+                              */
+                             Map<String, BigDecimal> shares,
                              BudgetService.Breakdown charged,
                              BudgetService.Breakdown forecast) {
 
@@ -92,7 +112,7 @@ public final class TripViews {
                                       com.josephinealinea.planner.rates.domain.RateTable table) {
             return new BudgetView(summary.items(), summary.displayCurrency(), summary.totalsCurrency(),
                     table.getBase(), table.getDate(), table.getRates(),
-                    summary.charged(), summary.forecast());
+                    summary.shares(), summary.charged(), summary.forecast());
         }
     }
 

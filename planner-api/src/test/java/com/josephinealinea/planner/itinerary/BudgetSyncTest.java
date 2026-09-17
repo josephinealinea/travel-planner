@@ -63,7 +63,7 @@ class BudgetSyncTest {
     @Test
     void aCostCreatesAMatchingBudgetRecord() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         assertThat(item.getBudgetItemId()).isNotNull();
         BudgetItem created = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
@@ -79,7 +79,7 @@ class BudgetSyncTest {
     @Test
     void changingTheCostUpdatesTheAmountButNotTheEditedDescription() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         // Somebody tidies up the budget row by hand.
         BudgetItem edited = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
@@ -89,7 +89,7 @@ class BudgetSyncTest {
 
         item.setCost(new BigDecimal("300.00"));
         item.setCurrency("EUR");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         BudgetItem after = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
         assertThat(after.getAmount()).isEqualByComparingTo("300.00");
@@ -102,12 +102,12 @@ class BudgetSyncTest {
     @Test
     void clearingTheCostRemovesTheBudgetRecord() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
         String budgetId = item.getBudgetItemId();
 
         item.setCost(null);
         item.setCurrency(null);
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         assertThat(budget.findById(SLUG, budgetId)).isEmpty();
         assertThat(item.getBudgetItemId()).isNull();
@@ -116,7 +116,7 @@ class BudgetSyncTest {
     @Test
     void aZeroCostIsTreatedAsNoCost() {
         ItineraryItem item = plan(BigDecimal.ZERO, "USD");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         assertThat(item.getBudgetItemId()).isNull();
         assertThat(budget.findAll(SLUG)).isEmpty();
@@ -125,7 +125,7 @@ class BudgetSyncTest {
     @Test
     void deletingThePlanRemovesTheBudgetRecordItCreated() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
         String budgetId = item.getBudgetItemId();
 
         sync.afterDelete(SLUG, item);
@@ -143,7 +143,7 @@ class BudgetSyncTest {
         budget.save(SLUG, manual);
 
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
         sync.afterDelete(SLUG, item);
 
         assertThat(budget.findById(SLUG, "manual-1")).isPresent();
@@ -154,7 +154,7 @@ class BudgetSyncTest {
     void aCostCreatesABudgetRecordCarryingThePlansLocations() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
         item.setCountryCodes(List.of("dest-1", "dest-2"));
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         BudgetItem created = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
         assertThat(created.getCountryCodes()).containsExactly("dest-1", "dest-2");
@@ -170,7 +170,7 @@ class BudgetSyncTest {
     void changingTheCostNeverOverwritesLocationsEditedOnTheBudgetRow() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
         item.setCountryCodes(List.of("dest-1"));
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         // Somebody corrects the row's locations by hand on the budget tab.
         BudgetItem edited = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
@@ -180,7 +180,7 @@ class BudgetSyncTest {
         // The plan itself still (or now) points somewhere else entirely.
         item.setCost(new BigDecimal("300.00"));
         item.setCountryCodes(List.of("dest-3"));
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         BudgetItem after = budget.findById(SLUG, item.getBudgetItemId()).orElseThrow();
         assertThat(after.getAmount()).isEqualByComparingTo("300.00");
@@ -191,7 +191,7 @@ class BudgetSyncTest {
     @Test
     void aBudgetRowWhoseBackLinkWasLostIsStillCleanedUp() {
         ItineraryItem item = plan(new BigDecimal("246.22"), "USD");
-        sync.afterSave(SLUG, item, USER_ID, null);
+        sync.afterSave(SLUG, item, USER_ID, null, null);
 
         // Simulate the plan losing its back-link but the row still pointing at it.
         item.setBudgetItemId(null);

@@ -27,7 +27,8 @@ import java.util.List;
  *
  * `status` says whether the money has actually left yet, and is the one field
  * here that changes what the rollup above the table counts — see BudgetStatus
- * and markCharged.
+ * and markCharged. `sharedByUserIds` says whose money it was, which decides
+ * both whose Budget tab the row appears on and how much of it counts there.
  */
 public class BudgetItem implements Audited {
 
@@ -41,6 +42,23 @@ public class BudgetItem implements Audited {
     private LocalDate date;
     private List<String> countryCodes = new ArrayList<>();
     private transient List<String> legacyDestinationIds = new ArrayList<>();
+
+    /**
+     * Who this expense is shared by, as trip-member user ids — what the forms
+     * label "Shared by".
+     *
+     * User ids rather than names or emails, for the reason the audit fields
+     * give: both of those change, and the member list already resolves a screen
+     * name per request, so a stored copy would be a stale answer to a question
+     * the user record answers correctly.
+     *
+     * <b>Empty means the whole trip</b>, and nothing resolves that here — see
+     * TripMembers, which owns both that rule and the division. Each sharer's
+     * part is computed per request and never stored: it depends on how many
+     * people share the row, so a stored copy would go quietly wrong the moment
+     * one was added.
+     */
+    private List<String> sharedByUserIds = new ArrayList<>();
 
     /**
      * Charged already, or still to come. CONFIRMED by default so a record
@@ -128,6 +146,12 @@ public class BudgetItem implements Audited {
     public List<String> getCountryCodes() { return countryCodes; }
     public void setCountryCodes(List<String> countryCodes) {
         this.countryCodes = countryCodes == null ? new ArrayList<>() : new ArrayList<>(countryCodes);
+    }
+
+    public List<String> getSharedByUserIds() { return sharedByUserIds; }
+    public void setSharedByUserIds(List<String> sharedByUserIds) {
+        this.sharedByUserIds = sharedByUserIds == null
+                ? new ArrayList<>() : new ArrayList<>(sharedByUserIds);
     }
 
     /**

@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trip — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=62"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=62"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=62"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=65"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=65"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=65"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -571,16 +571,25 @@
           </div>
         </div>
 
-        <div class="empty-state" x-show="!budget.items.length">
+        <!-- Follows what the table lists rather than what the trip holds: a
+             member who shares none of its expenses has an empty budget, even
+             on a trip full of other people's. -->
+        <div class="empty-state" x-show="!myBudgetItems.length">
           <div class="empty-icon">💰</div>
-          <h3 class="empty-title">No costs recorded yet</h3>
-          <p class="empty-body">
+          <h3 class="empty-title" x-text="budget.items.length
+                ? 'None of these expenses are yours'
+                : 'No costs recorded yet'"></h3>
+          <p class="empty-body" x-show="!budget.items.length">
             Put a cost on a plan and it appears here automatically, or add an expense by hand.
+          </p>
+          <p class="empty-body" x-show="budget.items.length">
+            This trip has expenses, but none of them name you under “Shared by”.
+            Open one from the Itinerary tab, or add your own.
           </p>
           <button type="button" class="btn btn-primary" @click="openAddExpense()">Add an expense</button>
         </div>
 
-        <div x-show="budget.items.length">
+        <div x-show="myBudgetItems.length">
           <div class="card" style="margin-bottom:16px">
             <div class="budget-summary">
               <!-- Chart.js draws the pie; the library is vendored in
@@ -599,6 +608,7 @@
                        came in. -->
                   <span class="budget-rates-note" x-text="ratesNote()"></span>
                 </div>
+                <div class="tiny muted" x-text="totalCaption()"></div>
                 <div class="budget-native-totals" x-show="nativeTotalsLabel"
                      x-text="`Native: ${nativeTotalsLabel}`"></div>
 
@@ -643,7 +653,7 @@
                   <th class="select-cell"><span class="sr-only">Select</span></th>
                   <th>Description</th><th>Category</th>
                   <th class="num">Amount</th>
-                  <th class="num" x-text="`In ${budget.totalsCurrency}`"></th>
+                  <th class="num">Shared Amount</th>
                   <th>Status</th>
                   <th>Date</th><th>Source</th><th class="actions"></th>
                 </tr>
@@ -670,8 +680,15 @@
                         </template>
                       </div>
                     </td>
+                    <!-- The whole expense, as recorded. The column beside it
+                         is this member's part of it — the two differ exactly
+                         when more than one name is on the row. Both name their
+                         own currency, because they are rarely the same one:
+                         the amount is what was spent, the share is converted. -->
                     <td class="num" x-text="fmt(item.amount, item.currency)"></td>
-                    <td class="num" x-text="convertedOf(item) == null ? '—' : fmt(convertedOf(item))"></td>
+                    <td class="num"
+                        x-text="convertedShareOf(item) == null
+                                ? '—' : fmt(convertedShareOf(item), budget.totalsCurrency)"></td>
                     <!-- A pending row is listed like any other. It is only
                          left out of the total that claims to be money spent. -->
                     <td>
@@ -719,6 +736,25 @@
             <button type="button" class="btn btn-sm" @click="copyLink()"
                     x-text="copied ? 'Copied ✓' : 'Copy link'"></button>
           </div>
+
+          <!-- Only when this member asked for one in Account → Appearance, and
+               only once a publish has actually written it. A static page has no
+               sign-in, so whose budget it shows is decided when the file is
+               written — which is why it is a second page rather than a filter
+               on the first. -->
+          <template x-if="publish.myPublicUrl">
+            <div style="margin-top:12px">
+              <p class="small muted" style="margin-bottom:4px">
+                Your own page — the same trip, showing your share of each expense
+                instead of the total. Nobody else's figures are in it.
+              </p>
+              <div class="btn-row">
+                <a class="btn btn-sm" :href="publish.myPublicUrl" target="_blank" rel="noopener">
+                  Open my page
+                </a>
+              </div>
+            </div>
+          </template>
           <div class="btn-row">
             <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener">
               Open public page
@@ -812,14 +848,19 @@
           </template>
         </div>
 
-        <div class="card" x-show="decidedRequests.length" style="margin-top:16px">
-          <div class="card-header"><h3 class="card-title">Earlier requests</h3></div>
-          <template x-for="request in decidedRequests" :key="request.id">
+        <div class="card" x-show="recentRequests.length" style="margin-top:16px">
+          <div class="card-header"><h3 class="card-title">Recent requests</h3></div>
+          <template x-for="request in recentRequests" :key="request.id">
             <div class="publish-request-row">
-              <div class="grow small" x-text="request.requestedByDisplayName"></div>
+              <div class="grow small">
+                <span x-text="request.requestedByDisplayName"></span>
+                <span class="tiny muted" x-text="` · ${decidedAtLabel(request)}`"></span>
+              </div>
               <span class="badge" x-text="request.status"></span>
             </div>
           </template>
+          <p class="tiny muted" x-show="decidedRequests.length > recentRequests.length"
+             x-text="`Showing the ${recentRequests.length} most recent of ${decidedRequests.length}.`"></p>
         </div>
       </section>
 
@@ -947,7 +988,7 @@
 
                   <div class="field-row">
                     <div class="field">
-                      <label for="plan-cost">Cost (optional)</label>
+                      <label for="plan-cost">Total Cost (optional)</label>
                       <input id="plan-cost" type="number" step="0.01" min="0" x-model="planForm.cost">
                     </div>
                     <div class="field">
@@ -970,6 +1011,22 @@
                       <input type="checkbox" x-model="planForm.costCharged">
                       Expense already charged
                     </label>
+                  </div>
+
+                  <div class="field" x-show="planForm.cost">
+                    <label id="plan-shared-label">Shared by</label>
+                    <div class="chip-group" role="group" aria-labelledby="plan-shared-label">
+                      <template x-for="person in tripSharers" :key="person.userId">
+                        <button type="button" class="chip"
+                                :aria-pressed="planForm.sharedByUserIds.includes(person.userId)"
+                                @click="toggleSharer(planForm.sharedByUserIds, person.userId)"
+                                x-text="person.label"></button>
+                      </template>
+                    </div>
+                    <p class="field-hint">
+                      Splits the cost between them. Pick nobody and it belongs to
+                      everyone on the trip.
+                    </p>
                   </div>
 
                   <div class="field">
@@ -1420,7 +1477,7 @@
             </div>
             <div class="field-row">
               <div class="field">
-                <label for="entry-cost">Cost (optional)</label>
+                <label for="entry-cost">Total Cost (optional)</label>
                 <input id="entry-cost" type="number" step="0.01" min="0" x-model="entryForm.cost">
               </div>
               <div class="field">
@@ -1440,6 +1497,17 @@
                 <input type="checkbox" x-model="entryForm.costCharged">
                 Expense already charged
               </label>
+            </div>
+            <div class="field" x-show="entryForm.cost">
+              <label id="entry-shared-label">Shared by</label>
+              <div class="chip-group" role="group" aria-labelledby="entry-shared-label">
+                <template x-for="person in tripSharers" :key="person.userId">
+                  <button type="button" class="chip"
+                          :aria-pressed="entryForm.sharedByUserIds.includes(person.userId)"
+                          @click="toggleSharer(entryForm.sharedByUserIds, person.userId)"
+                          x-text="person.label"></button>
+                </template>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn" @click="entryOpen = false">Cancel</button>
@@ -1594,7 +1662,7 @@
                  budget row. -->
             <div class="field-row">
               <div class="field">
-                <label for="expense-cost">Cost</label>
+                <label for="expense-cost">Total Cost</label>
                 <input id="expense-cost" type="number" step="0.01" min="0"
                        x-model="expenseForm.amount" required>
               </div>
@@ -1623,6 +1691,21 @@
             <div class="field">
               <label for="expense-date">Date (optional)</label>
               <input id="expense-date" type="date" x-model="expenseForm.date" :min="trip.startDate" :max="trip.endDate">
+            </div>
+            <div class="field">
+              <label id="expense-shared-label">Shared by</label>
+              <div class="chip-group" role="group" aria-labelledby="expense-shared-label">
+                <template x-for="person in tripSharers" :key="person.userId">
+                  <button type="button" class="chip"
+                          :aria-pressed="expenseForm.sharedByUserIds.includes(person.userId)"
+                          @click="toggleSharer(expenseForm.sharedByUserIds, person.userId)"
+                          x-text="person.label"></button>
+                </template>
+              </div>
+              <p class="field-hint">
+                Picking two or more splits the cost between them, and each sees
+                only their part. Pick nobody and it belongs to everyone on the trip.
+              </p>
             </div>
             <div class="field">
               <label class="checkbox">

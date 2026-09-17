@@ -55,7 +55,7 @@ export function tripPage() {
     // charges alone, and the charges plus everything still to be paid. Both are
     // shaped here so the Budget tab's getters have something to read before the
     // first load lands. See BudgetService.Breakdown.
-    budget: { items: [], exchangeRates: {},
+    budget: { items: [], exchangeRates: {}, shares: {},
              charged: { byCategory: {}, byCountry: [], nativeTotals: [], total: 0,
                         currenciesMissingRates: [] },
              forecast: { byCategory: {}, byCountry: [], nativeTotals: [], total: 0,
@@ -224,7 +224,10 @@ export function tripPage() {
         case 'destinations': return this.destinations.length;
         case 'checklist': return this.checklist.length;
         case 'itinerary': return this.itinerary.length;
-        case 'budget': return this.budget.items?.length || 0;
+        // This member's own rows, matching what the Budget tab lists — a
+        // badge counting the whole trip's expenses beside a table showing
+        // three of them reads as a bug.
+        case 'budget': return this.myBudgetItems.length;
         case 'publish': return this.pendingRequests.length || 0;
         default: return 0;
       }

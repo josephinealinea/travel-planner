@@ -44,9 +44,37 @@ public class PublicPageController {
         return read(slug, "trip.json", MediaType.APPLICATION_JSON);
     }
 
+    /**
+     * One member's own page: the same trip, with their share of each expense
+     * in place of the trip's whole spend.
+     *
+     * No authentication here either, and there could not be: a published page
+     * is a static file, so whose budget it shows is decided when it is written
+     * rather than when it is read. Which is also why another member's figures
+     * are not in this file at all — see StaticSiteRenderer.write.
+     */
+    @GetMapping({"/p/{slug}/m/{member}", "/p/{slug}/m/{member}/"})
+    ResponseEntity<String> memberPage(@PathVariable String slug, @PathVariable String member) {
+        return read(memberDir(slug, member), "index.html", MediaType.TEXT_HTML);
+    }
+
+    @GetMapping("/p/{slug}/m/{member}/trip.json")
+    ResponseEntity<String> memberData(@PathVariable String slug, @PathVariable String member) {
+        return read(memberDir(slug, member), "trip.json", MediaType.APPLICATION_JSON);
+    }
+
+    private Path memberDir(String slug, String member) {
+        // Both halves go through requireSafe inside; neither can climb out.
+        return paths.publishedMemberPage(slug, member);
+    }
+
     private ResponseEntity<String> read(String slug, String filename, MediaType type) {
         // requireSafe rejects anything that could climb out of the publish dir.
-        Path file = paths.publishedTrip(Slugs.requireSafe(slug)).resolve(filename);
+        return read(paths.publishedTrip(Slugs.requireSafe(slug)), filename, type);
+    }
+
+    private ResponseEntity<String> read(Path dir, String filename, MediaType type) {
+        Path file = dir.resolve(filename);
         if (!Files.exists(file)) {
             throw ApiException.notFound("Published trip");
         }

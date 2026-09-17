@@ -53,6 +53,16 @@ public class User {
      */
     private boolean publishForecastExpenses;
 
+    /**
+     * Whether publishing this trip also writes this member a page of their own,
+     * showing their share of each expense instead of the trip's whole spend.
+     *
+     * The only one of these settings read from every member rather than from
+     * whoever is publishing: it is their page, so it is their decision, and a
+     * member who has not asked for one has no file written anywhere.
+     */
+    private boolean publishPersonalBudget;
+
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -103,6 +113,11 @@ public class User {
     public boolean isPublishForecastExpenses() { return publishForecastExpenses; }
     public void setPublishForecastExpenses(boolean publishForecastExpenses) {
         this.publishForecastExpenses = publishForecastExpenses;
+    }
+
+    public boolean isPublishPersonalBudget() { return publishPersonalBudget; }
+    public void setPublishPersonalBudget(boolean publishPersonalBudget) {
+        this.publishPersonalBudget = publishPersonalBudget;
     }
 
     public String getDisplayCurrency() { return displayCurrency; }

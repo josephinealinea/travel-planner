@@ -9,6 +9,8 @@ import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.publish.api.PersonalPages;
+import com.josephinealinea.planner.storage.YamlPaths;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.trips.domain.TripMember;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class TripViewAssembler {
     private final ItineraryRepository itinerary;
     private final BudgetService budgets;
     private final RatesService rates;
+    private final YamlPaths paths;
     private final String publicBaseUrl;
 
     public TripViewAssembler(UserRepository users,
@@ -37,6 +40,7 @@ public class TripViewAssembler {
                              ItineraryRepository itinerary,
                              BudgetService budgets,
                              RatesService rates,
+                             YamlPaths paths,
                              AppProperties props) {
         this.users = users;
         this.destinations = destinations;
@@ -44,6 +48,7 @@ public class TripViewAssembler {
         this.itinerary = itinerary;
         this.budgets = budgets;
         this.rates = rates;
+        this.paths = paths;
         this.publicBaseUrl = props.publish().publicBaseUrl();
     }
 
@@ -95,7 +100,7 @@ public class TripViewAssembler {
                 checklist.findAllOrdered(trip.getSlug()),
                 itinerary.findAllOrdered(trip.getSlug()),
                 TripViews.BudgetView.from(budget, rates.current()),
-                publish(trip));
+                publish(trip, currentUserId));
     }
 
     public List<TripViews.MemberView> members(Trip trip) {
@@ -119,7 +124,7 @@ public class TripViewAssembler {
         }).toList();
     }
 
-    public TripViews.PublishView publish(Trip trip) {
+    public TripViews.PublishView publish(Trip trip, String currentUserId) {
         List<TripViews.PublishRequestView> requests = trip.getPublishRequests().stream()
                 .map(request -> new TripViews.PublishRequestView(
                         request.getId(),
@@ -135,7 +140,30 @@ public class TripViewAssembler {
                 publicUrl(trip),
                 trip.getPublishedAt(),
                 trip.getPublishedTheme(),
-                requests);
+                requests,
+                personalUrl(trip, currentUserId));
+    }
+
+    /**
+     * The signed-in member's own page, if one has actually been written.
+     *
+     * The file check is the point: the box takes effect on the next publish, so
+     * between ticking it and republishing there is a setting that is on and no
+     * page behind it. Offering the link anyway would hand somebody a 404 to
+     * share.
+     */
+    private String personalUrl(Trip trip, String currentUserId) {
+        if (currentUserId == null || !trip.isPublished()) return null;
+        String memberSlug = PersonalPages
+                .slugsFor(trip, usersById(trip))
+                .get(currentUserId);
+        if (memberSlug == null) return null;
+        if (!java.nio.file.Files.exists(
+                paths.publishedMemberPage(trip.getSlug(), memberSlug).resolve("index.html"))) {
+            return null;
+        }
+        String base = publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/";
+        return base + trip.getSlug() + "/m/" + memberSlug;
     }
 
     private Map<String, User> usersById(Trip trip) {

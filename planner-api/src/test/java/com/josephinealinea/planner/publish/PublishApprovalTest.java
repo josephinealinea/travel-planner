@@ -145,7 +145,7 @@ class PublishApprovalTest {
         var renderer = new StaticSiteRenderer(destinations, checklist, itinerary, budgets,
                 store, paths);
         views = new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
-                TestRates.empty(store, paths, props), props);
+                TestRates.empty(store, paths, props), paths, props);
         publish = new PublishService(trips, access, views, renderer,
                 new UserService(users, new BCryptPasswordEncoder(), props),
                 new LoggingEmailSender(), new MailTemplates(props));
@@ -179,7 +179,7 @@ class PublishApprovalTest {
         Trip trip = publish.requestPublish(TRIP_ID, MEMBER, null, "y2k");
 
         assertThat(views.publicUrl(trip)).isNull();
-        assertThat(views.publish(trip).publicUrl()).isNull();
+        assertThat(views.publish(trip, MEMBER).publicUrl()).isNull();
     }
 
     /** The requester's settings, not the owner's — the point of the change. */

@@ -39,12 +39,14 @@ public class ItineraryController {
             String currency,
             /** "Expense already charged" for the budget row a cost creates. */
             Boolean costCharged,
+            /** "Shared by" for that row. Absent means the whole trip. */
+            List<String> costSharedByUserIds,
             List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
-                    costCharged, countryCodes);
+                    costCharged, costSharedByUserIds, countryCodes);
         }
     }
 
@@ -57,12 +59,13 @@ public class ItineraryController {
             BigDecimal cost,
             String currency,
             Boolean costCharged,
+            List<String> costSharedByUserIds,
             List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     null, category, description, startAt, endAt, allDay, cost, currency,
-                    costCharged, countryCodes);
+                    costCharged, costSharedByUserIds, countryCodes);
         }
     }
 

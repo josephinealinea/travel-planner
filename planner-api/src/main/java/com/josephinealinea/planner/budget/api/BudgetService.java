@@ -16,6 +16,7 @@ import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.TripAccessService;
+import com.josephinealinea.planner.trips.api.TripMembers;
 import com.josephinealinea.planner.trips.api.TripWindow;
 import com.josephinealinea.planner.trips.domain.Trip;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,12 @@ public class BudgetService {
                         String currency,
                         LocalDate date,
                         List<String> countryCodes,
+                        /**
+                         * "Shared by" — trip-member user ids. Empty means the
+                         * whole trip; null on a patch means "leave it". See
+                         * TripMembers.
+                         */
+                        List<String> sharedByUserIds,
                         /**
                          * "Expense already charged". Null on a patch means
                          * "leave the status alone"; null on a create means
@@ -88,15 +95,38 @@ public class BudgetService {
      * have none. The two are equal for most users most of the time, but are
      * never the same field.
      *
-     * `items` is every row regardless of status. A pending expense is never
-     * hidden — it is listed and labelled, and only excluded from the totals
-     * that claim to be money spent.
+     * `items` is every row on the trip, regardless of status and regardless of
+     * who shares it. Two different filters would otherwise fight over one
+     * field: a pending expense is never hidden, and the other tabs need every
+     * row — the Plan form reads the status of the row its own cost created,
+     * whoever ended up sharing it. What narrows the Budget tab to one member is
+     * `shares`, not this list.
+     *
+     * `shares` is the signed-in member's part of each row they share, keyed by
+     * row id — and the two breakdowns are built from exactly those parts, so
+     * the totals are that member's money rather than the trip's. A row absent
+     * from the map is a row they do not share; the map is empty when there is
+     * no signed-in member at all (a published page), and then the breakdowns
+     * count every row in full.
      */
     public record Summary(List<BudgetItem> items,
                           String displayCurrency,
                           String totalsCurrency,
+                          Map<String, BigDecimal> shares,
                           Breakdown charged,
                           Breakdown forecast) {}
+
+    /**
+     * One row and the amount of it that counts for whoever is looking.
+     *
+     * The pair exists because those two come apart the moment an expense is
+     * shared: the row still says a 900 EUR flight cost 900 EUR, while the
+     * figure going into one member's total is their part of it. Every sum below
+     * reads the amount from here rather than from the item, which is what stops
+     * a share being converted, sliced by country and then quietly totalled at
+     * full price.
+     */
+    private record Charge(BudgetItem item, BigDecimal amount) {}
 
     /**
      * How much was actually spent in one currency, before any conversion —
@@ -191,25 +221,45 @@ public class BudgetService {
             }
         });
 
-        // Twice over the same rows: once over the charges, once over
-        // everything. Two passes rather than one pass filling two sets of
+        // Whose money this rollup is about, and how much of each row is
+        // theirs. With no signed-in member — a published page — there is
+        // nobody to divide for, so every row counts whole.
+        TripMembers members = TripMembers.of(trip);
+        Map<String, BigDecimal> shares = new LinkedHashMap<>();
+        List<Charge> charges = new ArrayList<>();
+        for (BudgetItem item : items) {
+            if (user == null) {
+                charges.add(new Charge(item,
+                        item.getAmount() == null ? BigDecimal.ZERO : item.getAmount()));
+                continue;
+            }
+            BigDecimal share = members.shareOf(
+                    item.getAmount(), item.getSharedByUserIds(), user.getId());
+            // Null is "not shared by them", and is the whole filter.
+            if (share == null) continue;
+            shares.put(item.getId(), share);
+            charges.add(new Charge(item, share));
+        }
+
+        // Twice over the same charges: once over the ones already paid, once
+        // over all of them. Two passes rather than one pass filling two sets of
         // buckets — the arithmetic is a few dozen BigDecimal operations, and a
         // single pass would have to thread "which buckets does this row
         // belong in" through the country split and the native sums as well.
-        return new Summary(items, tripCurrency, target,
-                breakdown(items.stream().filter(BudgetItem::isConfirmed).toList(),
+        return new Summary(items, tripCurrency, target, shares,
+                breakdown(charges.stream().filter(c -> c.item().isConfirmed()).toList(),
                         target, tripCurrency, pivot, table, countrySamples),
-                breakdown(items, target, tripCurrency, pivot, table, countrySamples));
+                breakdown(charges, target, tripCurrency, pivot, table, countrySamples));
     }
 
     /**
-     * The rollup over one set of rows, in `target`.
+     * The rollup over one set of charges, in `target`.
      *
      * byCategory always names every category, including the ones at zero: it
      * keys the legend, and a category that drops out of the map entirely
      * cannot be told apart by a reader from one that was never spent on.
      */
-    private static Breakdown breakdown(List<BudgetItem> items,
+    private static Breakdown breakdown(List<Charge> charges,
                                        String target,
                                        String tripCurrency,
                                        String pivot,
@@ -227,15 +277,16 @@ public class BudgetService {
         BigDecimal total = BigDecimal.ZERO;
         var missing = new TreeSet<String>();
 
-        for (BudgetItem item : items) {
+        for (Charge charge : charges) {
+            BudgetItem item = charge.item();
             // Unconditional, ahead of the conversion attempt below: what was
             // actually spent does not depend on whether a rate exists to
             // convert it, so a missing rate must not also hide this.
             String nativeCurrency = nativeCurrencyOf(item, tripCurrency);
-            BigDecimal rawAmount = item.getAmount() == null ? BigDecimal.ZERO : item.getAmount();
-            nativeSums.merge(nativeCurrency, rawAmount, BigDecimal::add);
+            nativeSums.merge(nativeCurrency, charge.amount(), BigDecimal::add);
 
-            BigDecimal converted = convert(item, target, tripCurrency, pivot, table.getRates(), missing);
+            BigDecimal converted = convert(item, charge.amount(),
+                    target, tripCurrency, pivot, table.getRates(), missing);
             if (converted == null) continue;
 
             byCategory.merge(item.getCategory().name(), converted, BigDecimal::add);
@@ -365,15 +416,21 @@ public class BudgetService {
      * reported under that currency's own code and the item is excluded —
      * never folded in at 1:1.
      */
-    static BigDecimal convert(BudgetItem item, String targetCurrency, String tripCurrency,
+    static BigDecimal convert(BudgetItem item, BigDecimal amount,
+                              String targetCurrency, String tripCurrency,
                               String pivotCurrency, Map<String, BigDecimal> rates,
                               Set<String> missing) {
-        if (item.getAmount() == null) return BigDecimal.ZERO;
+        if (amount == null) return BigDecimal.ZERO;
+        // The amount is passed in rather than read off the item: when an
+        // expense is shared it is one member's part of it that is being
+        // converted, not the whole charge. The item is still needed for the
+        // currency that part is in.
+        //
         // An item with no currency of its own is money spent in the currency
         // the trip works in — never in the rate table's base, which is an
         // implementation detail of how rates are quoted.
         String from = nativeCurrencyOf(item, tripCurrency);
-        return convertAmount(item.getAmount(), from, targetCurrency, pivotCurrency, rates, missing);
+        return convertAmount(amount, from, targetCurrency, pivotCurrency, rates, missing);
     }
 
     /**
@@ -446,6 +503,7 @@ public class BudgetService {
                 : input.currency().trim().toUpperCase());
         item.setDate(input.date());
         item.setCountryCodes(countries.validate(trip, input.countryCodes()));
+        item.setSharedByUserIds(TripMembers.of(trip).validate(input.sharedByUserIds()));
         // Charged unless said otherwise: an expense typed into the budget by
         // hand is nearly always one that has already been paid, which is why
         // the form's own box starts ticked. A plan's cost is the other way
@@ -483,6 +541,10 @@ public class BudgetService {
         if (input.countryCodes() != null) {
             // An empty list is how the client clears every link.
             item.setCountryCodes(countries.validate(trip, input.countryCodes()));
+        }
+        if (input.sharedByUserIds() != null) {
+            // An empty list clears the names, which reads as the whole trip.
+            item.setSharedByUserIds(TripMembers.of(trip).validate(input.sharedByUserIds()));
         }
         if (input.charged() != null) {
             // Ticking the box on save is what confirms the charge and stamps

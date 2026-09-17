@@ -63,6 +63,7 @@ export function itineraryTab() {
     currency: '',
     // Unticked by default, like the Plan form — see checklist.js.
     costCharged: false,
+    sharedByUserIds: [],
     countryCodes: [],
   });
 
@@ -244,6 +245,7 @@ export function itineraryTab() {
         cost: item.cost ?? '',
         currency: item.currency || this.budget.displayCurrency || '',
         costCharged: this.chargedOfPlan(item),
+        sharedByUserIds: this.sharersOfPlan(item),
         countryCodes: [...(item.countryCodes || [])],
       };
       this.entryError = '';
@@ -290,6 +292,7 @@ export function itineraryTab() {
           allDay: !this.entryForm.startTime,
           currency: cost == null ? null : (this.entryForm.currency || null),
           costCharged: this.entryForm.costCharged,
+          costSharedByUserIds: this.entryForm.sharedByUserIds,
           countryCodes: this.entryForm.countryCodes,
         };
         if (this.entryForm.id) {

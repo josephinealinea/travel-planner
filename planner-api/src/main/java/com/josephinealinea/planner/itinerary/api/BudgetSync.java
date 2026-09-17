@@ -16,9 +16,10 @@ import java.time.Instant;
  *
  *  - a cost on a plan with no budget row yet creates one, copying category,
  *    amount, currency, description, date and countryCodes;
- *  - a later cost or currency change updates only the amount and currency, so
- *    a description, category or set of locations somebody has since corrected
- *    in the budget is never clobbered;
+ *  - a later cost or currency change updates only the amount and currency —
+ *    plus `status` and `sharedByUserIds`, and only when the form actually
+ *    sends them — so a description, category or set of locations somebody has
+ *    since corrected in the budget is never clobbered;
  *  - the row it creates starts <b>pending</b>, not charged: a plan is
  *    something you intend to do, and its cost is money still to leave. That is
  *    the opposite default from an expense typed into the budget by hand, and
@@ -43,7 +44,8 @@ public class BudgetSync {
      * the budget by anybody, so without it the only expenses on the trip with
      * no author would be exactly the automatic ones.
      */
-    public void afterSave(String tripSlug, ItineraryItem plan, String userId, Boolean charged) {
+    public void afterSave(String tripSlug, ItineraryItem plan, String userId,
+                          Boolean charged, java.util.List<String> sharedByUserIds) {
         if (!plan.hasCost()) {
             removeLinked(tripSlug, plan);
             return;
@@ -67,6 +69,7 @@ public class BudgetSync {
             // Pending unless the form said otherwise — the reverse of a manual
             // expense's default. See the class comment.
             created.markCharged(Boolean.TRUE.equals(charged), Instant.now());
+            if (sharedByUserIds != null) created.setSharedByUserIds(sharedByUserIds);
             Audit.created(created, userId);
             budget.save(tripSlug, created);
             plan.setBudgetItemId(created.getId());
@@ -78,6 +81,10 @@ public class BudgetSync {
             // linked row's real status, so submitting it is the member saying
             // what that status should be — not this sync deciding for them.
             if (charged != null) existing.markCharged(charged, Instant.now());
+            // Same reasoning as the status beside it: the Plan form shows the
+            // row's real "Shared by", so submitting it is the member saying who
+            // shares the cost — not this sync deciding for them.
+            if (sharedByUserIds != null) existing.setSharedByUserIds(sharedByUserIds);
             Audit.touched(existing, userId);
             budget.save(tripSlug, existing);
         }

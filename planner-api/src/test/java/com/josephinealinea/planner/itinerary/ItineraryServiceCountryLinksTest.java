@@ -103,7 +103,7 @@ class ItineraryServiceCountryLinksTest {
     }
 
     private ItineraryService.Input input(List<String> countryCodes) {
-        return new ItineraryService.Input(null, null, "Hotel in Cusco", null, null, null, null, null, null, countryCodes);
+        return new ItineraryService.Input(null, null, "Hotel in Cusco", null, null, null, null, null, null, null, countryCodes);
     }
 
     @Test

@@ -20,6 +20,8 @@ import com.josephinealinea.planner.storage.YamlPaths;
 import com.josephinealinea.planner.storage.YamlStore;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.domain.Trip;
+import com.josephinealinea.planner.trips.domain.TripMember;
+import com.josephinealinea.planner.trips.domain.TripRole;
 import org.springframework.web.client.RestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -110,6 +112,12 @@ class BudgetServiceCurrencyAndCountryTest {
         trip.setSlug(SLUG);
         trip.setTitle("LATAM Trip 2026");
         trip.setDisplayCurrency(anchorCurrency);
+        // The one member these tests summarise as. Every trip TripService
+        // creates has its owner on this list, and an expense shared by nobody
+        // in particular is shared by the whole trip — so without it the rollup
+        // would correctly report nothing at all as this user's money.
+        trip.setOwnerUserId("user-1");
+        trip.getMembers().add(new TripMember("user-1", "you@example.com", TripRole.OWNER, null));
         return trip;
     }
 

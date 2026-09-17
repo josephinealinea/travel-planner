@@ -41,12 +41,12 @@ public class PublishController {
                                   @RequestBody(required = false) PublishRequestBody body) {
         Trip trip = publish.publish(tripId, currentUser.userId(),
                 body == null ? null : body.theme());
-        return views.publish(trip);
+        return views.publish(trip, currentUser.userId());
     }
 
     @DeleteMapping("/publish")
     TripViews.PublishView unpublish(@PathVariable String tripId) {
-        return views.publish(publish.unpublish(tripId, currentUser.userId()));
+        return views.publish(publish.unpublish(tripId, currentUser.userId()), currentUser.userId());
     }
 
     /** What a non-owner member gets instead of a Publish button. */
@@ -56,7 +56,7 @@ public class PublishController {
         Trip trip = publish.requestPublish(tripId, currentUser.userId(),
                 body == null ? null : body.note(),
                 body == null ? null : body.theme());
-        return views.publish(trip);
+        return views.publish(trip, currentUser.userId());
     }
 
     /**
@@ -80,12 +80,13 @@ public class PublishController {
 
     @GetMapping("/publish-requests")
     TripViews.PublishView requests(@PathVariable String tripId) {
-        return views.publish(publish.publishView(tripId, currentUser.userId()));
+        return views.publish(publish.publishView(tripId, currentUser.userId()), currentUser.userId());
     }
 
     @PostMapping("/publish-requests/{requestId}/cancel")
     TripViews.PublishView cancel(@PathVariable String tripId, @PathVariable String requestId) {
-        return views.publish(publish.cancelRequest(tripId, currentUser.userId(), requestId));
+        return views.publish(publish.cancelRequest(tripId, currentUser.userId(), requestId),
+                currentUser.userId());
     }
 
     /** Owner only — approving is what actually publishes. */
@@ -95,11 +96,12 @@ public class PublishController {
                                   @RequestBody(required = false) PublishRequestBody body) {
         Trip trip = publish.approveRequest(tripId, currentUser.userId(), requestId,
                 body == null ? null : body.theme());
-        return views.publish(trip);
+        return views.publish(trip, currentUser.userId());
     }
 
     @PostMapping("/publish-requests/{requestId}/reject")
     TripViews.PublishView reject(@PathVariable String tripId, @PathVariable String requestId) {
-        return views.publish(publish.rejectRequest(tripId, currentUser.userId(), requestId));
+        return views.publish(publish.rejectRequest(tripId, currentUser.userId(), requestId),
+                currentUser.userId());
     }
 }

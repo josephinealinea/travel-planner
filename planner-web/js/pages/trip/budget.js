@@ -2,6 +2,7 @@ import { toast } from '../../toast.js';
 import { category, money, shortDate, CATEGORIES } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
+import { toggleSharer, sharersOfTrip } from '../../member-picker.js';
 
 /**
  * Colours for the country pie/bars, cycled by rank. Countries are not a fixed
@@ -44,6 +45,9 @@ export function budgetTab() {
     currency: '',
     date: '',
     countryCodes: [],
+    // Nobody named means the whole trip, which is what this defaulting empty
+    // preserves: adding an expense never quietly makes it one person's.
+    sharedByUserIds: [],
     // "Expense already charged", ticked by default: an expense typed in here
     // by hand is nearly always one that has already been paid. A plan's cost
     // is the other way round — see BudgetSync on the API.
@@ -102,13 +106,26 @@ export function budgetTab() {
     },
 
     /**
-     * The rows the table lists. The summary above it deliberately stays the
-     * whole trip: it is the rollup, and its chart is a breakdown (by category
-     * or by country) — filtering that down to one slice would answer a
-     * question nobody asked.
+     * The rows the table lists: the signed-in member's own, then whatever the
+     * category filter leaves.
+     *
+     * `budget.items` is every row on the trip whoever is asking — the other
+     * tabs need it whole — and `budget.shares` is what says which are mine. A
+     * row absent from that map is somebody else's expense, so it is not my
+     * budget to look at; an entry of zero is mine and simply costs nothing.
+     * Hence the null test rather than a truthy one.
+     *
+     * The summary above the table is already this member's money, computed the
+     * same way on the API, so the two cannot drift apart: both come from
+     * exactly the rows in this map.
      */
+    get myBudgetItems() {
+      const shares = this.budget.shares || {};
+      return (this.budget.items || []).filter((item) => shares[item.id] != null);
+    },
+
     get filteredBudgetItems() {
-      const items = this.budget.items || [];
+      const items = this.myBudgetItems;
       if (!this.budgetCategoryFilters.length) return items;
       return items.filter((item) => this.budgetCategoryFilters.includes(item.category));
     },
@@ -248,8 +265,30 @@ export function budgetTab() {
     },
 
     /**
-     * A single row's amount in budget.totalsCurrency, for the table's "In
-     * <totals currency>" column. Mirrors BudgetService.convertAmount.
+     * This member's part of a row, in the currency the row was spent in.
+     *
+     * Read back from the API rather than divided here. The split is exact to
+     * the cent and hands the leftover pennies out in a fixed order so the
+     * shares add up to the whole amount (see TripMembers); doing it again in
+     * the browser would be a second implementation of that, free to disagree
+     * with the totals by a cent.
+     *
+     * Null means the row is not this member's at all.
+     */
+    shareOf(item) {
+      const share = (this.budget.shares || {})[item.id];
+      return share == null ? null : Number(share);
+    },
+
+    /** This member's part of a row, in budget.totalsCurrency. */
+    convertedShareOf(item) {
+      const share = this.shareOf(item);
+      return share == null ? null : this.convertAmount(share, item.currency);
+    },
+
+    /**
+     * An amount in some currency, expressed in budget.totalsCurrency. Mirrors
+     * BudgetService.convertAmount.
      *
      * Two currencies that used to be the same one, and are not any more. The
      * trip's `displayCurrency` is what an item with no currency of its own is
@@ -258,12 +297,12 @@ export function budgetTab() {
      * whole install against their own base, so it has nothing to do with the
      * trip.
      */
-    convertedOf(item) {
+    convertAmount(rawAmount, currency) {
       const tripCurrency = this.budget.displayCurrency;
       const pivot = this.budget.ratesBase || tripCurrency;
       const target = this.budget.totalsCurrency;
-      const amount = Number(item.amount || 0);
-      const from = item.currency || tripCurrency;
+      const amount = Number(rawAmount || 0);
+      const from = currency || tripCurrency;
       if (from === target) return amount;
 
       const rates = this.budget.exchangeRates || {};
@@ -300,6 +339,7 @@ export function budgetTab() {
         currency: item.currency || this.budget.displayCurrency || '',
         date: item.date || '',
         countryCodes: [...(item.countryCodes || [])],
+        sharedByUserIds: [...(item.sharedByUserIds || [])],
         charged: item.status !== 'PENDING',
       };
       this.expenseError = '';
@@ -335,6 +375,8 @@ export function budgetTab() {
           date: this.expenseForm.date || null,
           // An empty array clears every link server-side.
           countryCodes: this.expenseForm.countryCodes,
+          // An empty array clears the names, which reads as the whole trip.
+          sharedByUserIds: this.expenseForm.sharedByUserIds,
           charged: this.expenseForm.charged,
         };
         if (this.expenseForm.id) {
@@ -454,6 +496,18 @@ export function budgetTab() {
     },
 
     /**
+     * "Your share of 6 expenses" — what the total above is actually counting.
+     *
+     * Worth saying out loud: this panel used to be the trip's whole budget and
+     * now it is one member's part of it, and a figure that quietly got smaller
+     * is the kind a reader assumes is a bug.
+     */
+    totalCaption() {
+      const rows = this.myBudgetItems.length;
+      return `Your share of ${rows} expense${rows === 1 ? '' : 's'} on this trip`;
+    },
+
+    /**
      * "Charged" or "Pending", for the table's Status column. Read off `status`
      * with PENDING as the only special case, so a row whose YAML predates the
      * field reads as the charge it was — the same rule the API applies.
@@ -474,14 +528,42 @@ export function budgetTab() {
      * BudgetSync on the API.
      */
     chargedOfPlan(plan) {
-      if (!plan?.id) return false;
-      const row = (this.budget.items || []).find((item) => item.itineraryItemId === plan.id);
+      const row = this.budgetRowOfPlan(plan);
       return row ? row.status !== 'PENDING' : false;
+    },
+
+    /**
+     * Who the budget row a plan's cost created is shared by — what the Plan and
+     * Itinerary forms show in their own "Shared by" field. Empty for a plan
+     * with no row yet, which reads as the whole trip.
+     */
+    sharersOfPlan(plan) {
+      return [...(this.budgetRowOfPlan(plan)?.sharedByUserIds || [])];
+    },
+
+    /**
+     * The budget row a plan's cost created, or undefined.
+     *
+     * Searches `budget.items`, which is every row on the trip rather than only
+     * this member's — a plan's cost may well be shared by somebody else, and
+     * its own form still has to show the truth about it.
+     */
+    budgetRowOfPlan(plan) {
+      if (!plan?.id) return undefined;
+      return (this.budget.items || []).find((item) => item.itineraryItemId === plan.id);
     },
 
     sourcePlan(item) {
       if (!item.itineraryItemId) return null;
       return this.itinerary.find((plan) => plan.id === item.itineraryItemId)?.description || 'a plan';
+    },
+
+    // ── member picker (shared with the Plan and itinerary forms) ────────
+    toggleSharer,
+
+    /** The trip's members, as the pills every "Shared by" field offers. */
+    get tripSharers() {
+      return sharersOfTrip(this.members);
     },
 
     // ── location picker (shared with the checklist and itinerary forms) ──

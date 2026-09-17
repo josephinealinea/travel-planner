@@ -124,11 +124,13 @@ public class UserService {
      */
     public User updatePublishedPageSettings(String userId, Boolean itineraryCost,
                                            Boolean destinationDays,
-                                           Boolean forecastExpenses) {
+                                           Boolean forecastExpenses,
+                                           Boolean personalBudget) {
         User user = require(userId);
         if (itineraryCost != null) user.setPublishItineraryCost(itineraryCost);
         if (destinationDays != null) user.setPublishDestinationDays(destinationDays);
         if (forecastExpenses != null) user.setPublishForecastExpenses(forecastExpenses);
+        if (personalBudget != null) user.setPublishPersonalBudget(personalBudget);
         return users.save(user);
     }
 

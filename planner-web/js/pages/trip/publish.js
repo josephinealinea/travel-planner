@@ -62,6 +62,36 @@ export function publishTab() {
       return (this.publish?.requests || []).filter((request) => request.status !== 'PENDING');
     },
 
+    /** How many decided requests the panel lists before it stops. */
+    get recentRequestLimit() {
+      return 5;
+    },
+
+    /**
+     * The decided requests worth looking at: newest first, capped.
+     *
+     * Sorted on when each was <i>decided</i> rather than when it was raised,
+     * because that is what makes one recent — a request sent a month ago and
+     * approved this morning is the latest thing to have happened here, and
+     * sorting it by its own age would bury it. The raised date stands in for
+     * anything approved before that was recorded.
+     *
+     * Sorted on a copy: the array belongs to the trip bundle, and sorting it
+     * in place would reorder what every other reader of `publish.requests`
+     * sees — including the pending list above this one.
+     */
+    get recentRequests() {
+      return [...this.decidedRequests]
+        .sort((a, b) => this.decidedAt(b) - this.decidedAt(a))
+        .slice(0, this.recentRequestLimit);
+    },
+
+    /** Milliseconds, for sorting. Zero when a row carries no date at all. */
+    decidedAt(request) {
+      const when = request.decidedAt || request.requestedAt;
+      return when ? new Date(when).getTime() : 0;
+    },
+
     /** The signed-in member's own pending request, if any. */
     get myPendingRequest() {
       return this.pendingRequests.find((r) => r.requestedByUserId === this.currentUserId) || null;
@@ -168,6 +198,12 @@ export function publishTab() {
 
     requestedAtLabel(request) {
       return request.requestedAt ? new Date(request.requestedAt).toLocaleString() : '';
+    },
+
+    /** The date a decided request is listed under — the same one it sorts on. */
+    decidedAtLabel(request) {
+      const when = request.decidedAt || request.requestedAt;
+      return when ? new Date(when).toLocaleString() : '';
     },
   };
 }

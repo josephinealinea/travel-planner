@@ -99,7 +99,7 @@ class StayNightsTest {
 
     /** Check-in 25 Oct 15:00, check-out 28 Oct 11:00 — three nights. */
     private ItineraryItem createThreeNightStay() {
-        return service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.of(2026, 10, 25, 15, 0), LocalDateTime.of(2026, 10, 28, 11, 0), null, new BigDecimal("240.00"), "USD", null, List.of()));
+        return service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hotel in Cusco", LocalDateTime.of(2026, 10, 25, 15, 0), LocalDateTime.of(2026, 10, 28, 11, 0), null, new BigDecimal("240.00"), "USD", null, null, List.of()));
     }
 
     private List<ItineraryItem> stored() {
@@ -187,8 +187,8 @@ class StayNightsTest {
     @Test
     void twoPlansOnOneChecklistItemStayTwoPlans() {
         // "Plan another" against the same checklist item: 1N then 2N.
-        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Airbnb in Cusco", LocalDateTime.of(2026, 10, 27, 15, 0), LocalDateTime.of(2026, 10, 28, 11, 0), null, new BigDecimal("150.00"), "EUR", null, List.of()));
-        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Another airbnb in Cusco", LocalDateTime.of(2026, 10, 28, 15, 0), LocalDateTime.of(2026, 10, 30, 11, 0), null, new BigDecimal("200.00"), "EUR", null, List.of()));
+        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Airbnb in Cusco", LocalDateTime.of(2026, 10, 27, 15, 0), LocalDateTime.of(2026, 10, 28, 11, 0), null, new BigDecimal("150.00"), "EUR", null, null, List.of()));
+        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Another airbnb in Cusco", LocalDateTime.of(2026, 10, 28, 15, 0), LocalDateTime.of(2026, 10, 30, 11, 0), null, new BigDecimal("200.00"), "EUR", null, null, List.of()));
 
         // 2 + 3 days on the itinerary, but two plans and two charges.
         assertThat(stored()).hasSize(5);
@@ -241,7 +241,7 @@ class StayNightsTest {
     void aSingleNightStayIsJustOneEntry() {
         // Check-in and check-out on consecutive days is one night, so two
         // entries — the arrival and the morning out. Nothing in between.
-        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hostel in Lima", LocalDateTime.of(2026, 10, 24, 20, 0), LocalDateTime.of(2026, 10, 25, 10, 0), null, null, null, null, List.of()));
+        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.LODGING, "Hostel in Lima", LocalDateTime.of(2026, 10, 24, 20, 0), LocalDateTime.of(2026, 10, 25, 10, 0), null, null, null, null, null, List.of()));
 
         assertThat(stored()).hasSize(2);
         assertThat(stored()).noneMatch(ItineraryItem::coversWholeDay);
@@ -250,7 +250,7 @@ class StayNightsTest {
     @Test
     void anEntryThatIsNotLodgingIsNeverSpread() {
         // A long flight is one event, however many days it crosses.
-        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.TRANSPORTATION, "Flight LAX to LIM", LocalDateTime.of(2026, 10, 24, 22, 0), LocalDateTime.of(2026, 10, 25, 8, 0), null, null, null, null, List.of()));
+        service.create(TRIP_ID, USER_ID, new ItineraryService.Input(null, ChecklistCategory.TRANSPORTATION, "Flight LAX to LIM", LocalDateTime.of(2026, 10, 24, 22, 0), LocalDateTime.of(2026, 10, 25, 8, 0), null, null, null, null, null, List.of()));
 
         assertThat(stored()).hasSize(1);
         assertThat(stored().get(0).getEndAt()).isEqualTo(LocalDateTime.of(2026, 10, 25, 8, 0));
@@ -271,7 +271,7 @@ class StayNightsTest {
         ItineraryItem entry = service.create(TRIP_ID, USER_ID, new ItineraryService.Input(
                 null, ChecklistCategory.FOOD, "Dinner somewhere",
                 LocalDateTime.parse("2026-10-26T00:00"), null, true,
-                null, null, null, null));
+                null, null, null, null, null));
 
         assertThat(entry.coversWholeDay()).isTrue();
         assertThat(itinerary.findById(SLUG, entry.getId()).orElseThrow().coversWholeDay()).isTrue();
@@ -282,7 +282,7 @@ class StayNightsTest {
         ItineraryItem entry = service.create(TRIP_ID, USER_ID, new ItineraryService.Input(
                 null, ChecklistCategory.SHOPPING, "Market run",
                 LocalDateTime.parse("2026-10-26T09:30"), null, false,
-                null, null, null, null));
+                null, null, null, null, null));
 
         assertThat(entry.coversWholeDay()).isFalse();
         assertThat(entry.getStartAt().toLocalTime()).isEqualTo(java.time.LocalTime.of(9, 30));
@@ -294,12 +294,12 @@ class StayNightsTest {
         ItineraryItem entry = service.create(TRIP_ID, USER_ID, new ItineraryService.Input(
                 null, ChecklistCategory.FOOD, "Dinner somewhere",
                 LocalDateTime.parse("2026-10-26T00:00"), null, true,
-                null, null, null, null));
+                null, null, null, null, null));
         assertThat(entry.coversWholeDay()).isTrue();
 
         service.update(TRIP_ID, USER_ID, entry.getId(), new ItineraryService.Input(
                 null, null, null, LocalDateTime.parse("2026-10-26T19:00"), null, false,
-                null, null, null, null));
+                null, null, null, null, null));
 
         assertThat(itinerary.findById(SLUG, entry.getId()).orElseThrow().coversWholeDay()).isFalse();
     }
@@ -310,10 +310,10 @@ class StayNightsTest {
         ItineraryItem entry = service.create(TRIP_ID, USER_ID, new ItineraryService.Input(
                 null, ChecklistCategory.FOOD, "Dinner somewhere",
                 LocalDateTime.parse("2026-10-26T00:00"), null, true,
-                null, null, null, null));
+                null, null, null, null, null));
 
         service.update(TRIP_ID, USER_ID, entry.getId(), new ItineraryService.Input(
-                null, null, "Dinner at the market", null, null, null, null, null, null, null));
+                null, null, "Dinner at the market", null, null, null, null, null, null, null, null));
 
         ItineraryItem saved = itinerary.findById(SLUG, entry.getId()).orElseThrow();
         assertThat(saved.getDescription()).isEqualTo("Dinner at the market");

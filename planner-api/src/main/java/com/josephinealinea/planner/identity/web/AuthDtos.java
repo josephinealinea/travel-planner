@@ -37,7 +37,8 @@ public final class AuthDtos {
                     user.getDisplayCurrency(),
                     new PublishedPage(user.isPublishItineraryCost(),
                             user.isPublishDestinationDays(),
-                            user.isPublishForecastExpenses()));
+                            user.isPublishForecastExpenses(),
+                            user.isPublishPersonalBudget()));
         }
     }
 
@@ -48,12 +49,14 @@ public final class AuthDtos {
      */
     public record PublishedPage(boolean itineraryCost,
                                 boolean destinationDays,
-                                boolean forecastExpenses) {}
+                                boolean forecastExpenses,
+                                boolean personalBudget) {}
 
     /** Absent fields are left as they are, so one checkbox can post alone. */
     public record UpdatePublishedPageRequest(Boolean itineraryCost,
                                             Boolean destinationDays,
-                                            Boolean forecastExpenses) {}
+                                            Boolean forecastExpenses,
+                                            Boolean personalBudget) {}
 
     public record ChangePasswordRequest(
             @NotBlank(message = "Enter your current password") String currentPassword,

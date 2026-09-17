@@ -58,6 +58,25 @@ public class YamlPaths {
         return publishDir.resolve(Slugs.requireSafe(slug));
     }
 
+    /**
+     * One member's own page, inside the trip's directory rather than beside it.
+     *
+     * A sibling `<slug>-<member>` would have been prettier and is a trap: slugs
+     * are derived from trip titles, so a trip called "LATAM" and a trip called
+     * "LATAM 2026" produce "latam" and "latam-2026", and any cleanup that swept
+     * `latam-*` would delete the second trip's whole page. Nesting means there
+     * is nothing to sweep — removing the trip's directory removes every
+     * personal page with it, which is the cascade a published page has to have
+     * (see TripService.delete in CLAUDE.md).
+     */
+    public Path publishedMemberPage(String slug, String memberSlug) {
+        return publishedTrip(slug).resolve("m").resolve(Slugs.requireSafe(memberSlug));
+    }
+
+    public Path pendingMemberPage(String slug, String memberSlug) {
+        return pendingTrip(slug).resolve("m").resolve(Slugs.requireSafe(memberSlug));
+    }
+
     public Path trip(String slug)         { return travels("trip", slug); }
     public Path destinations(String slug) { return travels("destinations", slug); }
     public Path checklist(String slug)    { return travels("checklist", slug); }

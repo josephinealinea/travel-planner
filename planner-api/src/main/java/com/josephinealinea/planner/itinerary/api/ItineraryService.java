@@ -13,6 +13,7 @@ import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.TripAccessService;
+import com.josephinealinea.planner.trips.api.TripMembers;
 import com.josephinealinea.planner.trips.api.TripWindow;
 import com.josephinealinea.planner.trips.domain.Trip;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,12 @@ public class ItineraryService {
                          * BudgetSync. Null on a patch means "leave it".
                          */
                         Boolean costCharged,
+                        /**
+                         * "Shared by", for the budget row a cost creates.
+                         * Empty means the whole trip; null on a patch means
+                         * "leave it". See TripMembers.
+                         */
+                        List<String> costSharedByUserIds,
                         List<String> countryCodes) {}
 
     private final ItineraryRepository itinerary;
@@ -139,7 +146,8 @@ public class ItineraryService {
         Audit.created(plan, userId);
 
         itinerary.save(trip.getSlug(), plan);
-        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged());
+        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged(),
+                validatedSharers(trip, input.costSharedByUserIds()));
         // Saved again because the sync writes back the new budget row's id.
         itinerary.save(trip.getSlug(), plan);
 
@@ -234,7 +242,8 @@ public class ItineraryService {
         Audit.touched(plan, userId);
 
         itinerary.save(trip.getSlug(), plan);
-        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged());
+        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged(),
+                validatedSharers(trip, input.costSharedByUserIds()));
         return itinerary.save(trip.getSlug(), plan);
     }
 
@@ -309,6 +318,18 @@ public class ItineraryService {
             });
         }
         return doomed.size();
+    }
+
+    /**
+     * "Shared by" for the budget row this plan's cost creates, checked against
+     * the trip's members.
+     *
+     * Null is preserved rather than turned into an empty list, because the two
+     * mean opposite things downstream: null is "the form said nothing, leave
+     * the row alone" and empty is "nobody in particular, so the whole trip".
+     */
+    private static List<String> validatedSharers(Trip trip, List<String> wanted) {
+        return wanted == null ? null : TripMembers.of(trip).validate(wanted);
     }
 
     private void applyCost(ItineraryItem plan, BigDecimal cost, String currency, Trip trip) {

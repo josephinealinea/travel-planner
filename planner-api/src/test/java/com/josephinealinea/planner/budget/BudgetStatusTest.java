@@ -142,7 +142,7 @@ class BudgetStatusTest {
 
     private BudgetService.Input expense(String description, String amount, Boolean charged) {
         return new BudgetService.Input(description, ChecklistCategory.OTHERS,
-                new BigDecimal(amount), "EUR", null, null, charged);
+                new BigDecimal(amount), "EUR", null, null, null, charged);
     }
 
     private BudgetItem reload(String id) {
@@ -198,7 +198,7 @@ class BudgetStatusTest {
     private ItineraryService.Input plan(String description, String cost, Boolean charged) {
         return new ItineraryService.Input(null, ChecklistCategory.LODGING, description,
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal(cost), "EUR", charged, List.of());
+                new BigDecimal(cost), "EUR", charged, null, List.of());
     }
 
     // ── the transitions ─────────────────────────────────────────────────
@@ -208,7 +208,7 @@ class BudgetStatusTest {
         BudgetItem created = service.create(TRIP_ID, USER_ID, expense("Tour deposit", "80.00", false));
 
         service.update(TRIP_ID, USER_ID, created.getId(),
-                new BudgetService.Input(null, null, null, null, null, null, true));
+                new BudgetService.Input(null, null, null, null, null, null, null, true));
 
         assertThat(reload(created.getId()).getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
         assertThat(reload(created.getId()).getConfirmedAt()).isNotNull();
@@ -220,7 +220,7 @@ class BudgetStatusTest {
         assertThat(reload(created.getId()).getConfirmedAt()).isNotNull();
 
         service.update(TRIP_ID, USER_ID, created.getId(),
-                new BudgetService.Input(null, null, null, null, null, null, false));
+                new BudgetService.Input(null, null, null, null, null, null, null, false));
 
         assertThat(reload(created.getId()).getStatus()).isEqualTo(BudgetStatus.PENDING);
         assertThat(reload(created.getId()).getConfirmedAt()).isNull();
@@ -238,7 +238,7 @@ class BudgetStatusTest {
 
         service.update(TRIP_ID, USER_ID, created.getId(),
                 new BudgetService.Input("Yellow fever vaccine", null, new BigDecimal("50.00"),
-                        null, null, null, true));
+                        null, null, null, null, true));
 
         assertThat(reload(created.getId()).getConfirmedAt()).isEqualTo(confirmed);
         assertThat(reload(created.getId()).getDescription()).isEqualTo("Yellow fever vaccine");
@@ -250,7 +250,7 @@ class BudgetStatusTest {
         BudgetItem created = service.create(TRIP_ID, USER_ID, expense("Tour deposit", "80.00", false));
 
         service.update(TRIP_ID, USER_ID, created.getId(),
-                new BudgetService.Input(null, null, new BigDecimal("95.00"), null, null, null, null));
+                new BudgetService.Input(null, null, new BigDecimal("95.00"), null, null, null, null, null));
 
         assertThat(reload(created.getId()).getStatus()).isEqualTo(BudgetStatus.PENDING);
     }
@@ -268,7 +268,7 @@ class BudgetStatusTest {
 
         itineraryService.update(TRIP_ID, USER_ID, plan.getId(),
                 new ItineraryService.Input(null, null, null, null, null, null,
-                        new BigDecimal("240.00"), "EUR", true, null));
+                        new BigDecimal("240.00"), "EUR", true, null, null));
 
         assertThat(reload(rowId).getStatus()).isEqualTo(BudgetStatus.CONFIRMED);
     }
@@ -326,9 +326,9 @@ class BudgetStatusTest {
     @Test
     void theCategorySlicesSplitTheSameWayTheTotalsDo() {
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Flight", ChecklistCategory.TRANSPORTATION,
-                new BigDecimal("400.00"), "EUR", null, null, true));
+                new BigDecimal("400.00"), "EUR", null, null, null, true));
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Hotel", ChecklistCategory.LODGING,
-                new BigDecimal("300.00"), "EUR", null, null, false));
+                new BigDecimal("300.00"), "EUR", null, null, null, false));
 
         BudgetService.Summary summary = service.summarise(trip);
 
@@ -343,9 +343,9 @@ class BudgetStatusTest {
         place("La Paz", "BO", "Bolivia");
 
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Hotel in Cusco",
-                ChecklistCategory.LODGING, new BigDecimal("200.00"), "EUR", null, List.of("PE"), true));
+                ChecklistCategory.LODGING, new BigDecimal("200.00"), "EUR", null, List.of("PE"), null, true));
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Salt flats tour",
-                ChecklistCategory.ACTIVITIES, new BigDecimal("150.00"), "EUR", null, List.of("BO"), false));
+                ChecklistCategory.ACTIVITIES, new BigDecimal("150.00"), "EUR", null, List.of("BO"), null, false));
 
         BudgetService.Summary summary = service.summarise(trip);
 
@@ -363,9 +363,9 @@ class BudgetStatusTest {
     @Test
     void nativeTotalsFollowTheRollupTheyAreShownUnder() {
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Vaccine", ChecklistCategory.OTHERS,
-                new BigDecimal("110.00"), "USD", null, null, true));
+                new BigDecimal("110.00"), "USD", null, null, null, true));
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Tour deposit", ChecklistCategory.ACTIVITIES,
-                new BigDecimal("220.00"), "USD", null, null, false));
+                new BigDecimal("220.00"), "USD", null, null, null, false));
 
         BudgetService.Summary summary = service.summarise(trip);
 

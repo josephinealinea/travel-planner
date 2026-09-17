@@ -28,6 +28,8 @@ export function checklistTab() {
     // something you intend to do, and its cost is usually money still to
     // leave. See BudgetSync on the API.
     costCharged: false,
+    // Nobody named means the whole trip — see TripMembers on the API.
+    sharedByUserIds: [],
     countryCodes: [],
   });
 
@@ -336,6 +338,7 @@ export function checklistTab() {
         cost: plan.cost ?? '',
         currency: plan.currency || this.budget.displayCurrency || '',
         costCharged: this.chargedOfPlan(plan),
+        sharedByUserIds: this.sharersOfPlan(plan),
         countryCodes: [...(plan.countryCodes || [])],
       };
       this.planOpen = true;
@@ -379,6 +382,7 @@ export function checklistTab() {
             cost: cost == null ? 0 : cost,
             currency: this.planForm.currency || null,
             costCharged: this.planForm.costCharged,
+            costSharedByUserIds: this.planForm.sharedByUserIds,
             // An empty array clears every link server-side.
             countryCodes: this.planForm.countryCodes,
           });
@@ -397,6 +401,7 @@ export function checklistTab() {
           allDay: !this.planForm.startTime,
           currency: cost == null ? null : (this.planForm.currency || null),
             costCharged: this.planForm.costCharged,
+            costSharedByUserIds: this.planForm.sharedByUserIds,
             countryCodes: this.planForm.countryCodes,
           });
           toast.success(cost == null

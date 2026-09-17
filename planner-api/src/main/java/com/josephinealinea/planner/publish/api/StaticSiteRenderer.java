@@ -123,9 +123,28 @@ public class StaticSiteRenderer {
      *   displayed" has to mean "not shipped".
      */
     public void render(Trip trip, PublishOptions options) {
-        write(trip, options, safeTheme(trip.getPublishedTheme()),
-                paths.publishedTrip(trip.getSlug()));
-        log.info("Published \"{}\"", trip.getTitle());
+        render(trip, options, List.of());
+    }
+
+    /**
+     * The trip's page, plus one page per member who asked for their own.
+     *
+     * A personal page is the same page with one thing different: its budget is
+     * that member's share of each expense rather than the trip's whole spend.
+     * That is the only way to answer "show me only my budget" on something
+     * static — a published page has no sign-in and cannot know who is reading
+     * it, so whose money it shows has to be decided when the file is written.
+     *
+     * They are written <i>inside</i> the trip's own directory, so a page can
+     * never outlive the trip it belongs to. See YamlPaths.publishedMemberPage.
+     */
+    public void render(Trip trip, PublishOptions options, List<PersonalPage> personal) {
+        var dir = paths.publishedTrip(trip.getSlug());
+        var theme = safeTheme(trip.getPublishedTheme());
+        write(trip, options, theme, dir, null);
+        writePersonal(trip, theme, dir, personal);
+        log.info("Published \"{}\"{}", trip.getTitle(),
+                personal.isEmpty() ? "" : " with " + personal.size() + " personal page(s)");
     }
 
     /**
@@ -138,12 +157,55 @@ public class StaticSiteRenderer {
      * the public directory until then; see YamlPaths.pendingDir.
      */
     public void renderPending(Trip trip, PublishOptions options, String theme) {
-        write(trip, options, safeTheme(theme), paths.pendingTrip(trip.getSlug()));
+        renderPending(trip, options, theme, List.of());
+    }
+
+    public void renderPending(Trip trip, PublishOptions options, String theme,
+                              List<PersonalPage> personal) {
+        var dir = paths.pendingTrip(trip.getSlug());
+        write(trip, options, safeTheme(theme), dir, null);
+        writePersonal(trip, safeTheme(theme), dir, personal);
         log.info("Staged \"{}\" for approval", trip.getTitle());
     }
 
-    private void write(Trip trip, PublishOptions options, String theme, java.nio.file.Path dir) {
-        PublishedTrip snapshot = snapshot(trip, options);
+    /**
+     * Writes the personal pages, after throwing away whatever was there.
+     *
+     * The clear-out is the load-bearing half. Publishing again rewrites
+     * index.html in place, so without it a member who has since <i>un</i>ticked
+     * their box would keep the page they asked for months ago, serving their
+     * spending at a URL they believe they turned off — the same failure as a
+     * published page outliving its trip, and just as silent.
+     */
+    private void writePersonal(Trip trip, String theme, java.nio.file.Path dir,
+                               List<PersonalPage> personal) {
+        store.deleteTree(dir.resolve("m"));
+        for (PersonalPage page : personal) {
+            write(trip, page.options(), theme, dir.resolve("m").resolve(page.memberSlug()), page.member());
+        }
+    }
+
+    /**
+     * One member's personal page: who it is for, the directory name it gets,
+     * and their own account settings — it is their page, so what it reveals is
+     * their choice rather than the publishing member's.
+     */
+    public record PersonalPage(com.josephinealinea.planner.identity.domain.User member,
+                               String memberSlug,
+                               PublishOptions options) {}
+
+    /**
+     * @param viewer whose budget the page shows, or null for the trip's own
+     *   page. This is the whole of what makes a personal page personal: the
+     *   summary is computed for that member, so every figure on it — total,
+     *   slices, native totals — is their share and nobody else's appears at
+     *   all. Not filtered in the page: a value left in window.TRIP is readable
+     *   by anyone who opens the source, so another member's spending must not
+     *   be in the file to begin with.
+     */
+    private void write(Trip trip, PublishOptions options, String theme, java.nio.file.Path dir,
+                       com.josephinealinea.planner.identity.domain.User viewer) {
+        PublishedTrip snapshot = snapshot(trip, options, viewer);
         String payload = writeJson(snapshot);
         store.writeText(dir.resolve("index.html"), page(trip, snapshot, payload, theme));
         store.writeText(dir.resolve("trip.json"), payload);
@@ -198,12 +260,15 @@ public class StaticSiteRenderer {
 
     // ── snapshot ────────────────────────────────────────────────────────────
 
-    private PublishedTrip snapshot(Trip trip, PublishOptions options) {
+    private PublishedTrip snapshot(Trip trip, PublishOptions options,
+                                   com.josephinealinea.planner.identity.domain.User viewer) {
         String slug = trip.getSlug();
         var allDestinations = destinations.findAllOrdered(slug);
         var allChecklist = checklist.findAllOrdered(slug);
         var allItinerary = itinerary.findAllOrdered(slug);
-        BudgetService.Summary budget = budgets.summarise(trip);
+        // With a viewer, every figure below is their share; without one it is
+        // what the trip cost. See BudgetService.summarise.
+        BudgetService.Summary budget = budgets.summarise(trip, viewer);
 
         // Countries in route order, de-duplicated, for the flag strip.
         Map<String, String> countries = new LinkedHashMap<>();
@@ -371,7 +436,13 @@ public class StaticSiteRenderer {
 
     private PublishedTrip.Budget toView(BudgetService.Summary summary, PublishOptions options) {
         return new PublishedTrip.Budget(
-                summary.displayCurrency(),
+                // The currency the figures below are actually in, which is not
+                // the trip's own anchor. The two coincide on the trip's page
+                // and come apart on a personal one: a member's totals are
+                // converted into whatever display currency they keep, so
+                // labelling them with the trip's anchor would put "EUR" under
+                // a column of SGD.
+                summary.totalsCurrency(),
                 toView(summary.charged()),
                 // Off by default, and left null rather than shipped and then
                 // hidden — see render().
