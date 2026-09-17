@@ -12,7 +12,13 @@ export function overviewTab() {
         { label: 'Destinations', value: this.destinations.length },
         { label: 'Checklist done', value: `${done} / ${this.checklist.length}` },
         { label: 'Itinerary entries', value: this.itinerary.length },
-        { label: 'Budget', value: money(this.budget.total, this.budget.totalsCurrency) || '—' },
+        // The signed-in member's own charged total, matching what the Budget
+        // tab opens on. It moved into `charged` when the rollup was split in
+        // two, and reading the old flat `budget.total` here left this stat
+        // silently blank — money() answers '' for undefined, so the fallback
+        // below swallowed it rather than anything failing loudly.
+        { label: 'Travel cost',
+          value: money(this.budget.charged?.total, this.budget.totalsCurrency) || '—' },
         { label: 'Departure', value: this.departureLabel() },
       ];
     },

@@ -39,6 +39,12 @@ export function checklistTab() {
     checkCategoryFilters: [],
     checkGroupBy: 'country',
 
+    /** The Group by pills, in order — mirrors budgetShowOptions on the Budget tab. */
+    checkGroupByOptions: [
+      { value: 'country',  label: 'Country' },
+      { value: 'category', label: 'Category' },
+    ],
+
     // bulk selection
     checkSelectedIds: [],
     checkBulkOpen: false,
@@ -88,7 +94,6 @@ export function checklistTab() {
      */
     get checklistGroups() {
       const items = this.filteredChecklist;
-      if (this.checkGroupBy === 'none') return [{ title: null, items }];
 
       const groups = new Map();
       const push = (key, item) => {

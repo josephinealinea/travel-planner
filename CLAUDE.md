@@ -229,10 +229,39 @@ Rules that are easy to break by accident, all with tests:
   - **A pending row is excluded, never hidden.** It is listed in the table and
     labelled Pending; it is only left out of the figures that claim to be money
     spent.
+- **An expense belongs to the members who share it, and the Budget tab is one
+  member's money rather than the trip's.** `BudgetItem.sharedByUserIds` holds
+  trip-member user ids — the forms label it "Shared by" — and `TripMembers`
+  (`trips/api`, a record beside `TripWindow`) owns every rule about them:
+  validation, who actually pays, and the division. Four things to keep straight:
+  - **Empty means the whole trip**, and that is a safety property rather than a
+    convenience. The tab lists a member only the rows they share, so a row
+    shared by nobody would be money present in the file and absent from every
+    screen. The same fallback catches a row whose named sharers have all since
+    left the trip.
+  - **The split is resolved per request, never stored.** It depends on how many
+    people share the row, so a stored copy would go quietly wrong the moment
+    somebody was added — the same reason nights are not stored. A member who
+    leaves drops out of the split without their name being rewritten, so
+    re-adding them restores it.
+  - **`Summary.items` stays whole; `Summary.shares` is the filter.** Two
+    filters would otherwise fight over one field: the other tabs read every
+    budget row (the Plan form wants the status and sharers of the row its own
+    cost created, whoever ended up sharing it), so what narrows the Budget tab
+    is a lookup in `shares` — itemId to that member's part — not a shorter
+    `items`. A row absent from the map is somebody else's; an entry of zero is
+    theirs and costs nothing, which is why the frontend tests for null rather
+    than for truthiness.
+  - **Dividing happens before converting and slicing.** `BudgetService.Charge`
+    pairs a row with the amount of it that counts, and every sum reads the
+    amount from there rather than from the item — otherwise a half-share would
+    be converted, split by country and then quietly totalled at full price. A
+    published page has no signed-in reader, so it passes every row in full and
+    ships an empty `shares`.
 - **The budget rollup is computed twice, and the two halves never mix.**
   `BudgetService.Summary` carries `charged` and `forecast`, each a whole
   `Breakdown` — category slices, country slices, native totals, total and
-  missing rates over one set of rows. Group by chooses between them
+  missing rates over one set of the signed-in member's shares. Group by chooses between them
   (`budgetView` in `js/pages/trip/budget.js` resolves it in one place) and
   every number on the panel follows together, which is the point: a total from
   one set of rows shown above a breakdown of another is the single way this
@@ -413,6 +442,51 @@ key. `publishItineraryCost` is a
 primitive `boolean` for the same kind of reason: `YamlStore` serialises
 NON_NULL, so a `Boolean` would be absent from `users.yml` until first set, and
 a setting you cannot see in the file is one nobody knows is there.
+
+**A member can publish a page of their own, showing their share of the budget
+rather than the trip's.** `Account → Appearance → Published page → Publish my
+own page`, written to `<published>/<slug>/m/<member>/` and served at
+`/p/<slug>/m/<member>`. This is the only answer a static page can give to "show
+me only my budget": there is no sign-in and no API behind the file, so **whose
+money it shows is decided when the file is written, not when it is read**.
+Five things hold it together:
+
+- **Another member's figures are not in the file at all.** Filtering in
+  `page.js` would be theatre — anyone can open the source and read
+  `window.TRIP` — so the renderer takes a `viewer` and summarises for them.
+  `PersonalPageTest` searches the whole rendered file for the other member's
+  number rather than checking the markup.
+- **It is the one published-page setting read from every member rather than
+  from whoever publishes.** It is their page, so it is their decision, and a
+  member with the box unticked has no file written anywhere. Their own
+  `PublishOptions` apply to it too, which is why two personal pages of the same
+  trip can differ in what they show.
+- **The pages nest inside the trip's directory rather than sitting beside it.**
+  A sibling `<slug>-<member>` would be prettier and is a trap: slugs come from
+  trip titles, so "LATAM" and "LATAM 2026" give `latam` and `latam-2026`, and
+  any cleanup sweeping `latam-*` would delete the second trip's whole page.
+  Nesting means unpublishing or deleting the trip takes every personal page
+  with it for free.
+- **Every publish clears `m/` before writing it.** Publishing again rewrites
+  `index.html` in place, so without that a member who since unticked their box
+  would keep serving their spending at a URL they believe they turned off.
+  Pinned by `untickingTheBoxAndPublishingAgainTakesThePageDown`.
+- **The budget's `displayCurrency` on a published page is `totalsCurrency`, not
+  the trip's anchor.** Those coincided for as long as only the trip was ever
+  summarised; a member's totals convert into whatever display currency they
+  keep, so the trip page says EUR and a member's page can correctly say SGD.
+  Labelling a personal page with the trip's anchor put "EUR" under a column of
+  SGD.
+
+The link is offered from the Publish tab and checked **against the file**, not
+against the flag: like every setting in that group it takes effect on the next
+publish, and a link offered in between would be a 404 to share.
+`PersonalPages.slugsFor` is the single source of the directory name, used both
+by `PublishService` (to write) and by `TripViewAssembler` (to link) — two copies
+of "slugify the display name, then de-duplicate" would agree until two members
+shared a screen name. **The slug follows the display name**, so renaming
+yourself publishes to a new URL and the old link stops working; and it is
+guessable from the trip's own URL, which is the trade-off for a readable one.
 
 **Nobody is asked which theme to publish in.** The page uses whatever theme the
 publishing member is looking at, read from `savedTheme()` at the moment they

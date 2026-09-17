@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trip — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=65"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=65"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=65"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=68"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=68"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=68"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -296,12 +296,15 @@
             </template>
           </div>
 
-          <span class="toolbar-label">Group by</span>
-          <select x-model="checkGroupBy">
-            <option value="country">Country</option>
-            <option value="category">Category</option>
-            <option value="none">Nothing</option>
-          </select>
+          <span class="toolbar-label" id="check-group-by-label">Group by</span>
+          <div class="chip-group" role="group" aria-labelledby="check-group-by-label">
+            <template x-for="option in checkGroupByOptions" :key="option.value">
+              <button type="button" class="chip"
+                      :aria-pressed="checkGroupBy === option.value"
+                      @click="checkGroupBy = option.value"
+                      x-text="option.label"></button>
+            </template>
+          </div>
 
           <div class="toolbar-actions">
             <button type="button" class="btn btn-sm btn-danger"
