@@ -34,7 +34,7 @@
 }
 
 .toolbar-label {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--tp-muted);
   text-transform: uppercase;
@@ -106,4 +106,16 @@
 @include m.mobile {
   .trip-head { flex-direction: column; }
   .coord-inputs { grid-template-columns: 1fr; }
+}
+
+// What "Open my page" in the row below opens, said once above the buttons.
+.publish-own-page { margin: t.$space-3 0; }
+
+// Every action on the live page in one row. Wraps rather than overflowing,
+// since four buttons do not fit across a phone.
+.publish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: t.$space-2;
+  align-items: center;
 }

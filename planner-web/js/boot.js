@@ -1,5 +1,6 @@
 import { api } from './api.js';
 import { renderChrome } from './chrome.js';
+import { registerDialogFocus } from './dialog.js';
 import { requireUser } from './session.js';
 
 /**
@@ -23,6 +24,9 @@ export async function bootPage({ active = '', component = {} } = {}) {
   Object.entries(component).forEach(([name, factory]) => {
     window[name] = factory;
   });
+
+  // Directives, like components, have to exist before Alpine starts.
+  registerDialogFocus();
 
   // Alpine's CDN build starts itself on load, including when the document has
   // already finished parsing.

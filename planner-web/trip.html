@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trip — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=68"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=68"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=68"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=70"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=70"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=70"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -58,10 +58,13 @@
       </div>
 
       <!-- ── tabs ───────────────────────────────── -->
-      <div class="tabs" role="tablist">
+      <div class="tabs" role="tablist" aria-label="Trip sections"
+           @keydown="onTabKeydown($event)">
         <template x-for="t in tabs" :key="t.id">
           <button type="button" class="tab" role="tab"
-                  :aria-selected="tab === t.id" @click="selectTab(t.id)">
+                  :id="`tab-${t.id}`" :aria-controls="`panel-${t.id}`"
+                  :aria-selected="tab === t.id" :tabindex="tab === t.id ? 0 : -1"
+                  @click="selectTab(t.id)">
             <span x-text="t.label"></span>
             <span class="tab-count" x-show="countFor(t.id)" x-text="countFor(t.id)"></span>
           </button>
@@ -69,7 +72,8 @@
       </div>
 
       <!-- ══ OVERVIEW ═══════════════════════════ -->
-      <section x-show="tab === 'overview'">
+      <section x-show="tab === 'overview'" role="tabpanel" id="panel-overview"
+               aria-labelledby="tab-overview" tabindex="0">
         <div class="grid grid-stats" style="margin-bottom:24px">
           <template x-for="stat in stats()" :key="stat.label">
             <div class="stat">
@@ -127,7 +131,8 @@
       </section>
 
       <!-- ══ MEMBERS ════════════════════════════ -->
-      <section x-show="tab === 'members'">
+      <section x-show="tab === 'members'" role="tabpanel" id="panel-members"
+               aria-labelledby="tab-members" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">Members</h2>
         </div>
@@ -170,8 +175,7 @@
                   <td class="muted" x-text="member.email"></td>
                   <td><span class="badge" :class="member.role === 'OWNER' ? 'badge-owner' : ''"
                             x-text="member.role === 'OWNER' ? 'Owner' : 'Member'"></span></td>
-                  <td class="muted tiny"
-                      x-text="member.invitedAt ? new Date(member.invitedAt).toLocaleDateString() : ''"></td>
+                  <td class="muted tiny" x-text="addedLabel(member)"></td>
                   <td class="actions">
                     <button type="button" class="btn btn-sm btn-danger"
                             x-show="member.role !== 'OWNER'"
@@ -188,7 +192,8 @@
       </section>
 
       <!-- ══ DESTINATIONS ═══════════════════════ -->
-      <section x-show="tab === 'destinations'">
+      <section x-show="tab === 'destinations'" role="tabpanel" id="panel-destinations"
+               aria-labelledby="tab-destinations" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">Destinations</h2>
           <button type="button" class="btn btn-primary btn-sm" @click="openAddDestination()">
@@ -263,7 +268,8 @@
       </section>
 
       <!-- ══ CHECKLIST ══════════════════════════ -->
-      <section x-show="tab === 'checklist'">
+      <section x-show="tab === 'checklist'" role="tabpanel" id="panel-checklist"
+               aria-labelledby="tab-checklist" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">
             Travel Checklist
@@ -276,8 +282,8 @@
         </div>
 
         <div class="toolbar">
-          <span class="toolbar-label">Category</span>
-          <div class="chip-group">
+          <span class="toolbar-label" id="check-category-label">Category</span>
+          <div class="chip-group" role="group" aria-labelledby="check-category-label">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
                       :aria-pressed="checkCategoryFilters.includes(cat.value)"
@@ -287,8 +293,8 @@
             </template>
           </div>
 
-          <span class="toolbar-label">Status</span>
-          <div class="chip-group">
+          <span class="toolbar-label" id="check-status-label">Status</span>
+          <div class="chip-group" role="group" aria-labelledby="check-status-label">
             <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
               <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
                       @click="checkStatusFilter = option"
@@ -339,15 +345,21 @@
                          @change="toggleCheckSelected(item.id)"
                          :aria-label="`Select ${item.description}`">
                 </label>
+                <!-- Beside the row, not in it, for the same reason as the
+                     select box: the row owns an Edit button, and buttons
+                     cannot nest. -->
+                <button type="button" class="check-status"
+                        :aria-pressed="item.status === 'COMPLETED'"
+                        :aria-label="`Complete: ${item.description}`"
+                        :title="item.status === 'COMPLETED' ? 'Mark as to do' : 'Mark complete'"
+                        @click="quickToggle(item, $event)"
+                        x-text="item.status === 'COMPLETED' ? '✔️' : '▫️'"></button>
                 <!-- A div, not a button: the row carries its own Edit button
                      the way the itinerary and budget rows do, and a button
                      cannot be nested inside another one. Clicking the row
                      still opens the drawer as a convenience. -->
                 <div class="check-row" :class="item.status === 'COMPLETED' ? 'is-done' : ''"
                         @click="openChecklistItem(item)">
-                <span class="check-status" @click="quickToggle(item, $event)"
-                      :title="item.status === 'COMPLETED' ? 'Mark as to do' : 'Mark complete'"
-                      x-text="item.status === 'COMPLETED' ? '✔️' : '▫️'"></span>
                 <span class="check-main">
                   <span class="check-text" x-text="item.description"></span>
                   <span class="check-note" x-show="item.note" x-text="item.note"></span>
@@ -377,7 +389,8 @@
       </section>
 
       <!-- ══ ITINERARY ══════════════════════════ -->
-      <section x-show="tab === 'itinerary'">
+      <section x-show="tab === 'itinerary'" role="tabpanel" id="panel-itinerary"
+               aria-labelledby="tab-itinerary" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">Itinerary</h2>
           <button type="button" class="btn btn-primary btn-sm" @click="openAddEntry()">
@@ -386,8 +399,8 @@
         </div>
 
         <div class="toolbar">
-          <span class="toolbar-label">Category</span>
-          <div class="chip-group">
+          <span class="toolbar-label" id="itin-category-label">Category</span>
+          <div class="chip-group" role="group" aria-labelledby="itin-category-label">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
                       :aria-pressed="itinCategoryFilters.includes(cat.value)"
@@ -397,8 +410,8 @@
             </template>
           </div>
 
-          <span class="toolbar-label">Show</span>
-          <div class="chip-group">
+          <span class="toolbar-label" id="itin-show-label">Show</span>
+          <div class="chip-group" role="group" aria-labelledby="itin-show-label">
             <template x-for="option in ['ALL', 'WEATHER', 'ITINERARY']" :key="option">
               <button type="button" class="chip" :aria-pressed="itinShow === option"
                       @click="itinShow = option"
@@ -527,7 +540,8 @@
       </section>
 
       <!-- ══ BUDGET ═════════════════════════════ -->
-      <section x-show="tab === 'budget'">
+      <section x-show="tab === 'budget'" role="tabpanel" id="panel-budget"
+               aria-labelledby="tab-budget" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">Budget</h2>
           <div class="btn-row">
@@ -538,8 +552,8 @@
         </div>
 
         <div class="toolbar">
-          <span class="toolbar-label">Category</span>
-          <div class="chip-group">
+          <span class="toolbar-label" id="budget-category-label">Category</span>
+          <div class="chip-group" role="group" aria-labelledby="budget-category-label">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
                       :aria-pressed="budgetCategoryFilters.includes(cat.value)"
@@ -650,7 +664,7 @@
           </p>
 
           <div class="table-wrap" x-show="filteredBudgetItems.length">
-            <table class="table">
+            <table class="table table-cards">
               <thead>
                 <tr>
                   <th class="select-cell"><span class="sr-only">Select</span></th>
@@ -669,10 +683,10 @@
                              @change="toggleBudgetSelected(item.id)"
                              :aria-label="`Select ${item.description}`">
                     </td>
-                    <td class="wrap" x-text="item.description"></td>
+                    <td class="wrap cell-title" x-text="item.description"></td>
                     <!-- Same icon-and-label chip the checklist and itinerary
                          rows use, so a category reads the same everywhere. -->
-                    <td>
+                    <td class="cell-chips">
                       <div class="chip-group">
                         <span class="chip">
                           <span x-text="categoryOf(item.category).icon"></span>
@@ -688,18 +702,18 @@
                          when more than one name is on the row. Both name their
                          own currency, because they are rarely the same one:
                          the amount is what was spent, the share is converted. -->
-                    <td class="num" x-text="fmt(item.amount, item.currency)"></td>
-                    <td class="num"
+                    <td class="num" data-label="Amount" x-text="fmt(item.amount, item.currency)"></td>
+                    <td class="num cell-emphasis" data-label="Your share"
                         x-text="convertedShareOf(item) == null
                                 ? '—' : fmt(convertedShareOf(item), budget.totalsCurrency)"></td>
                     <!-- A pending row is listed like any other. It is only
                          left out of the total that claims to be money spent. -->
-                    <td>
+                    <td data-label="Status">
                       <span class="chip" :class="item.status === 'PENDING' ? 'chip-pending' : 'chip-charged'"
                             x-text="statusLabel(item)"></span>
                     </td>
-                    <td class="muted" x-text="expenseDate(item)"></td>
-                    <td class="tiny muted">
+                    <td class="muted" data-label="Date" x-text="expenseDate(item)"></td>
+                    <td class="tiny muted" data-label="Source">
                       <span x-show="item.itineraryItemId"
                             :title="sourcePlan(item)">From plan</span>
                       <span x-show="!item.itineraryItemId">Manual</span>
@@ -719,7 +733,8 @@
       </section>
 
       <!-- ══ PUBLISH ════════════════════════════ -->
-      <section x-show="tab === 'publish'">
+      <section x-show="tab === 'publish'" role="tabpanel" id="panel-publish"
+               aria-labelledby="tab-publish" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">Publish</h2>
         </div>
@@ -745,22 +760,20 @@
                sign-in, so whose budget it shows is decided when the file is
                written — which is why it is a second page rather than a filter
                on the first. -->
-          <template x-if="publish.myPublicUrl">
-            <div style="margin-top:12px">
-              <p class="small muted" style="margin-bottom:4px">
-                Your own page — the same trip, showing your share of each expense
-                instead of the total. Nobody else's figures are in it.
-              </p>
-              <div class="btn-row">
-                <a class="btn btn-sm" :href="publish.myPublicUrl" target="_blank" rel="noopener">
-                  Open my page
-                </a>
-              </div>
-            </div>
-          </template>
-          <div class="btn-row">
+          <p class="small muted publish-own-page" x-show="publish.myPublicUrl">
+            Your own page — the same trip, showing your share of each expense
+            instead of the total. Nobody else's figures are in it.
+          </p>
+          <!-- One row for every action on the live page, wrapping on a phone.
+               x-show rather than x-if for "Open my page", so the buttons stay
+               siblings in the same flex row. -->
+          <div class="publish-actions">
             <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener">
               Open public page
+            </a>
+            <a class="btn btn-sm" x-show="publish.myPublicUrl" :href="publish.myPublicUrl"
+               target="_blank" rel="noopener">
+              Open my page
             </a>
             <button type="button" class="btn btn-sm" x-show="isOwner" :disabled="publishBusy"
                     @click="doPublish()" x-text="publishBusy ? 'Working…' : 'Re-publish (update)'"></button>
@@ -859,7 +872,7 @@
                 <span x-text="request.requestedByDisplayName"></span>
                 <span class="tiny muted" x-text="` · ${decidedAtLabel(request)}`"></span>
               </div>
-              <span class="badge" x-text="request.status"></span>
+              <span class="badge" x-text="requestStatusLabel(request.status)"></span>
             </div>
           </template>
           <p class="tiny muted" x-show="decidedRequests.length > recentRequests.length"
@@ -868,10 +881,10 @@
       </section>
 
       <!-- ══ CHECKLIST DETAIL DRAWER ════════════ -->
-      <div class="drawer-backdrop panel-switchable" x-show="openItem" x-cloak @click.self="closeDrawer()"
-           @keydown.escape.window="closeDrawer()">
+      <div class="drawer-backdrop panel-switchable" x-show="openItem" x-cloak @click.self="requestCloseDrawer()"
+           @keydown.escape.window="requestCloseDrawer()">
         <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title"
-             x-show="openItem" @click.stop>
+             x-dialog="openItem" x-show="openItem" @click.stop>
           <!-- Kept in the DOM rather than wrapped in x-if, so the selects below
                always have their options before a value is assigned to them. -->
           <div>
@@ -883,10 +896,21 @@
                   <span class="badge" :class="openItem?.status === 'COMPLETED' ? 'badge-done' : 'badge-todo'"
                         x-text="openItem?.status === 'COMPLETED' ? 'Completed' : 'To do'"></span>
                 </div>
-                <button type="button" class="modal-close" @click="closeDrawer()" aria-label="Close">✕</button>
+                <button type="button" class="modal-close" @click="requestCloseDrawer()" aria-label="Close">✕</button>
               </div>
 
               <div class="alert alert-error" x-show="drawerError" x-text="drawerError" x-cloak></div>
+
+              <!-- Raised by requestCloseDrawer(): Escape, the backdrop and ✕
+                   used to throw a half-written note away without a word. -->
+              <div class="alert alert-warning" role="alert" x-show="drawerDiscardAsk" x-cloak>
+                You have unsaved changes to this item.
+                <div class="row row-end" style="margin-top:8px">
+                  <button type="button" class="btn btn-sm" x-ref="drawerKeepEditing"
+                          @click="drawerDiscardAsk = false">Keep editing</button>
+                  <button type="button" class="btn btn-sm btn-danger" @click="closeDrawer()">Discard</button>
+                </div>
+              </div>
 
               <!-- edit the item itself -->
               <div class="drawer-section">
@@ -1087,7 +1111,8 @@
       <!-- Edit trip -->
       <div class="modal-backdrop" x-show="editOpen" x-cloak @click.self="editOpen = false"
            @keydown.escape.window="editOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-trip-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-trip-title"
+             x-dialog="editOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="edit-trip-title">Edit trip</h2>
             <button type="button" class="modal-close" @click="editOpen = false" aria-label="Close">✕</button>
@@ -1128,7 +1153,8 @@
       <!-- Delete trip -->
       <div class="modal-backdrop" x-show="deletingTrip" x-cloak @click.self="deletingTrip = false"
            @keydown.escape.window="deletingTrip = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-trip-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-trip-title"
+             x-dialog="deletingTrip">
           <div class="modal-header">
             <h2 class="modal-title" id="delete-trip-title">Delete this trip?</h2>
             <button type="button" class="modal-close" @click="deletingTrip = false" aria-label="Close">✕</button>
@@ -1152,9 +1178,10 @@
       <!-- Remove member -->
       <div class="modal-backdrop" x-show="removingMember" x-cloak @click.self="removingMember = null"
            @keydown.escape.window="removingMember = null">
-        <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="remove-member-title"
+             x-dialog="removingMember">
           <div class="modal-header">
-            <h2 class="modal-title"
+            <h2 class="modal-title" id="remove-member-title"
                 x-text="isSelf(removingMember || {}) ? 'Leave this trip?' : 'Remove this member?'"></h2>
             <button type="button" class="modal-close" @click="removingMember = null" aria-label="Close">✕</button>
           </div>
@@ -1176,7 +1203,8 @@
       <!-- Add / edit destination -->
       <div class="modal-backdrop panel-switchable" x-show="destFormOpen" x-cloak @click.self="closeDestinationForm()"
            @keydown.escape.window="closeDestinationForm()">
-        <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="dest-title">
+        <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="dest-title"
+             x-dialog="destFormOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="dest-title"
                 x-text="destForm.id ? 'Edit destination' : 'Add destination'"></h2>
@@ -1342,7 +1370,8 @@
       <!-- Bulk delete destinations -->
       <div class="modal-backdrop" x-show="destBulkOpen" x-cloak @click.self="destBulkOpen = false"
            @keydown.escape.window="destBulkOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-dest-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-dest-title"
+             x-dialog="destBulkOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="bulk-dest-title">
               Delete <span x-text="destSelected.length"></span>
@@ -1373,7 +1402,8 @@
       <!-- Add checklist item -->
       <div class="modal-backdrop" x-show="addCheckOpen" x-cloak @click.self="addCheckOpen = false"
            @keydown.escape.window="addCheckOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-check-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-check-title"
+             x-dialog="addCheckOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="add-check-title">Add checklist item</h2>
             <button type="button" class="modal-close" @click="addCheckOpen = false"
@@ -1423,7 +1453,8 @@
       <!-- Add / edit itinerary entry -->
       <div class="modal-backdrop panel-switchable" x-show="entryOpen" x-cloak @click.self="entryOpen = false"
            @keydown.escape.window="entryOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="entry-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="entry-title"
+             x-dialog="entryOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="entry-title"
                 x-text="entryForm.id ? 'Edit itinerary item' : 'Add itinerary item'"></h2>
@@ -1524,7 +1555,8 @@
       <!-- Bulk delete checklist items -->
       <div class="modal-backdrop" x-show="checkBulkOpen" x-cloak @click.self="checkBulkOpen = false"
            @keydown.escape.window="checkBulkOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-check-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-check-title"
+             x-dialog="checkBulkOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="bulk-check-title">
               Delete <span x-text="checkSelected.length"></span>
@@ -1557,7 +1589,8 @@
       <div class="modal-backdrop" x-show="completingItem" x-cloak
            @click.self="completingItem = null"
            @keydown.escape.window="completingItem = null">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="complete-check-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="complete-check-title"
+             x-dialog="completingItem">
           <div class="modal-header">
             <h2 class="modal-title" id="complete-check-title">Mark this item complete?</h2>
             <button type="button" class="modal-close" @click="completingItem = null"
@@ -1581,7 +1614,8 @@
       <!-- Bulk delete itinerary entries -->
       <div class="modal-backdrop" x-show="itinBulkOpen" x-cloak @click.self="itinBulkOpen = false"
            @keydown.escape.window="itinBulkOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-itin-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-itin-title"
+             x-dialog="itinBulkOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="bulk-itin-title">
               Remove <span x-text="itinSelected.length"></span>
@@ -1610,7 +1644,8 @@
       <!-- Bulk delete expenses -->
       <div class="modal-backdrop" x-show="budgetBulkOpen" x-cloak @click.self="budgetBulkOpen = false"
            @keydown.escape.window="budgetBulkOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-budget-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-budget-title"
+             x-dialog="budgetBulkOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="bulk-budget-title">
               Remove <span x-text="budgetSelected.length"></span>
@@ -1636,7 +1671,8 @@
       <!-- Add / edit expense -->
       <div class="modal-backdrop panel-switchable" x-show="expenseOpen" x-cloak @click.self="expenseOpen = false"
            @keydown.escape.window="expenseOpen = false">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="expense-title">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="expense-title"
+             x-dialog="expenseOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="expense-title"
                 x-text="expenseForm.id ? 'Edit expense' : 'Add expense'"></h2>
@@ -1736,9 +1772,10 @@
       <!-- Confirm publish -->
       <div class="modal-backdrop" x-show="confirmingPublish" x-cloak
            @click.self="confirmingPublish = false" @keydown.escape.window="confirmingPublish = false">
-        <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="publish-title"
+             x-dialog="confirmingPublish">
           <div class="modal-header">
-            <h2 class="modal-title">Publish this trip?</h2>
+            <h2 class="modal-title" id="publish-title">Publish this trip?</h2>
             <button type="button" class="modal-close" @click="confirmingPublish = false"
                     aria-label="Close">✕</button>
           </div>
@@ -1758,9 +1795,10 @@
       <!-- Confirm unpublish -->
       <div class="modal-backdrop" x-show="confirmingUnpublish" x-cloak
            @click.self="confirmingUnpublish = false" @keydown.escape.window="confirmingUnpublish = false">
-        <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="unpublish-title"
+             x-dialog="confirmingUnpublish">
           <div class="modal-header">
-            <h2 class="modal-title">Unpublish this trip?</h2>
+            <h2 class="modal-title" id="unpublish-title">Unpublish this trip?</h2>
             <button type="button" class="modal-close" @click="confirmingUnpublish = false"
                     aria-label="Close">✕</button>
           </div>

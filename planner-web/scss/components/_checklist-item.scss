@@ -50,12 +50,31 @@
 
 .select-box input { cursor: pointer; }
 
+// A real button (it was a span, which no keyboard could reach), sitting
+// between the select box and the row. Its top padding matches the row's, so
+// the glyph stays on the first line of text.
 .check-status {
   flex: none;
-  width: 22px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 32px;
+  min-height: 44px;
+  margin: 0;
+  padding: t.$space-3 0 0;
+  font: inherit;
   font-size: 0.95rem;
   line-height: 1.5;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
 }
+
+.check-status:focus-visible { @include m.focus-ring; outline-offset: -2px; }
+
+// The tick used to sit inside the row's own padding; now it supplies that gap.
+.check-status + .check-row { padding-left: t.$space-1; }
 
 .check-main { flex: 1; min-width: 0; }
 
@@ -101,3 +120,10 @@
 .plan-when { font-size: 0.78rem; color: var(--tp-muted); }
 .plan-desc { font-size: 0.9rem; font-weight: 500; margin: 2px 0; }
 .plan-cost { font-size: 0.82rem; color: var(--tp-muted); font-variant-numeric: tabular-nums; }
+
+// Phones: a 13px checkbox and a 32px tick are both below a fingertip. The
+// hit areas grow; the glyphs do not.
+@include m.mobile {
+  .select-box { min-width: 44px; min-height: 44px; padding-right: t.$space-2; }
+  .check-status { width: 44px; }
+}

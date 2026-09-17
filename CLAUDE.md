@@ -195,7 +195,10 @@ Rules that are easy to break by accident, all with tests:
   have been combined the two cases *cannot* be told apart server-side. It
   reuses the same flag a stay's middle nights carry, so both render as "—" with
   no second rule. On a patch, `null` leaves it alone and `false` clears it, so
-  adding a time later starts showing it.
+  adding a time later starts showing it. **The edit forms must prefill a blank
+  time for an all-day entry** (`openEditEntry`, `editPlan`): the stored `T00:00`
+  is a placeholder, and prefilling it made a plain Edit → Save send
+  `allDay: false` and turn the entry into a timed midnight one.
 - **`ItineraryItem.coversWholeDay()` is deliberately not named `isAllDay()`.**
   Jackson treats every `get`/`is` accessor resolving to the same property name
   as one property, and a `@JsonIgnore` on any of them drops the whole thing —
@@ -586,10 +589,44 @@ the four tab detail views. Confirmation dialogs stay centred in both modes on
 purpose: a yes/no question does not belong in a working side panel. **A new
 detail surface must carry `panel-switchable`** or it will ignore the setting.
 
+**Every modal and drawer carries `x-dialog`.** `js/dialog.js` registers it
+before Alpine starts (from `boot.js`, like the components); put it on the
+`role="dialog"` element with the same expression as the backdrop's `x-show`.
+While truthy the dialog takes focus, traps Tab, and sets
+`body[data-dialog-open]` so the page behind cannot scroll; when it goes falsy,
+focus returns to whatever opened it. Dialogs stack — the completion confirm
+opens over the checklist drawer — and only the top one traps. It waits two
+frames before focusing, so a caller's own `focusWhenShown()` keeps the caret.
+**A new dialog without `x-dialog` leaves focus behind its backdrop**, and a
+new one without `aria-labelledby` has no name — the same kind of silent opt-in
+as `panel-switchable`.
+
+**The trip tabs follow the ARIA tabs pattern.** Each tab is `tab-<id>` and
+`aria-controls` its `panel-<id>` section; only the selected tab is a Tab stop,
+and Left/Right/Home/End move between them (`onTabKeydown`). `revealTab`
+scrolls the bar sideways rather than calling `scrollIntoView`, which would also
+scroll the page vertically.
+
 ## Traps
 
 Each of these cost a real debugging cycle. They are not visible from the code
 that breaks.
+
+**The checklist drawer has two closes.** `closeDrawer()` is unconditional and
+belongs to paths that have already saved, deleted or navigated (including
+`showTab`). Escape, the backdrop and ✕ go through `requestCloseDrawer()`, which
+asks first when `drawerDirty`. Wiring a new close control straight to
+`closeDrawer()` silently brings back the bug where a half-written note was
+thrown away without a word.
+
+**A background tab never runs `requestAnimationFrame`.** `x-dialog` and
+`focusWhenShown()` both focus on a frame, so in a tab driven by automation
+while another window is in front, "focus moved into the dialog" reads false and
+the dialog looks broken. It is not: take a screenshot (which paints a frame) or
+bring the tab forward, then check. For the same reason a window resize can
+leave `innerWidth` stale in such a tab — for a phone-width check, load the page
+in a 400px `<iframe>` on the same origin instead, which shares the session
+cookie and lays out for real.
 
 **Object spread invokes getters.** `{...tabFactory()}` *reads* every own
 property, so a computed getter is evaluated once — before any data exists — and

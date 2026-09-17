@@ -62,6 +62,8 @@ export function checklistTab() {
     drawerError: '',
     drawerBusy: false,
     deletingCheck: false,
+    // Raised when the drawer is asked to close with unsaved edits in it.
+    drawerDiscardAsk: false,
 
     // The item a completion confirmation is pending for. Holds the item rather
     // than a flag because the confirmation is also raised from the list, where
@@ -173,13 +175,57 @@ export function checklistTab() {
       this.drawerError = '';
       this.planOpen = false;
       this.deletingCheck = false;
+      this.drawerDiscardAsk = false;
       this.completingItem = null;
     },
 
+    /**
+     * The unconditional close, for paths that have already saved, deleted or
+     * navigated. Escape, the backdrop and ✕ go through requestCloseDrawer().
+     */
     closeDrawer() {
       this.openItem = null;
       this.planOpen = false;
+      this.drawerDiscardAsk = false;
       this.completingItem = null;
+    },
+
+    /**
+     * True when closing now would lose something typed: a Details field that
+     * no longer matches the stored item, or a Plan form left open. Compared
+     * trimmed, because saveDrawer() trims on the way out — otherwise a saved
+     * note with a trailing space would read as unsaved forever.
+     */
+    get drawerDirty() {
+      const item = this.openItem;
+      if (!item) return false;
+      const form = this.drawerForm;
+      const sameCountries = [...form.countryCodes].sort().join()
+                         === [...(item.countryCodes || [])].sort().join();
+      return this.planOpen
+          || form.description.trim() !== (item.description || '')
+          || form.note.trim() !== (item.note || '')
+          || form.category !== item.category
+          || !sameCountries;
+    },
+
+    /**
+     * Escape, the backdrop and ✕ come through here. They used to discard a
+     * half-written note without a word; now the first attempt asks, and a
+     * second one (Escape again, or Discard) means it.
+     */
+    requestCloseDrawer() {
+      // Escape meant for the completion confirm on top must not reach here.
+      if (this.completingItem) return;
+      if (this.drawerDirty && !this.drawerDiscardAsk) {
+        this.drawerDiscardAsk = true;
+        // The prompt sits at the top of the drawer, usually scrolled out of
+        // view by the time someone presses Escape in the Note field. Focusing
+        // its safe button scrolls it into view and answers "keep" on Enter.
+        this.focusWhenShown('drawerKeepEditing');
+        return;
+      }
+      this.closeDrawer();
     },
 
     /**
@@ -270,6 +316,8 @@ export function checklistTab() {
      * Inline tick from the list, without opening the drawer. Ticking asks for
      * confirmation; un-ticking does not — undoing a completion needs no
      * ceremony, and refusing to ask twice keeps the quick path quick.
+     * The tick is a <button> beside the row, so it is reachable by Tab and
+     * announced with its pressed state.
      */
     async quickToggle(item, event) {
       if (item.status !== 'COMPLETED') {
@@ -337,9 +385,10 @@ export function checklistTab() {
         id: plan.id,
         description: plan.description || '',
         startDate: dateOf(plan.startAt),
-        startTime: timeOf(plan.startAt),
+        // All-day midnight is a placeholder, not a time — see openEditEntry.
+        startTime: plan.allDay ? '' : timeOf(plan.startAt),
         endDate: dateOf(plan.endAt),
-        endTime: timeOf(plan.endAt),
+        endTime: plan.allDay ? '' : timeOf(plan.endAt),
         cost: plan.cost ?? '',
         currency: plan.currency || this.budget.displayCurrency || '',
         costCharged: this.chargedOfPlan(plan),

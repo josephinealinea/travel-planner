@@ -23,6 +23,29 @@ export function longDate(iso) {
   return date ? `${date.getDate()} ${MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}` : '';
 }
 
+/**
+ * An instant ("2026-09-17T05:43:30Z") in the reader's own timezone, in the
+ * same day-month-year order as every other date on the page. toLocaleString()
+ * gave "17/09/2026, 07:43:30" beside "24 Oct" — three formats on one screen,
+ * with seconds nobody needs.
+ */
+export function dateTimeLabel(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${dateLabel(iso)}, ${hh}:${mm}`;
+}
+
+/** The date part of an instant, local time: "14 Sep 2026". */
+export function dateLabel(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 export function dateRange(startIso, endIso) {
   if (!startIso && !endIso) return '';
   if (!endIso) return shortDate(startIso);

@@ -67,6 +67,8 @@
   .timeline-entry { flex-wrap: wrap; }
   .timeline-time { width: auto; }
   .timeline-actions, .timeline-cost { margin-left: auto; }
+  // Negative margin grows the hit area to 44px without moving the layout.
+  .select-box-tight { padding: t.$space-3; margin: -#{t.$space-3}; }
 }
 
 // ── weather cards ─────────────────────────────────────────────

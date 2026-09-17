@@ -1,5 +1,6 @@
 import { toast } from '../../toast.js';
 import { THEME_REGISTRY, savedTheme } from '../../theme-selector.js';
+import { dateTimeLabel } from '../../format.js';
 
 /**
  * The Publish tab.
@@ -192,18 +193,22 @@ export function publishTab() {
     },
 
     publishedAtLabel() {
-      const when = this.publish?.publishedAt;
-      return when ? new Date(when).toLocaleString() : '';
+      return dateTimeLabel(this.publish?.publishedAt);
     },
 
     requestedAtLabel(request) {
-      return request.requestedAt ? new Date(request.requestedAt).toLocaleString() : '';
+      return dateTimeLabel(request.requestedAt);
     },
 
     /** The date a decided request is listed under — the same one it sorts on. */
     decidedAtLabel(request) {
-      const when = request.decidedAt || request.requestedAt;
-      return when ? new Date(when).toLocaleString() : '';
+      return dateTimeLabel(request.decidedAt || request.requestedAt);
+    },
+
+    /** PublishRequest.Status as words; the enum name is not copy. */
+    requestStatusLabel(status) {
+      return { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected',
+               CANCELLED: 'Cancelled' }[status] || status;
     },
   };
 }

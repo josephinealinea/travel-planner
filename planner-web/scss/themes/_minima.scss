@@ -18,10 +18,16 @@ body.theme-minima {
   --tp-accent-strong: #92400e;
   --tp-on-accent: #fffdf7;
 
-  --tp-success: #4d7c0f;
+  // Darkened from #4d7c0f: "Completed" and "Published" sit on --tp-surface-alt
+  // chips, where the old value was 4.32:1. Now 5.55:1 there, 6.3:1 on surface.
+  --tp-success: #3f6a0a;
   --tp-danger: #b91c1c;
   --tp-danger-bg: #fef2f2;
   --tp-warning: #ca8a04;
+  // Pending text. #ca8a04 stays for borders, where 3:1 is enough, but as text
+  // it was 2.89:1 — on the one chip the budget most needs read. 5.13:1 on the
+  // chip background.
+  --tp-warning-ink: #8a5a00;
   --tp-warning-bg: #fefce8;
   --tp-warning-text: #854d0e;
 

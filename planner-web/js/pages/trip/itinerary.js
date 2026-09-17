@@ -239,9 +239,12 @@ export function itineraryTab() {
         category: item.category,
         description: item.description || '',
         startDate: dateOf(item.startAt),
-        startTime: timeOf(item.startAt),
+        // An all-day entry is stored at T00:00, but that midnight is a
+        // placeholder, not a time. Prefilling it made Save send allDay: false
+        // and quietly turned the entry into a timed 00:00 one.
+        startTime: item.allDay ? '' : timeOf(item.startAt),
         endDate: dateOf(item.endAt),
-        endTime: timeOf(item.endAt),
+        endTime: item.allDay ? '' : timeOf(item.endAt),
         cost: item.cost ?? '',
         currency: item.currency || this.budget.displayCurrency || '',
         costCharged: this.chargedOfPlan(item),

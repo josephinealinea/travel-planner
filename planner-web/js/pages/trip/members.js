@@ -1,4 +1,5 @@
 import { toast } from '../../toast.js';
+import { dateLabel } from '../../format.js';
 
 /**
  * The Members tab.
@@ -12,6 +13,10 @@ export function membersTab() {
     memberError: '',
     addingMember: false,
     removingMember: null,
+
+    addedLabel(member) {
+      return dateLabel(member.invitedAt);
+    },
 
     async addMember() {
       const email = this.memberEmail.trim();

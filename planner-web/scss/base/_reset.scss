@@ -1,6 +1,9 @@
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+// Smooth anchor scrolling is motion, so it waits for the reader to allow it.
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
 
 body {
   margin: 0;
@@ -20,3 +23,11 @@ img, svg { max-width: 100%; height: auto; }
 [hidden] { display: none !important; }
 
 :target { scroll-margin-top: 80px; }
+
+// Set by js/dialog.js while any modal or drawer is open, so the page behind
+// the backdrop cannot scroll.
+body[data-dialog-open] { overflow: hidden; }
+
+// A dialog only takes focus itself when it has nothing tabbable; the ring
+// would outline the whole panel for no benefit.
+[role="dialog"][tabindex="-1"]:focus { outline: none; }

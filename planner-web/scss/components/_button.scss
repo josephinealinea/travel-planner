@@ -76,3 +76,10 @@
 
 .btn-link:hover { text-decoration: underline; }
 .btn-link:focus-visible { @include m.focus-ring; }
+
+// Phones: 44px for a full button, 40px for the small per-row ones, which sit
+// in rows with their own padding around them.
+@include m.mobile {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+}

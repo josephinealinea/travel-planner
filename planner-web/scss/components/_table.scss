@@ -55,3 +55,73 @@
 // Rows that open a detail view.
 .table tbody tr.clickable { cursor: pointer; }
 .table tbody tr.clickable:focus-visible { @include m.focus-ring; }
+
+// Phones: a table whose money sits in the fourth column puts the money
+// off-screen. .table-cards turns each row into a card — title and Edit on top,
+// chips under the title, then one "label … value" line per data-label cell.
+//
+// Every selector carries .table.table-cards so it outranks the .table .num /
+// .table .wrap / .table .select-cell rules above without !important.
+@include m.mobile {
+  .table-wrap:has(> .table-cards) { overflow-x: visible; }
+
+  .table.table-cards,
+  .table.table-cards tbody { display: block; }
+
+  .table.table-cards thead { @include m.visually-hidden; }
+
+  .table.table-cards tbody tr {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    column-gap: t.$space-2;
+    row-gap: 2px;
+    padding: t.$space-3 t.$space-3 t.$space-3 0;
+    border-bottom: 1px solid var(--tp-border);
+  }
+
+  .table.table-cards tbody tr:last-child { border-bottom: 0; }
+
+  .table.table-cards td {
+    display: block;
+    grid-column: 2;
+    min-width: 0;
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+    border: 0;
+  }
+
+  .table.table-cards .select-cell {
+    grid-column: 1;
+    grid-row: 1 / span 7;
+    width: auto;
+    padding-top: 2px;
+    text-align: center;
+  }
+
+  .table.table-cards .select-cell input { width: 20px; height: 20px; }
+
+  .table.table-cards .cell-title { grid-row: 1; font-weight: 600; }
+  .table.table-cards .cell-chips { margin: t.$space-1 0; }
+
+  .table.table-cards .actions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    text-align: right;
+  }
+
+  .table.table-cards td[data-label] {
+    display: flex;
+    gap: t.$space-2;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .table.table-cards td[data-label]::before {
+    content: attr(data-label);
+    color: var(--tp-muted);
+  }
+
+  .table.table-cards .cell-emphasis { font-weight: 600; color: var(--tp-text); }
+}

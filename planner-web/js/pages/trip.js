@@ -90,6 +90,8 @@ export function tripPage() {
       // the lookup — not switching to the Itinerary tab. See reload().
       await this.reload();
       this.loading = false;
+      // The tabs only render once loading is false.
+      this.$nextTick(() => this.revealTab(this.tab));
     },
 
     tabFromHash() {
@@ -109,6 +111,7 @@ export function tripPage() {
     showTab(id) {
       if (id !== this.tab) this.closeDrawer();
       this.tab = id;
+      this.$nextTick(() => this.revealTab(id));
       // Normally already warm from init(); this only does anything if that
       // first attempt failed, since loadWeather() is a no-op while the
       // destinations are unchanged.
@@ -120,6 +123,42 @@ export function tripPage() {
       // replaceState rather than assigning location.hash, so switching tabs
       // does not fill the back button with history entries.
       history.replaceState(null, '', `${location.pathname}${location.search}#${id}`);
+    },
+
+    /**
+     * Left/Right/Home/End between tabs, per the WAI-ARIA tabs pattern. Only
+     * the selected tab is a Tab stop, so Tab itself leaves the list for the
+     * panel. Selection follows focus: every panel is already rendered, so
+     * there is nothing to wait for.
+     */
+    onTabKeydown(event) {
+      const ids = TABS.map((t) => t.id);
+      const at = ids.indexOf(this.tab);
+      const target = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: ids.length - 1 }[event.key];
+      if (target === undefined) return;
+      event.preventDefault();
+      const id = ids[(target + ids.length) % ids.length];
+      this.selectTab(id);
+      this.$nextTick(() => document.getElementById(`tab-${id}`)?.focus());
+    },
+
+    /**
+     * Scrolls the tab bar sideways so the selected tab is visible. On a phone
+     * the bar is wider than the screen, and landing on #budget from a link
+     * used to show a bar that ended at Checklist.
+     *
+     * scrollIntoView would also scroll the page vertically, which is wrong
+     * when the tab was chosen from far down the Overview.
+     */
+    revealTab(id) {
+      const button = document.getElementById(`tab-${id}`);
+      const list = button?.parentElement;
+      if (!list) return;
+      const bar = list.getBoundingClientRect();
+      const tab = button.getBoundingClientRect();
+      const margin = 32; // clears the fade at the bar's right edge
+      if (tab.left < bar.left) list.scrollLeft -= bar.left - tab.left + margin;
+      else if (tab.right > bar.right - margin) list.scrollLeft += tab.right - bar.right + margin;
     },
 
     /** Re-reads the whole bundle. Every mutation ends by calling this. */

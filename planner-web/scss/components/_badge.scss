@@ -1,4 +1,5 @@
 @use "../abstracts/tokens" as t;
+@use "../abstracts/mixins" as m;
 
 .badge {
   display: inline-block;
@@ -19,14 +20,14 @@
 .badge-published { color: var(--tp-success); border-color: var(--tp-success); }
 .badge-todo    { color: var(--tp-muted); }
 .badge-done    { color: var(--tp-success); border-color: var(--tp-success); }
-.badge-pending { color: var(--tp-warning); border-color: var(--tp-warning); }
+.badge-pending { color: var(--tp-warning-ink, var(--tp-warning)); border-color: var(--tp-warning); }
 
 .chip {
   display: inline-flex;
   gap: 4px;
   align-items: center;
   padding: 2px 9px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--tp-muted);
   background: var(--tp-surface-alt);
   border: 1px solid var(--tp-border);
@@ -39,7 +40,7 @@
 // only the pending one is tinted: "charged" is the ordinary case, and a table
 // where every row shouts says nothing.
 .chip-charged { color: var(--tp-muted); }
-.chip-pending { color: var(--tp-warning); border-color: var(--tp-warning); }
+.chip-pending { color: var(--tp-warning-ink, var(--tp-warning)); border-color: var(--tp-warning); }
 
 // Filter chips are buttons, and show their state through aria-pressed.
 //
@@ -76,4 +77,12 @@ button.chip[aria-pressed="true"] {
   height: 8px;
   border-radius: 50%;
   flex: none;
+}
+
+// Phones: filter chips are tapped, not clicked. 36px plus the wider gap keeps
+// neighbours from being hit by mistake without making a row of six chips
+// wrap into four lines.
+@include m.mobile {
+  button.chip { min-height: 36px; padding: 6px 12px; }
+  .chip-group { gap: t.$space-2; }
 }

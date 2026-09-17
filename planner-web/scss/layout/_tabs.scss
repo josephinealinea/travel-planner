@@ -23,7 +23,7 @@
 }
 
 .tab:hover { color: var(--tp-text); }
-.tab:focus-visible { @include m.focus-ring; }
+.tab:focus-visible { @include m.focus-ring; outline-offset: -2px; }
 
 .tab[aria-selected="true"] {
   color: var(--tp-accent);
@@ -39,4 +39,16 @@
   color: var(--tp-muted);
   background: var(--tp-surface-alt);
   border-radius: 999px;
+}
+
+// Phones: the bar scrolls sideways, and with the scrollbar hidden nothing said
+// so. The fade is the cue; the end padding lets the last tab scroll clear of it.
+@include m.mobile {
+  .tabs {
+    padding-right: t.$space-6;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - #{t.$space-6}), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - #{t.$space-6}), transparent);
+  }
+  .tabs::-webkit-scrollbar { display: none; }
 }
