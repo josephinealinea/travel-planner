@@ -196,18 +196,21 @@
                aria-labelledby="tab-destinations" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">Destinations</h2>
-          <button type="button" class="btn btn-primary btn-sm" @click="openAddDestination()">
-            + Add destination
-          </button>
-        </div>
-
-        <div class="toolbar" x-show="destinations.length">
-          <div class="toolbar-actions">
+          <div class="btn-row">
+            <!-- Beside Add rather than in a row of its own: it stays put whether
+                 or not anything is selected, so ticking the first row never
+                 shifts the rows under the pointer. Disabled, never hidden — and
+                 left of Add, so the primary action is the rightmost thing on
+                 the row on every tab. -->
             <button type="button" class="btn btn-sm btn-danger"
+                    x-show="destinations.length"
                     :disabled="!destSelected.length"
                     @click="destBulkOpen = true">
               Delete selected<span x-show="destSelected.length"
                                    x-text="` (${destSelected.length})`"></span>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddDestination()">
+              + Add destination
             </button>
           </div>
         </div>
@@ -276,9 +279,17 @@
             <span class="small muted"
                   x-text="`— ${checkProgress().done} of ${checkProgress().total} done`"></span>
           </h2>
-          <button type="button" class="btn btn-primary btn-sm" @click="openAddCheck()">
-            + Add checklist item
-          </button>
+          <div class="btn-row">
+            <button type="button" class="btn btn-sm btn-danger"
+                    :disabled="!checkSelected.length"
+                    @click="checkBulkOpen = true">
+              Delete selected<span x-show="checkSelected.length"
+                                   x-text="` (${checkSelected.length})`"></span>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddCheck()">
+              + Add checklist item
+            </button>
+          </div>
         </div>
 
         <div class="toolbar">
@@ -302,7 +313,7 @@
             </template>
           </div>
 
-          <span class="toolbar-label" id="check-group-by-label">Group by</span>
+          <span class="toolbar-label" id="check-group-by-label">Show by</span>
           <div class="chip-group" role="group" aria-labelledby="check-group-by-label">
             <template x-for="option in checkGroupByOptions" :key="option.value">
               <button type="button" class="chip"
@@ -312,14 +323,6 @@
             </template>
           </div>
 
-          <div class="toolbar-actions">
-            <button type="button" class="btn btn-sm btn-danger"
-                    :disabled="!checkSelected.length"
-                    @click="checkBulkOpen = true">
-              Delete selected<span x-show="checkSelected.length"
-                                   x-text="` (${checkSelected.length})`"></span>
-            </button>
-          </div>
         </div>
 
         <div class="empty-state" x-show="!checklist.length">
@@ -393,9 +396,18 @@
                aria-labelledby="tab-itinerary" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">Itinerary</h2>
-          <button type="button" class="btn btn-primary btn-sm" @click="openAddEntry()">
-            + Add itinerary item
-          </button>
+          <div class="btn-row">
+            <button type="button" class="btn btn-sm btn-danger"
+                    x-show="itinShow !== 'WEATHER'"
+                    :disabled="!itinSelected.length"
+                    @click="itinBulkOpen = true">
+              Delete selected<span x-show="itinSelected.length"
+                                   x-text="` (${itinSelected.length})`"></span>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddEntry()">
+              + Add itinerary item
+            </button>
+          </div>
         </div>
 
         <div class="toolbar">
@@ -420,14 +432,6 @@
             </template>
           </div>
 
-          <div class="toolbar-actions" x-show="itinShow !== 'WEATHER'">
-            <button type="button" class="btn btn-sm btn-danger"
-                    :disabled="!itinSelected.length"
-                    @click="itinBulkOpen = true">
-              Delete selected<span x-show="itinSelected.length"
-                                   x-text="` (${itinSelected.length})`"></span>
-            </button>
-          </div>
         </div>
 
         <p class="tiny muted" x-show="weatherLoading">Looking up the weather…</p>
@@ -545,6 +549,12 @@
         <div class="section-head">
           <h2 class="section-title">Budget</h2>
           <div class="btn-row">
+            <button type="button" class="btn btn-sm btn-danger"
+                    :disabled="!budgetSelected.length"
+                    @click="budgetBulkOpen = true">
+              Delete selected<span x-show="budgetSelected.length"
+                                   x-text="` (${budgetSelected.length})`"></span>
+            </button>
             <button type="button" class="btn btn-primary btn-sm" @click="openAddExpense()">
               + Add expense
             </button>
@@ -578,14 +588,6 @@
             </template>
           </div>
 
-          <div class="toolbar-actions">
-            <button type="button" class="btn btn-sm btn-danger"
-                    :disabled="!budgetSelected.length"
-                    @click="budgetBulkOpen = true">
-              Delete selected<span x-show="budgetSelected.length"
-                                   x-text="` (${budgetSelected.length})`"></span>
-            </button>
-          </div>
         </div>
 
         <!-- Follows what the table lists rather than what the trip holds: a
@@ -748,6 +750,61 @@
                       @click="goToBudgetPage(budgetCurrentPage + 1)">Next →</button>
             </span>
           </nav>
+        </div>
+
+        <!-- ── Settle Expenses ───────────────────────────────────────────
+             Who owes whom, from the charged rows alone. Deliberately not tied
+             to the Group by selector above: a forecast debt would be money
+             nobody has spent. -->
+        <div class="card settle">
+          <div class="section-head">
+            <h3 class="section-title" id="settle-title">Settle Expenses</h3>
+          </div>
+          <p class="settle-note">
+            Based on charged expenses only, in the currency each was paid in.
+          </p>
+
+          <p class="empty" x-show="!hasSettlements" x-cloak>
+            Nothing to settle — nobody has paid for anybody else's share yet.
+          </p>
+
+          <div class="table-wrap" x-show="hasSettlements" x-cloak>
+            <table class="table table-cards" aria-labelledby="settle-title">
+              <thead>
+                <tr>
+                  <th>Travel Buddy</th>
+                  <th class="num">Owes you</th>
+                  <th class="num">You owe</th>
+                  <th class="num">Net</th>
+                  <th class="actions"><span class="sr-only">Details</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="row in settleRows" :key="row.otherUserId + row.currency">
+                  <tr>
+                    <td class="cell-title" x-text="settleMemberName(row.otherUserId)"></td>
+                    <td data-label="Owes you" class="num" x-text="fmt(row.owesYou, row.currency)"></td>
+                    <td data-label="You owe" class="num" x-text="fmt(row.youOwe, row.currency)"></td>
+                    <!-- "(to pay)" / "(to receive)" rather than a minus sign:
+                         the direction is the whole point of this column, and a
+                         sign is the one part of a figure a reader skims past. -->
+                    <td data-label="Net" class="num">
+                      <span :class="settleNetClass(row)" x-text="settleNetLabel(row)"></span>
+                    </td>
+                    <td class="actions">
+                      <span class="btn-row">
+                        <button type="button" class="btn btn-sm"
+                                @click="openSettleDetails(row)"
+                                :aria-label="`View details: ${settleSummaryLine(row)}`">
+                          View details
+                        </button>
+                      </span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -1054,25 +1111,10 @@
                        is usually money still to leave. -->
                   <div class="field" x-show="planForm.cost">
                     <label class="checkbox">
-                      <input type="checkbox" x-model="planForm.costCharged">
+                      <input type="checkbox" x-model="planForm.costCharged"
+                             @change="chargedToggled(planForm, currentUserId, $event.target.checked)">
                       Expense already charged
                     </label>
-                  </div>
-
-                  <div class="field" x-show="planForm.cost">
-                    <label id="plan-shared-label">Shared by</label>
-                    <div class="chip-group" role="group" aria-labelledby="plan-shared-label">
-                      <template x-for="person in tripSharers" :key="person.userId">
-                        <button type="button" class="chip"
-                                :aria-pressed="planForm.sharedByUserIds.includes(person.userId)"
-                                @click="toggleSharer(planForm.sharedByUserIds, person.userId)"
-                                x-text="person.label"></button>
-                      </template>
-                    </div>
-                    <p class="field-hint">
-                      Splits the cost between them. Pick nobody and it belongs to
-                      everyone on the trip.
-                    </p>
                   </div>
 
                   <div class="field" x-show="planForm.cost">
@@ -1082,6 +1124,21 @@
                         <button type="button" class="chip"
                                 :aria-pressed="planForm.paidByUserId === person.userId"
                                 @click="choosePayer(planForm, person.userId)"
+                                x-text="person.label"></button>
+                      </template>
+                    </div>
+                  </div>
+
+                  <div class="field" x-show="planForm.cost">
+                    <label id="plan-shared-label">Shared by</label>
+                    <div class="chip-group" role="group" aria-labelledby="plan-shared-label">
+                      <button type="button" class="chip"
+                              :aria-pressed="sharedWithEveryone(planForm.sharedByUserIds)"
+                              @click="shareWithEveryone(planForm.sharedByUserIds)">Everyone</button>
+                      <template x-for="person in tripSharers" :key="person.userId">
+                        <button type="button" class="chip"
+                                :aria-pressed="planForm.sharedByUserIds.includes(person.userId)"
+                                @click="toggleSharer(planForm.sharedByUserIds, person.userId)"
                                 x-text="person.label"></button>
                       </template>
                     </div>
@@ -1559,24 +1616,10 @@
             </p>
             <div class="field" x-show="entryForm.cost">
               <label class="checkbox">
-                <input type="checkbox" x-model="entryForm.costCharged">
+                <input type="checkbox" x-model="entryForm.costCharged"
+                       @change="chargedToggled(entryForm, currentUserId, $event.target.checked)">
                 Expense already charged
               </label>
-            </div>
-            <div class="field" x-show="entryForm.cost">
-              <label id="entry-shared-label">Shared by</label>
-              <div class="chip-group" role="group" aria-labelledby="entry-shared-label">
-                <template x-for="person in tripSharers" :key="person.userId">
-                  <button type="button" class="chip"
-                          :aria-pressed="entryForm.sharedByUserIds.includes(person.userId)"
-                          @click="toggleSharer(entryForm.sharedByUserIds, person.userId)"
-                          x-text="person.label"></button>
-                </template>
-              </div>
-              <p class="field-hint">
-                Splits the cost between them. Pick nobody and it belongs to
-                everyone on the trip.
-              </p>
             </div>
             <div class="field" x-show="entryForm.cost">
               <label id="entry-paid-by-label">Paid by</label>
@@ -1585,6 +1628,20 @@
                   <button type="button" class="chip"
                           :aria-pressed="entryForm.paidByUserId === person.userId"
                           @click="choosePayer(entryForm, person.userId)"
+                          x-text="person.label"></button>
+                </template>
+              </div>
+            </div>
+            <div class="field" x-show="entryForm.cost">
+              <label id="entry-shared-label">Shared by</label>
+              <div class="chip-group" role="group" aria-labelledby="entry-shared-label">
+                <button type="button" class="chip"
+                        :aria-pressed="sharedWithEveryone(entryForm.sharedByUserIds)"
+                        @click="shareWithEveryone(entryForm.sharedByUserIds)">Everyone</button>
+                <template x-for="person in tripSharers" :key="person.userId">
+                  <button type="button" class="chip"
+                          :aria-pressed="entryForm.sharedByUserIds.includes(person.userId)"
+                          @click="toggleSharer(entryForm.sharedByUserIds, person.userId)"
                           x-text="person.label"></button>
                 </template>
               </div>
@@ -1777,21 +1834,8 @@
               <label for="expense-date">Date (optional)</label>
               <input id="expense-date" type="date" x-model="expenseForm.date" :min="trip.startDate" :max="trip.endDate">
             </div>
-            <div class="field">
-              <label id="expense-shared-label">Shared by</label>
-              <div class="chip-group" role="group" aria-labelledby="expense-shared-label">
-                <template x-for="person in tripSharers" :key="person.userId">
-                  <button type="button" class="chip"
-                          :aria-pressed="expenseForm.sharedByUserIds.includes(person.userId)"
-                          @click="toggleSharer(expenseForm.sharedByUserIds, person.userId)"
-                          x-text="person.label"></button>
-                </template>
-              </div>
-              <p class="field-hint">
-                Picking two or more splits the cost between them, and each sees
-                only their part. Pick nobody and it belongs to everyone on the trip.
-              </p>
-            </div>
+            <!-- Paid by comes first: who handed the money over is the plain
+                 fact, and whose money it is follows from it. -->
             <div class="field">
               <label id="expense-paid-by-label">Paid by</label>
               <div class="chip-group" role="group" aria-labelledby="expense-paid-by-label">
@@ -1804,15 +1848,29 @@
               </div>
             </div>
             <div class="field">
+              <label id="expense-shared-label">Shared by</label>
+              <div class="chip-group" role="group" aria-labelledby="expense-shared-label">
+                <!-- Before the template, because x-for inserts its members as
+                     siblings *after* the template node. "Everyone" is the empty
+                     list rather than every name, so a member joining later is
+                     included and one leaving drops out. -->
+                <button type="button" class="chip"
+                        :aria-pressed="sharedWithEveryone(expenseForm.sharedByUserIds)"
+                        @click="shareWithEveryone(expenseForm.sharedByUserIds)">Everyone</button>
+                <template x-for="person in tripSharers" :key="person.userId">
+                  <button type="button" class="chip"
+                          :aria-pressed="expenseForm.sharedByUserIds.includes(person.userId)"
+                          @click="toggleSharer(expenseForm.sharedByUserIds, person.userId)"
+                          x-text="person.label"></button>
+                </template>
+              </div>
+            </div>
+            <div class="field">
               <label class="checkbox">
-                <input type="checkbox" x-model="expenseForm.charged">
+                <input type="checkbox" x-model="expenseForm.charged"
+                       @change="chargedToggled(expenseForm, currentUserId, $event.target.checked)">
                 Expense already charged
               </label>
-              <p class="field-hint">
-                Leave this unticked for money still to be paid. Pending expenses
-                are listed here but left out of the total and the chart, which
-                the Forecast options under Show count in.
-              </p>
             </div>
             <p class="field-hint" x-show="expenseForm.id && expenseForm.amount">
               Changing the cost on an expense that came from a plan updates that plan's cost too.
@@ -1823,6 +1881,63 @@
                       x-text="expenseBusy ? 'Saving…' : 'Save'"></button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Settle details: the rows behind one line of the settle table.
+           panel-switchable like the other four detail views, so it follows
+           Account → Appearance. -->
+      <div class="modal-backdrop panel-switchable" x-show="settleDetail" x-cloak
+           @click.self="closeSettleDetails()" @keydown.escape.window="closeSettleDetails()">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settle-detail-title"
+             x-dialog="settleDetail">
+          <div class="modal-header">
+            <h2 class="modal-title" id="settle-detail-title"
+                x-text="settleDetail ? settleSummaryLine(settleDetail) : ''"></h2>
+            <button type="button" class="modal-close" @click="closeSettleDetails()"
+                    aria-label="Close">✕</button>
+          </div>
+
+          <template x-if="settleDetail">
+            <div>
+              <ul class="settle-lines">
+                <template x-for="line in settleDetailLines" :key="line.itemId">
+                  <li class="settle-line">
+                    <span class="settle-line-main">
+                      <span class="settle-line-desc" x-text="line.description"></span>
+                      <span class="settle-line-meta">
+                        <span x-show="line.category" x-text="categoryOf(line.category).label"></span>
+                        <span x-show="line.date" x-text="line.date ? expenseDate(line) : ''"></span>
+                      </span>
+                    </span>
+                    <span class="settle-line-amount"
+                          :class="line.owedToYou ? 'settle-net-positive' : 'settle-net-negative'"
+                          x-text="(line.owedToYou ? '+' : '−') + ' ' + fmt(line.amount, settleDetail.currency)"></span>
+                  </li>
+                </template>
+              </ul>
+
+              <dl class="settle-totals">
+                <div>
+                  <dt x-text="`${settleMemberName(settleDetail.otherUserId)} owes you`"></dt>
+                  <dd x-text="fmt(settleDetail.owesYou, settleDetail.currency)"></dd>
+                </div>
+                <div>
+                  <dt x-text="`You owe ${settleMemberName(settleDetail.otherUserId)}`"></dt>
+                  <dd x-text="fmt(settleDetail.youOwe, settleDetail.currency)"></dd>
+                </div>
+                <div class="settle-totals-net">
+                  <dt>Net</dt>
+                  <dd :class="settleNetClass(settleDetail)"
+                      x-text="settleNetLabel(settleDetail)"></dd>
+                </div>
+              </dl>
+            </div>
+          </template>
+
+          <div class="modal-actions">
+            <button type="button" class="btn" @click="closeSettleDetails()">Close</button>
+          </div>
         </div>
       </div>
 

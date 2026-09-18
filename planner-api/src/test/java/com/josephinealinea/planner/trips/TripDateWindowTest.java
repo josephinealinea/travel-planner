@@ -203,7 +203,7 @@ class TripDateWindowTest {
     private BudgetService.Input expense(String date) {
         return new BudgetService.Input("Yellow fever vaccine", ChecklistCategory.OTHERS,
                 new BigDecimal("60.00"), "EUR",
-                date == null ? null : LocalDate.parse(date), List.of(), null, null, null);
+                date == null ? null : LocalDate.parse(date), List.of(), null, USER_ID, null);
     }
 
     @Test

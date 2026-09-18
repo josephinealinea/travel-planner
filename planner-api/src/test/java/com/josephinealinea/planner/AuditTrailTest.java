@@ -218,7 +218,7 @@ class AuditTrailTest {
     void anExpenseRecordsWhoEnteredIt() {
         BudgetItem row = budgetService.create(TRIP_ID, SAM,
                 new BudgetService.Input("Yellow fever vaccine", ChecklistCategory.OTHERS,
-                        new BigDecimal("45.00"), "USD", null, null, null, null, null));
+                        new BigDecimal("45.00"), "USD", null, null, null, SAM, null));
 
         madeBy(budget.findById(SLUG, row.getId()).orElseThrow(), SAM);
     }

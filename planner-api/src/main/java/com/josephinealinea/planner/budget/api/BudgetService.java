@@ -120,7 +120,37 @@ public class BudgetService {
                           String totalsCurrency,
                           Map<String, BigDecimal> shares,
                           Breakdown charged,
-                          Breakdown forecast) {}
+                          Breakdown forecast,
+                          List<Settlement> settlements) {}
+
+    /**
+     * What one other member and the signed-in member owe each other, in one
+     * currency.
+     *
+     * Two members who have paid for each other's things have a debt in each
+     * direction, and both are worth showing: the gross pair says what happened
+     * and `net` says what anybody actually hands over. Reading it from the
+     * other member's side mirrors it exactly, which is what stops two people
+     * disagreeing about the same money.
+     *
+     * <b>Per currency, never converted.</b> A debt is repaid in the currency it
+     * was run up in, so a settle figure that had been through a rate table
+     * would be a number nobody can hand over — and it would drift with the
+     * rates besides. Two currencies with one member are two of these.
+     *
+     * A `Line` carries the row's id and nothing else about it: the frontend
+     * already holds every row in `items` and looks up the description, date and
+     * category there, so no field is kept in two places to fall out of step.
+     */
+    public record Settlement(String otherUserId,
+                             String currency,
+                             BigDecimal owesYou,
+                             BigDecimal youOwe,
+                             BigDecimal net,
+                             List<Line> lines) {
+
+        public record Line(String itemId, BigDecimal amount, boolean owedToYou) {}
+    }
 
     /**
      * One row and the amount of it that counts for whoever is looking.
@@ -255,7 +285,94 @@ public class BudgetService {
         return new Summary(items, tripCurrency, target, shares,
                 breakdown(charges.stream().filter(c -> c.item().isConfirmed()).toList(),
                         target, tripCurrency, pivot, table, countrySamples),
-                breakdown(charges, target, tripCurrency, pivot, table, countrySamples));
+                breakdown(charges, target, tripCurrency, pivot, table, countrySamples),
+                settlements(items, members, user, tripCurrency));
+    }
+
+    /**
+     * Who owes whom, read off the same rows the breakdowns are built from.
+     *
+     * <b>Charged rows only.</b> A pending row is an intention rather than a
+     * payment: nobody has handed anything over, so there is nothing to give
+     * back. Deliberately not wired to the panel's Group by selector, which
+     * would otherwise produce debts for expenses that have not happened.
+     *
+     * The division is {@link TripMembers#shareOf}, the one place that owns it,
+     * so these figures reconcile with the Budget tab's to the cent. Dividing
+     * again anywhere else — in particular in the browser, where it would be a
+     * plain amount/n — would drift on any row that does not divide evenly, and
+     * the drift would show up as two members disagreeing by a penny.
+     *
+     * Empty when there is no signed-in member, exactly as `shares` is: a
+     * published page has nobody to settle for, and a member's name beside a
+     * figure is what a public file must never carry.
+     */
+    private static List<Settlement> settlements(List<BudgetItem> items,
+                                                TripMembers members,
+                                                User user,
+                                                String tripCurrency) {
+        if (user == null) return List.of();
+        String me = user.getId();
+
+        // Keyed by the other member and the currency, which is what one line of
+        // the table is. LinkedHashMap so the order is stable between reloads.
+        Map<String, Settlement> pairs = new LinkedHashMap<>();
+
+        for (BudgetItem item : items) {
+            if (!item.isConfirmed()) continue;
+
+            String payer = effectivePayerOf(item);
+            // A payer who has left cannot be settled with — the trip no longer
+            // knows them, the same reason their share drops out of a split.
+            if (payer == null || !members.userIds().contains(payer)) continue;
+
+            List<String> sharers = members.sharersOf(item.getSharedByUserIds());
+            String currency = nativeCurrencyOf(item, tripCurrency);
+
+            if (payer.equals(me)) {
+                // They owe me their share of what I paid for. My own share is
+                // skipped: I am not in debt to myself for my half of dinner.
+                for (String sharer : sharers) {
+                    if (sharer.equals(me)) continue;
+                    BigDecimal share = members.shareOf(item.getAmount(), item.getSharedByUserIds(), sharer);
+                    if (share == null || share.signum() == 0) continue;
+                    add(pairs, sharer, currency, item.getId(), share, true);
+                }
+            } else if (sharers.contains(me)) {
+                // Somebody else paid for something I share, so I owe them my
+                // part of it — and only my part.
+                BigDecimal share = members.shareOf(item.getAmount(), item.getSharedByUserIds(), me);
+                if (share == null || share.signum() == 0) continue;
+                add(pairs, payer, currency, item.getId(), share, false);
+            }
+            // Anything else is two other people's business.
+        }
+
+        return pairs.values().stream()
+                .sorted(Comparator.comparing(Settlement::otherUserId)
+                        .thenComparing(Settlement::currency))
+                .toList();
+    }
+
+    /** Folds one row's contribution into the (member, currency) line it belongs to. */
+    private static void add(Map<String, Settlement> pairs, String other, String currency,
+                            String itemId, BigDecimal amount, boolean owedToYou) {
+        Settlement current = pairs.get(other + ' ' + currency);
+        BigDecimal owesYou = current == null ? BigDecimal.ZERO : current.owesYou();
+        BigDecimal youOwe = current == null ? BigDecimal.ZERO : current.youOwe();
+        List<Settlement.Line> lines = new ArrayList<>(
+                current == null ? List.of() : current.lines());
+
+        if (owedToYou) owesYou = owesYou.add(amount);
+        else youOwe = youOwe.add(amount);
+        lines.add(new Settlement.Line(itemId, amount, owedToYou));
+
+        pairs.put(other + ' ' + currency, new Settlement(
+                other, currency,
+                owesYou.setScale(2, RoundingMode.HALF_UP),
+                youOwe.setScale(2, RoundingMode.HALF_UP),
+                owesYou.subtract(youOwe).setScale(2, RoundingMode.HALF_UP),
+                lines));
     }
 
     /**
@@ -516,6 +633,7 @@ public class BudgetService {
         // the form's own box starts ticked. A plan's cost is the other way
         // round — see BudgetSync.
         item.markCharged(input.charged() == null || input.charged(), Instant.now());
+        requirePayerWhenCharged(item);
         Audit.created(item, userId);
 
         return budget.save(trip.getSlug(), item);
@@ -564,6 +682,9 @@ public class BudgetService {
             // it to now on every later edit.
             item.markCharged(input.charged(), Instant.now());
         }
+        // After every field is set, so that ticking the box and clearing the
+        // payer in the same patch are judged on what the row ends up saying.
+        requirePayerWhenCharged(item);
         Audit.touched(item, userId);
 
         BudgetItem saved = budget.save(trip.getSlug(), item);
@@ -616,5 +737,53 @@ public class BudgetService {
     private static void requireAmount(BigDecimal amount) {
         if (amount == null) throw ApiException.badRequest("An expense needs an amount.");
         if (amount.signum() < 0) throw ApiException.badRequest("An amount cannot be negative.");
+    }
+
+    /**
+     * A charged expense has to say who paid it.
+     *
+     * Money that has demonstrably left someone's hand with no record of whose
+     * can appear in no settlement, so it is money the Settle Expenses panel
+     * cannot account for — and it would go missing silently, in the one
+     * direction a reader has no way to detect. A pending row is the opposite
+     * case and stays optional: nobody has paid it, so naming a payer would be
+     * a guess dressed up as a record.
+     *
+     * <b>This asks the item, not the input,</b> which is what makes one call
+     * cover every door into the state: creating a charged row with no payer,
+     * ticking "already charged" on a row that has none, and clearing the payer
+     * of a row already charged all arrive here having mutated the item.
+     * Checking the request instead would need three checks and would still
+     * miss the next door somebody adds.
+     */
+    public static void requirePayerWhenCharged(BudgetItem item) {
+        if (item.isConfirmed() && isBlank(item.getPaidByUserId())) {
+            throw ApiException.badRequest("Say who paid this.");
+        }
+    }
+
+    /**
+     * Who a charged row is treated as having been paid by.
+     *
+     * The rule above is enforced on write and never on read: these YAML files
+     * are hand-editable and installs exist that predate the field, and a file
+     * that refused to load would be far worse than one row reading oddly. So a
+     * charged row with no stored payer still has to settle as something, and
+     * it settles as whoever recorded it — the same reasoning that attributes
+     * every other record the app writes for you to the member whose action
+     * produced it.
+     *
+     * Deliberately a static method here rather than a getter on BudgetItem: a
+     * derived getter is serialised into the YAML by Jackson and then fails to
+     * read back (CLAUDE.md, Traps). Nothing is written back either — this
+     * answers a question, it does not repair the file.
+     */
+    public static String effectivePayerOf(BudgetItem item) {
+        String payer = item.getPaidByUserId();
+        return isBlank(payer) ? item.getCreatedByUserId() : payer;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

@@ -262,10 +262,26 @@ Rules that are easy to break by accident, all with tests:
     published page has no signed-in reader, so it passes every row in full and
     ships an empty `shares`.
 - **"Paid by" is who put the money down, and it is never counted.**
-  `BudgetItem.paidByUserId` is one trip member or nobody — every row written
-  before it existed has nobody and shows "—". Paying for the table's dinner
-  does not make it your dinner: whose money a row is stays decided by
-  `sharedByUserIds` alone, and `thePayerChangesNoFigure` pins that. Four things:
+  `BudgetItem.paidByUserId` is one trip member or nobody. Paying for the
+  table's dinner does not make it your dinner: whose money a row is stays
+  decided by `sharedByUserIds` alone, and `thePayerChangesNoFigure` pins that.
+  Five things:
+  - **A charged expense must name one.** `BudgetService.requirePayerWhenCharged`
+    refuses it, because money that has left someone's hand with no record of
+    whose can appear in no settlement — it would go missing from Settle
+    Expenses silently, in the one direction a reader cannot detect. A
+    *pending* row stays optional: nobody has paid it, so a payer would be a
+    guess. **The check asks the item, not the input**, which is what makes one
+    call cover all four doors — creating a charged row, ticking "already
+    charged" on a payer-less one, clearing the payer of a charged one, and a
+    plan's charged cost through `BudgetSync`. Checking the request instead
+    would need four checks and still miss the fifth door somebody adds.
+  - **Enforced on write, never on read.** These files are hand-editable and
+    installs exist that predate the field, so a charged row with no stored
+    payer still loads; `BudgetService.effectivePayerOf` reads it as its
+    `createdByUserId` for settling. It is a static method rather than a getter
+    on `BudgetItem` — a derived getter serialises into the YAML and then fails
+    to read back (see Traps) — and nothing is written back.
   - **Three answers, not two.** On a PATCH (`paidByUserId` on budget,
     `costPaidByUserId` on itinerary) absent/`null` leaves it alone, `""`
     clears it, an id sets it. The forms therefore always send the field, as
@@ -273,14 +289,44 @@ Rules that are easy to break by accident, all with tests:
     `TripMembers.validateOne` collapses blank to null, so
     `ItineraryService.validatedPayer` keeps the blank before `BudgetSync` sees
     it.
-  - **A new cost defaults to the member filling in the form**; one click on
-    their own chip clears it. Editing a plan that already has a budget row
-    shows that row's payer (`paidByOfPlan`).
-  - **Validated before the plan is saved**, so a stale member list cannot leave
-    a plan behind whose cost never reached the budget.
+  - **A new cost defaults to the member filling in the form.** Clicking your
+    own chip clears it *while the cost is pending*; `member-picker.js`
+    `choosePayer` refuses to clear once "already charged" is ticked, and
+    `chargedToggled` selects you when the box is ticked with nobody named — so
+    the state the API rejects is unreachable from the forms rather than a
+    failure on Save. Both live in `member-picker.js` because three forms spell
+    the field two ways (`charged`, `costCharged`). Editing a plan that already
+    has a budget row shows that row's payer (`paidByOfPlan`).
   - **Planner only.** `StaticSiteRenderer` never names it, so no payer reaches a
     published file. A payer who has since left the trip reads "Former
     member": only current members' names are known to the page.
+- **Settle Expenses answers "what do I owe you", and only charged rows count.**
+  `BudgetService.Settlement` — one per other member per currency, carrying
+  `owesYou`, `youOwe`, `net` and the `lines` behind them — reached through
+  `Summary.settlements`. Five rules:
+  - **A debt needs money to have moved.** Pending rows settle nothing, and this
+    is deliberately *not* wired to the panel's Group by selector: under
+    Forecast it would invent debts for expenses that have not happened.
+  - **The division is `TripMembers.shareOf`**, the same call the breakdowns
+    use, so the figures reconcile with the Budget tab to the cent. Dividing
+    again in the browser — where it would be `amount / n` — drifts on any row
+    that does not divide evenly, and the drift surfaces as two members
+    disagreeing by a penny about the same dinner.
+  - **Per currency, never converted.** A debt is repaid in the currency it was
+    run up in, so a converted settle figure would be a number nobody can hand
+    over, and it would move with the rates besides.
+  - **Nobody owes themselves**, and a payer who has left the trip is not
+    settled with — the trip no longer knows them, the same reason their share
+    drops out of a split.
+  - **It never reaches a published page.** `settlements` is empty with no
+    signed-in member, and the two published records (`PublishedTrip.Budget`,
+    built by hand) never name it. The member-only route is
+    `TripViews.BudgetView`, which is a *different record* — adding a field to
+    `Summary` alone does not reach the frontend, which is exactly the "Views
+    versus domain" separation working. Pinned by
+    `noSettlementReachesAPublishedFile`, which greps the rendered file
+    including a personal page — the one published file rendered *for* a
+    viewer, and so the only one where settlements are computed at all.
 - **The budget rollup is computed twice, and the two halves never mix.**
   `BudgetService.Summary` carries `charged` and `forecast`, each a whole
   `Breakdown` — category slices, country slices, native totals, total and

@@ -140,9 +140,15 @@ class BudgetStatusTest {
 
     // ── helpers ─────────────────────────────────────────────────────────
 
+    /**
+     * A payer on every fixture, pending ones included: a charged row has to
+     * name one, and the tests that start pending and then tick the box would
+     * otherwise be refused at exactly the transition they exist to check.
+     * Who paid moves no figure here.
+     */
     private BudgetService.Input expense(String description, String amount, Boolean charged) {
         return new BudgetService.Input(description, ChecklistCategory.OTHERS,
-                new BigDecimal(amount), "EUR", null, null, null, null, charged);
+                new BigDecimal(amount), "EUR", null, null, null, USER_ID, charged);
     }
 
     private BudgetItem reload(String id) {
@@ -198,7 +204,7 @@ class BudgetStatusTest {
     private ItineraryService.Input plan(String description, String cost, Boolean charged) {
         return new ItineraryService.Input(null, ChecklistCategory.LODGING, description,
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal(cost), "EUR", charged, null, null, List.of());
+                new BigDecimal(cost), "EUR", charged, null, USER_ID, List.of());
     }
 
     // ── the transitions ─────────────────────────────────────────────────
@@ -326,7 +332,7 @@ class BudgetStatusTest {
     @Test
     void theCategorySlicesSplitTheSameWayTheTotalsDo() {
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Flight", ChecklistCategory.TRANSPORTATION,
-                new BigDecimal("400.00"), "EUR", null, null, null, null, true));
+                new BigDecimal("400.00"), "EUR", null, null, null, USER_ID, true));
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Hotel", ChecklistCategory.LODGING,
                 new BigDecimal("300.00"), "EUR", null, null, null, null, false));
 
@@ -343,7 +349,7 @@ class BudgetStatusTest {
         place("La Paz", "BO", "Bolivia");
 
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Hotel in Cusco",
-                ChecklistCategory.LODGING, new BigDecimal("200.00"), "EUR", null, List.of("PE"), null, null, true));
+                ChecklistCategory.LODGING, new BigDecimal("200.00"), "EUR", null, List.of("PE"), null, USER_ID, true));
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Salt flats tour",
                 ChecklistCategory.ACTIVITIES, new BigDecimal("150.00"), "EUR", null, List.of("BO"), null, null, false));
 
@@ -363,7 +369,7 @@ class BudgetStatusTest {
     @Test
     void nativeTotalsFollowTheRollupTheyAreShownUnder() {
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Vaccine", ChecklistCategory.OTHERS,
-                new BigDecimal("110.00"), "USD", null, null, null, null, true));
+                new BigDecimal("110.00"), "USD", null, null, null, USER_ID, true));
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Tour deposit", ChecklistCategory.ACTIVITIES,
                 new BigDecimal("220.00"), "USD", null, null, null, null, false));
 

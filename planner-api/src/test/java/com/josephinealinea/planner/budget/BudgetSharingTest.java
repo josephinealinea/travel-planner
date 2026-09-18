@@ -147,10 +147,15 @@ class BudgetSharingTest {
         return user;
     }
 
+    /**
+     * Alex pays for everything here. Who paid is irrelevant to sharing — it
+     * moves no figure, which thePayerChangesNoFigure pins — but a charged row
+     * has to name somebody, so these fixtures name the member creating them.
+     */
     private BudgetItem expense(String description, String amount, List<String> sharers) {
         return service.create(TRIP_ID, ALEX, new BudgetService.Input(
                 description, ChecklistCategory.OTHERS, new BigDecimal(amount), "EUR",
-                null, null, sharers, null, true));
+                null, null, sharers, ALEX, true));
     }
 
     /** Summarises as one member, the way the Budget tab asks. */
@@ -287,7 +292,7 @@ class BudgetSharingTest {
         place("Cusco", "PE", "Peru");
         service.create(TRIP_ID, ALEX, new BudgetService.Input(
                 "Hotel in Cusco", ChecklistCategory.LODGING, new BigDecimal("220.00"), "USD",
-                null, List.of("PE"), List.of(ALEX, SAM), null, true));
+                null, List.of("PE"), List.of(ALEX, SAM), ALEX, true));
 
         BudgetService.Summary summary = as(ALEX);
 
@@ -320,7 +325,7 @@ class BudgetSharingTest {
         ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(ALEX, SAM), null, List.of()));
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX, SAM), ALEX, List.of()));
 
         BudgetItem row = budget.findByItineraryItem(SLUG, plan.getId()).orElseThrow();
         assertThat(row.getSharedByUserIds()).containsExactly(ALEX, SAM);
@@ -333,7 +338,7 @@ class BudgetSharingTest {
         ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(ALEX), null, List.of()));
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX), ALEX, List.of()));
         assertThat(as(ALEX).charged().total()).isEqualByComparingTo("240.00");
 
         itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
@@ -350,7 +355,7 @@ class BudgetSharingTest {
         ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(SAM), null, List.of()));
+                new BigDecimal("240.00"), "EUR", true, List.of(SAM), ALEX, List.of()));
 
         itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
                 null, null, null, null, null, null,
@@ -380,7 +385,7 @@ class BudgetSharingTest {
         assertThatThrownBy(() -> itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(ALEX, "user-nobody"), null, List.of())))
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX, "user-nobody"), ALEX, List.of())))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("not a member of this trip");
 
@@ -394,7 +399,7 @@ class BudgetSharingTest {
         ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(ALEX), null, List.of()));
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX), ALEX, List.of()));
 
         assertThatThrownBy(() -> itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
                 null, null, "Hotel in Cusco, renamed", null, null, null,

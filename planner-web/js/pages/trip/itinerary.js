@@ -63,6 +63,9 @@ export function itineraryTab() {
     currency: '',
     // Unticked by default, like the Plan form — see checklist.js.
     costCharged: false,
+    // Empty here only because the factory has no context; openAddEntry selects
+    // the member at the keyboard, so a new cost starts as theirs. Nobody named
+    // still means the whole trip — see TripMembers on the API.
     sharedByUserIds: [],
     // One member or nobody; openAddEntry fills in the member at the keyboard.
     paidByUserId: '',
@@ -230,8 +233,11 @@ export function itineraryTab() {
       this.entryForm = blankEntry();
       this.entryForm.currency = this.budget.displayCurrency || '';
       this.entryForm.startDate = this.trip.startDate || '';
-      // A new cost defaults to whoever is typing it, as on the expense form.
+      // A new cost defaults to whoever is typing it, as on the expense form —
+      // and is shared by them alone until they add anybody, so the same cost
+      // entered here, on the Plan form or in the budget divides the same way.
       this.entryForm.paidByUserId = this.currentUserId || '';
+      this.entryForm.sharedByUserIds = this.currentUserId ? [this.currentUserId] : [];
       this.entryError = '';
       this.entryOpen = true;
       this.focusWhenShown('entryDescription');

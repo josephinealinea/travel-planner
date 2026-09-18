@@ -58,6 +58,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li><b>on a patch, absent and empty mean different things.</b> Absent is a
  *       form that said nothing and must leave the payer alone; an empty string
  *       is a member clearing it. That is the contract the frontend codes to;</li>
+ *   <li><b>a charged expense must name a payer.</b> Money that has demonstrably
+ *       left someone's hand with no record of whose can appear in no
+ *       settlement, so it is refused at every door into that state rather than
+ *       stored and quietly skipped. A pending row may still have none — nobody
+ *       has paid it, so naming a payer would be a guess;</li>
  *   <li><b>the payer changes no figure.</b> Whose money a row is stays decided
  *       by "Shared by" alone — paying for the table's dinner does not make it
  *       your dinner.</li>
@@ -137,9 +142,18 @@ class BudgetPaidByTest {
     }
 
     private BudgetItem expense(String amount, List<String> sharers, String paidBy) {
+        return charged(amount, sharers, paidBy, true);
+    }
+
+    /** A row nobody has paid yet, which is the one place a payer stays optional. */
+    private BudgetItem pendingExpense(String amount, List<String> sharers, String paidBy) {
+        return charged(amount, sharers, paidBy, false);
+    }
+
+    private BudgetItem charged(String amount, List<String> sharers, String paidBy, boolean charged) {
         return service.create(TRIP_ID, ALEX, new BudgetService.Input(
                 "Dinner in Cusco", ChecklistCategory.FOOD, new BigDecimal(amount), "EUR",
-                null, null, sharers, paidBy, true));
+                null, null, sharers, paidBy, charged));
     }
 
     /** A patch that sends nothing but the payer, the way only a payer changes. */
@@ -153,10 +167,14 @@ class BudgetPaidByTest {
     }
 
     private ItineraryItem planWithCost(String paidBy) {
+        return planWithCost(paidBy, true);
+    }
+
+    private ItineraryItem planWithCost(String paidBy, boolean costCharged) {
         return itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, null, paidBy, List.of()));
+                new BigDecimal("240.00"), "EUR", costCharged, null, paidBy, List.of()));
     }
 
     // ── an expense typed into the budget ────────────────────────────────
@@ -168,14 +186,56 @@ class BudgetPaidByTest {
         assertThat(reload(row.getId()).getPaidByUserId()).isEqualTo(SAM);
     }
 
-    /** Both of the ways a form can say "nobody" read as nobody. */
+    /**
+     * Both of the ways a form can say "nobody" are refused on a charged row.
+     * This is the first of three doors into charged-with-no-payer; the other
+     * two are ticking the box and clearing the payer afterwards.
+     */
     @Test
-    void anExpenseCreatedWithNoPayerHasNone() {
-        BudgetItem absent = expense("80.00", List.of(), null);
-        BudgetItem empty = expense("80.00", List.of(), "");
+    void aChargedExpenseMustNameWhoPaid() {
+        assertThatThrownBy(() -> expense("80.00", List.of(), null))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("Say who paid this");
+
+        assertThatThrownBy(() -> expense("80.00", List.of(), ""))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("Say who paid this");
+    }
+
+    /** Nobody has paid a pending row, so there is nobody to name. */
+    @Test
+    void aPendingExpenseNeedsNoPayer() {
+        BudgetItem absent = pendingExpense("80.00", List.of(), null);
+        BudgetItem empty = pendingExpense("80.00", List.of(), "");
 
         assertThat(reload(absent.getId()).getPaidByUserId()).isNull();
         assertThat(reload(empty.getId()).getPaidByUserId()).isNull();
+    }
+
+    /** The second door: a pending row with no payer being marked charged. */
+    @Test
+    void tickingChargedOnAPayerlessRowIsRefused() {
+        BudgetItem row = pendingExpense("80.00", List.of(), null);
+
+        assertThatThrownBy(() -> service.update(TRIP_ID, ALEX, row.getId(),
+                new BudgetService.Input(null, null, null, null, null, null, null, null, true)))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("Say who paid this");
+
+        assertThat(reload(row.getId()).isConfirmed()).isFalse();
+    }
+
+    /** Ticking it in the same breath as naming a payer is the way through. */
+    @Test
+    void tickingChargedWhileNamingAPayerIsAllowed() {
+        BudgetItem row = pendingExpense("80.00", List.of(), null);
+
+        service.update(TRIP_ID, ALEX, row.getId(), new BudgetService.Input(
+                null, null, null, null, null, null, null, SAM, true));
+
+        BudgetItem saved = reload(row.getId());
+        assertThat(saved.isConfirmed()).isTrue();
+        assertThat(saved.getPaidByUserId()).isEqualTo(SAM);
     }
 
     /** Absent means "the form said nothing", which must leave the row alone. */
@@ -191,11 +251,39 @@ class BudgetPaidByTest {
     /** An empty string is the one way a member clears a payer they set. */
     @Test
     void patchingWithAnEmptyPayerClearsIt() {
-        BudgetItem row = expense("80.00", List.of(), SAM);
+        BudgetItem row = pendingExpense("80.00", List.of(), SAM);
 
         patchPayer(row.getId(), "");
 
         assertThat(reload(row.getId()).getPaidByUserId()).isNull();
+    }
+
+    /**
+     * The third door. Clearing is still how a member says "I got this wrong",
+     * but it cannot be the last word on a row that says the money is spent.
+     */
+    @Test
+    void clearingThePayerOfAChargedRowIsRefused() {
+        BudgetItem row = expense("80.00", List.of(), SAM);
+
+        assertThatThrownBy(() -> patchPayer(row.getId(), ""))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("Say who paid this");
+
+        assertThat(reload(row.getId()).getPaidByUserId()).isEqualTo(SAM);
+    }
+
+    /** Clearing and un-ticking together is a member saying it was never paid. */
+    @Test
+    void clearingThePayerWhileUnTickingChargedIsAllowed() {
+        BudgetItem row = expense("80.00", List.of(), SAM);
+
+        service.update(TRIP_ID, ALEX, row.getId(), new BudgetService.Input(
+                null, null, null, null, null, null, null, "", false));
+
+        BudgetItem saved = reload(row.getId());
+        assertThat(saved.getPaidByUserId()).isNull();
+        assertThat(saved.isConfirmed()).isFalse();
     }
 
     @Test
@@ -236,7 +324,7 @@ class BudgetPaidByTest {
 
     /** The itinerary endpoints take the same absent / empty / id contract. */
     @Test
-    void aPlanEditCanChangeOrClearThePayerOfItsBudgetRow() {
+    void aPlanEditCanChangeThePayerOfItsBudgetRow() {
         ItineraryItem plan = planWithCost(SAM);
 
         itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
@@ -244,14 +332,40 @@ class BudgetPaidByTest {
         assertThat(budget.findByItineraryItem(SLUG, plan.getId()).orElseThrow()
                 .getPaidByUserId()).isEqualTo(ALEX);
 
-        itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
-                null, null, null, null, null, null, null, null, null, null, "", null));
-        assertThat(budget.findByItineraryItem(SLUG, plan.getId()).orElseThrow()
-                .getPaidByUserId()).isNull();
-
         assertThatThrownBy(() -> planWithCost("user-nobody"))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("not a member of this trip");
+    }
+
+    /** Clearing stays available on a plan whose cost nobody has paid yet. */
+    @Test
+    void aPlanEditCanClearThePayerOfAPendingBudgetRow() {
+        ItineraryItem plan = planWithCost(SAM, false);
+
+        itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
+                null, null, null, null, null, null, null, null, null, null, "", null));
+
+        assertThat(budget.findByItineraryItem(SLUG, plan.getId()).orElseThrow()
+                .getPaidByUserId()).isNull();
+    }
+
+    /**
+     * The fourth door, and the reason the rule lives in BudgetSync too: a plan
+     * is the other way into a budget row, and a rule enforced only on the
+     * budget's own form would leave it wide open.
+     */
+    @Test
+    void aPlansChargedCostMustNameWhoPaid() {
+        assertThatThrownBy(() -> planWithCost(null, true))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("Say who paid this");
+
+        ItineraryItem plan = planWithCost(SAM, false);
+        assertThatThrownBy(() -> itineraryService.update(TRIP_ID, ALEX, plan.getId(),
+                new ItineraryService.Input(
+                        null, null, null, null, null, null, null, null, true, null, "", null)))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("Say who paid this");
     }
 
     // ── the payer is not a share ────────────────────────────────────────
@@ -296,5 +410,37 @@ class BudgetPaidByTest {
                   currency: EUR
                 """);
         assertThat(reload("legacy-1").getPaidByUserId()).isNull();
+    }
+
+    /**
+     * The rule above is enforced on write, never on read: these files are
+     * hand-editable and older installs exist, and a file that refused to load
+     * would be far worse than one row reading oddly.
+     *
+     * So a charged row that predates the field still loads, and the settlement
+     * it belongs in reads it as paid by whoever recorded it — the same
+     * reasoning as everywhere else here, that a record the app wrote for you
+     * belongs to the member whose action produced it. Asserted against a
+     * hand-written file rather than an object, the way BudgetStatusTest does,
+     * because the whole point is what happens to a file nothing here wrote.
+     */
+    @Test
+    void aChargedRowWithNoStoredPayerReadsAsItsCreator() throws IOException {
+        expense("80.00", List.of(), SAM);
+
+        Path file = dir.resolve("travels/budget/" + SLUG + ".yml");
+        Files.writeString(file, """
+                - id: legacy-charged
+                  tripId: trip-1
+                  category: FOOD
+                  description: Dinner last year
+                  amount: 30
+                  currency: EUR
+                  status: CONFIRMED
+                  createdByUserId: user-sam
+                """);
+
+        assertThat(reload("legacy-charged").getPaidByUserId()).isNull();
+        assertThat(BudgetService.effectivePayerOf(reload("legacy-charged"))).isEqualTo(SAM);
     }
 }

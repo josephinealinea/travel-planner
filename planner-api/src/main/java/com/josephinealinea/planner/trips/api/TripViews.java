@@ -106,13 +106,24 @@ public final class TripViews {
                               */
                              Map<String, BigDecimal> shares,
                              BudgetService.Breakdown charged,
-                             BudgetService.Breakdown forecast) {
+                             BudgetService.Breakdown forecast,
+                             /**
+                              * Who owes whom, from the charged rows alone, per
+                              * other member and per currency. Member-only by
+                              * construction: it is empty without a signed-in
+                              * member, and a published page is built from
+                              * PublishedTrip.Budget rather than this record, so
+                              * no settlement has a route into a public file.
+                              * See BudgetService.Settlement.
+                              */
+                             List<BudgetService.Settlement> settlements) {
 
         public static BudgetView from(BudgetService.Summary summary,
                                       com.josephinealinea.planner.rates.domain.RateTable table) {
             return new BudgetView(summary.items(), summary.displayCurrency(), summary.totalsCurrency(),
                     table.getBase(), table.getDate(), table.getRates(),
-                    summary.shares(), summary.charged(), summary.forecast());
+                    summary.shares(), summary.charged(), summary.forecast(),
+                    summary.settlements());
         }
     }
 

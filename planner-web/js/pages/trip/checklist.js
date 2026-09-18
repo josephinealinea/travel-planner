@@ -28,7 +28,9 @@ export function checklistTab() {
     // something you intend to do, and its cost is usually money still to
     // leave. See BudgetSync on the API.
     costCharged: false,
-    // Nobody named means the whole trip — see TripMembers on the API.
+    // Nobody named means the whole trip — see TripMembers on the API. Empty
+    // here only because the factory has no context; openPlanForm selects the
+    // member at the keyboard, so a new cost starts as theirs.
     sharedByUserIds: [],
     // One member or nobody; openPlanForm fills in the member at the keyboard.
     paidByUserId: '',
@@ -352,8 +354,12 @@ export function checklistTab() {
     async openPlanForm() {
       this.planError = '';
       this.planForm = blankPlan();
-      // A new cost defaults to whoever is typing it, as on the expense form.
+      // A new cost defaults to whoever is typing it, as on the expense form —
+      // and is shared by them alone until they add anybody, for the same
+      // reason. The two forms must agree: the same cost entered here and in
+      // the budget has to divide the same way.
       this.planForm.paidByUserId = this.currentUserId || '';
+      this.planForm.sharedByUserIds = this.currentUserId ? [this.currentUserId] : [];
       // Defaults to the checklist item's own locations — "Plan activities in
       // Paris" obviously happens in Paris — but stays fully editable.
       this.planForm.countryCodes = [...(this.openItem.countryCodes || [])];

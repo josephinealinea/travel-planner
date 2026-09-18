@@ -2,7 +2,7 @@ import { toast } from '../../toast.js';
 import { category, money, shortDate, CATEGORIES } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
-import { toggleSharer, choosePayer, sharersOfTrip } from '../../member-picker.js';
+import { toggleSharer, shareWithEveryone, sharedWithEveryone, choosePayer, chargedToggled, sharersOfTrip } from '../../member-picker.js';
 import { savedBudgetPageSize } from '../../page-size.js';
 
 /**
@@ -46,8 +46,11 @@ export function budgetTab() {
     currency: '',
     date: '',
     countryCodes: [],
-    // Nobody named means the whole trip, which is what this defaulting empty
-    // preserves: adding an expense never quietly makes it one person's.
+    // Nobody named still means the whole trip wherever a row says so — that is
+    // the storage rule, and it is what stops a stored row belonging to nobody.
+    // Empty here only because the factory has no context; openAddExpense
+    // selects the member at the keyboard, so a new expense starts as theirs
+    // and both narrowing and widening are deliberate.
     sharedByUserIds: [],
     // Who put the money down: one member or nobody. openAddExpense fills in
     // the member at the keyboard; blank here so the factory needs no context.
@@ -371,6 +374,13 @@ export function budgetTab() {
       this.expenseForm.currency = this.budget.displayCurrency || '';
       // Whoever is typing it in most likely paid; one click clears it.
       this.expenseForm.paidByUserId = this.currentUserId || '';
+      // And it is theirs until they say otherwise. An empty "Shared by" still
+      // *means* the whole trip — that rule is unchanged and is what stops a
+      // stored row belonging to nobody — but a form that opens empty splits a
+      // new expense across everybody without ever saying so, which reads as a
+      // bug the first time a solo flight turns up owed by five people.
+      // Narrowing is now the explicit act, and widening is too.
+      this.expenseForm.sharedByUserIds = this.currentUserId ? [this.currentUserId] : [];
       this.expenseError = '';
       this.expenseOpen = true;
       this.focusWhenShown('expenseDescription');
@@ -631,7 +641,10 @@ export function budgetTab() {
 
     // ── member picker (shared with the Plan and itinerary forms) ────────
     toggleSharer,
+    shareWithEveryone,
+    sharedWithEveryone,
     choosePayer,
+    chargedToggled,
 
     /** The trip's members, as the pills every "Shared by" field offers. */
     get tripSharers() {
@@ -648,6 +661,112 @@ export function budgetTab() {
     /** Comma-joined, for chip/label text; empty when nothing is linked. */
     countryLabel(countryCodes) {
       return this.countryLabels(countryCodes).join(', ');
+    },
+
+    // ── settle expenses ─────────────────────────────────────────────────
+
+    /**
+     * Which settlement's details are open, or null.
+     *
+     * The line itself is held rather than an index: the list is recomputed
+     * from the summary on every reload, and an index would quietly start
+     * pointing at somebody else's money the moment a row was added.
+     */
+    settleDetail: null,
+
+    /**
+     * What each other member and I owe each other, per currency — computed on
+     * the API from the charged rows, never here. The division has to match the
+     * Budget tab to the cent and `amount / n` in JS would not; see
+     * BudgetService.settlements.
+     */
+    get settleRows() {
+      return this.budget.settlements || [];
+    },
+
+    get hasSettlements() {
+      return this.settleRows.length > 0;
+    },
+
+    /** Same fallback as the Paid by cell: only current members have names. */
+    settleMemberName(userId) {
+      const member = this.members.find((m) => m.userId === userId);
+      return member ? (member.displayName || member.email) : 'Former member';
+    },
+
+    /**
+     * "rainer owes you" or "you owe rainer", said in words rather than left to
+     * a plus or minus sign a reader has to decode.
+     */
+    settleSummaryLine(row) {
+      const name = this.settleMemberName(row.otherUserId);
+      const net = Number(row.net || 0);
+      if (net === 0) return `You and ${name} are square in ${row.currency}`;
+      return net > 0
+        ? `${name} owes you ${money(Math.abs(net), row.currency)}`
+        : `You owe ${name} ${money(Math.abs(net), row.currency)}`;
+    },
+
+    settleNetClass(row) {
+      const net = Number(row.net || 0);
+      if (net === 0) return 'settle-net-level';
+      return net > 0 ? 'settle-net-positive' : 'settle-net-negative';
+    },
+
+    /**
+     * The Net figure said as a direction: "(to receive) 450.00 EUR" or
+     * "(to pay) 450.00 EUR", never a bare negative.
+     *
+     * Which way the money goes is the entire point of this column, and a
+     * leading minus is the part of a figure a reader skims past — so the
+     * direction is carried in words, with colour only reinforcing it. That
+     * also makes the column readable in monochrome and to anyone who does not
+     * separate the two hues, which a red/green-only signal would not be.
+     *
+     * The amount is shown absolute, because "(to pay) −450.00" would state the
+     * same thing twice and invite reading it as a negative debt.
+     */
+    settleNetLabel(row) {
+      const net = Number(row.net || 0);
+      if (net === 0) return money(0, row.currency);
+      const direction = net > 0 ? '(to receive)' : '(to pay)';
+      // The figure and its currency are glued together, so a narrow card wraps
+      // after the direction rather than leaving "EUR" stranded on its own line.
+      // Anchored to a trailing three-letter code, because a plain replace of
+      // the first space would eat a thousands separator in some locales.
+      const amount = money(Math.abs(net), row.currency).replace(/ ([A-Za-z]{3})$/, ' $1');
+      return `${direction} ${amount}`;
+    },
+
+    openSettleDetails(row) {
+      this.settleDetail = row;
+    },
+
+    closeSettleDetails() {
+      this.settleDetail = null;
+    },
+
+    /**
+     * The rows behind one settlement, each joined to the budget item it came
+     * from. The API sends only an id and an amount per line, so the
+     * description, date and category are read from `budget.items` — the row is
+     * kept in one place rather than copied into the payload to fall out of
+     * step with itself.
+     */
+    get settleDetailLines() {
+      if (!this.settleDetail) return [];
+      const items = this.budget.items || [];
+      return (this.settleDetail.lines || []).map((line) => {
+        const item = items.find((candidate) => candidate.id === line.itemId);
+        return {
+          itemId: line.itemId,
+          amount: line.amount,
+          owedToYou: line.owedToYou,
+          description: item ? item.description : 'An expense that is no longer listed',
+          category: item ? item.category : null,
+          date: item ? item.date : null,
+        };
+      });
     },
   };
 }

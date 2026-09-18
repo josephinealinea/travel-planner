@@ -1,0 +1,105 @@
+@use "../abstracts/tokens" as t;
+
+/**
+ * Settle Expenses — who owes whom, under the budget table.
+ *
+ * Colour is never the only signal here. The sign travels in the text (the
+ * figure itself, and "+"/"−" on a detail line) and the heading of the popup
+ * says it in words, so the table reads correctly in monochrome and to anyone
+ * who does not distinguish the two hues.
+ */
+
+.settle {
+  margin-top: t.$space-5;
+}
+
+.settle-note {
+  margin: 0 0 t.$space-3;
+  font-size: 0.85rem;
+  color: var(--tp-muted);
+}
+
+// Fall back to the text colour where a theme defines neither token, so a
+// theme that never opted into these keeps rendering plain figures.
+.settle-net-positive { color: var(--tp-success, var(--tp-text)); font-weight: 600; }
+.settle-net-negative { color: var(--tp-danger, var(--tp-text)); font-weight: 600; }
+.settle-net-level { color: var(--tp-muted); }
+
+// ── the details popup ──────────────────────────────────────────────────
+
+.settle-lines {
+  margin: 0 0 t.$space-4;
+  padding: 0;
+  list-style: none;
+}
+
+.settle-line {
+  display: flex;
+  gap: t.$space-3;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: t.$space-2 0;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.settle-line:last-child { border-bottom: 0; }
+
+.settle-line-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settle-line-desc {
+  overflow-wrap: anywhere;
+}
+
+.settle-line-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: t.$space-2;
+  font-size: 0.8rem;
+  color: var(--tp-muted);
+}
+
+.settle-line-amount {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.settle-totals {
+  margin: 0;
+  padding-top: t.$space-3;
+  border-top: 2px solid var(--tp-border);
+}
+
+.settle-totals > div {
+  display: flex;
+  gap: t.$space-3;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.settle-totals dt {
+  color: var(--tp-muted);
+  font-size: 0.9rem;
+}
+
+.settle-totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.settle-totals-net {
+  margin-top: t.$space-2;
+  padding-top: t.$space-2;
+  border-top: 1px solid var(--tp-border);
+}
+
+.settle-totals-net dt {
+  color: var(--tp-text);
+  font-weight: 600;
+}

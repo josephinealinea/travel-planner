@@ -1,5 +1,6 @@
 package com.josephinealinea.planner.itinerary.api;
 
+import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
@@ -76,6 +77,10 @@ public class BudgetSync {
             created.markCharged(Boolean.TRUE.equals(charged), Instant.now());
             if (sharedByUserIds != null) created.setSharedByUserIds(sharedByUserIds);
             if (paidByUserId != null && !paidByUserId.isBlank()) created.setPaidByUserId(paidByUserId);
+            // A plan is the other way into a budget row, so the rule has to
+            // hold here too — enforced only on the budget's own form it would
+            // be wide open from the Plan and itinerary forms.
+            BudgetService.requirePayerWhenCharged(created);
             Audit.created(created, userId);
             budget.save(tripSlug, created);
             plan.setBudgetItemId(created.getId());
@@ -95,6 +100,7 @@ public class BudgetSync {
             if (paidByUserId != null) {
                 existing.setPaidByUserId(paidByUserId.isBlank() ? null : paidByUserId);
             }
+            BudgetService.requirePayerWhenCharged(existing);
             Audit.touched(existing, userId);
             budget.save(tripSlug, existing);
         }

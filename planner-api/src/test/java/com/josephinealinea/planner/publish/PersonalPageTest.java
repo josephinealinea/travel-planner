@@ -229,6 +229,34 @@ class PersonalPageTest {
         assertThat(tripPage).contains("2134.56");
     }
 
+    /**
+     * A personal page is the one published file rendered <i>for</i> a signed-in
+     * member, so it is the one place settlements are computed at publish time —
+     * BudgetService fills them in for any viewer it is given. The renderer
+     * builds its payload by hand and must never start reading them: who owes
+     * whom names other members beside figures, which is precisely what a public
+     * file cannot carry.
+     *
+     * Asserted over the whole file rather than the markup, for the reason the
+     * test above gives — anyone can open the source and read window.TRIP.
+     */
+    @Test
+    void noSettlementReachesAPublishedFile() throws Exception {
+        wantsOwnPage(ALEX);
+        publish.publish(TRIP_ID, ALEX, "minima");
+
+        String alexPage = read(personal("alex"));
+        String tripPage = read(publishDir.resolve(SLUG).resolve("index.html"));
+
+        for (String file : new String[]{alexPage, tripPage}) {
+            assertThat(file).doesNotContain("settlements");
+            assertThat(file).doesNotContain("owesYou");
+            assertThat(file).doesNotContain("youOwe");
+        }
+        assertThat(payload(alexPage).has("settlements")).isFalse();
+        assertThat(payload(alexPage).get("budget").has("settlements")).isFalse();
+    }
+
     @Test
     void eachMemberGetsTheirOwnPageAtTheirOwnName() throws Exception {
         wantsOwnPage(ALEX);
