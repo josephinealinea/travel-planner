@@ -3,15 +3,18 @@ package com.josephinealinea.planner.trips;
 import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
 import com.josephinealinea.planner.checklist.api.ChecklistService;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
+import com.josephinealinea.planner.checklist.infra.YamlChecklistRepository;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.destinations.api.ChecklistSeeder;
 import com.josephinealinea.planner.destinations.api.DestinationService;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
 import com.josephinealinea.planner.geocoding.CountryCatalog;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
@@ -20,6 +23,7 @@ import com.josephinealinea.planner.itinerary.api.ItineraryService;
 import com.josephinealinea.planner.itinerary.api.PlanTemplates;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.itinerary.infra.YamlItineraryRepository;
 import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlPaths;
@@ -91,12 +95,12 @@ class TripDateWindowTest {
         YamlPaths paths = new YamlPaths(props);
         TripLocks locks = new TripLocks();
 
-        destinations = new DestinationRepository(store, paths, locks);
+        destinations = new YamlDestinationRepository(store, paths, locks);
 
         TripCountries tripCountries = new TripCountries(destinations);
-        ChecklistRepository checklistRepository = new ChecklistRepository(store, paths, locks);
-        ItineraryRepository itineraryRepository = new ItineraryRepository(store, paths, locks);
-        budgetRepository = new BudgetRepository(store, paths, locks);
+        ChecklistRepository checklistRepository = new YamlChecklistRepository(store, paths, locks);
+        ItineraryRepository itineraryRepository = new YamlItineraryRepository(store, paths, locks);
+        budgetRepository = new YamlBudgetRepository(store, paths, locks);
         UserRepository users = new YamlUserRepository(store, paths, locks);
         trips = new YamlTripRepository(store, paths, locks);
 

@@ -1,12 +1,26 @@
 /**
  * Where the API lives.
  *
+ * By default, the page's own origin: deployed, the pages and the API share one
+ * origin, with Cloudflare Pages proxying /api/* to Cloud Run (docs/deploy.md).
+ * That is what lets the auth cookies stay host-only and SameSite=Lax. The one
+ * exception is serve.sh on :3000, which only serves files, so local
+ * development keeps talking to bootRun on :8080 exactly as before.
+ *
  * There is no build step, so rather than editing this file per environment the
  * base URL can also be set once with ?api=http://host:port — it is remembered
  * from then on. Handy for pointing these static pages at a deployed API, or at
  * a local one running on a different port.
  */
-const DEFAULT_API_BASE = 'http://localhost:8080';
+const LOCAL_DEV_API_BASE = 'http://localhost:8080';
+
+function defaultApiBase() {
+  const { hostname, port, origin } = window.location;
+  const local = hostname === 'localhost' || hostname === '127.0.0.1';
+  return local && port === '3000' ? LOCAL_DEV_API_BASE : origin;
+}
+
+const DEFAULT_API_BASE = defaultApiBase();
 const STORAGE_KEY = 'plannerApiBase';
 
 function fromQuery() {

@@ -1,0 +1,29 @@
+# Cloudflare Pages: the planner's static files plus two Functions,
+# functions/api (the proxy to Cloud Run) and functions/p (published pages
+# from R2). See docs/deploy.md.
+#
+# Once this file exists Cloudflare treats it as the source of truth for the
+# project's variables and bindings, and the dashboard shows them read-only.
+# Secrets are the exception: PROXY_SECRET is never written here — it goes in
+# .dev.vars locally (see .dev.vars.example) and in the dashboard when deployed.
+name = "travel-planner"
+compatibility_date = "2026-09-01"
+pages_build_output_dir = "dist"
+
+# Local development (`npx wrangler@4 pages dev`) and preview deployments.
+# 8080 is where `./gradlew bootRun` listens by default.
+[vars]
+API_ORIGIN = "http://localhost:8080"
+
+[[r2_buckets]]
+binding = "PAGES_BUCKET"
+bucket_name = "travel-planner-pages"
+
+# Production. Vars and bindings are not inherited once an environment
+# overrides any of them, so the bucket is repeated on purpose.
+[env.production.vars]
+API_ORIGIN = "https://planner-api-REPLACE-ME.europe-west3.run.app"
+
+[[env.production.r2_buckets]]
+binding = "PAGES_BUCKET"
+bucket_name = "travel-planner-pages"

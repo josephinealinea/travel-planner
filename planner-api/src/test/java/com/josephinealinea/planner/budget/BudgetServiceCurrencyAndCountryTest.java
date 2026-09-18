@@ -3,18 +3,22 @@ package com.josephinealinea.planner.budget;
 import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
 import com.josephinealinea.planner.rates.ExchangeRatesClient;
 import com.josephinealinea.planner.rates.api.RatesService;
 import com.josephinealinea.planner.rates.domain.RateTable;
 import com.josephinealinea.planner.rates.infra.RatesRepository;
+import com.josephinealinea.planner.rates.infra.YamlRatesRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.itinerary.infra.YamlItineraryRepository;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlPaths;
 import com.josephinealinea.planner.storage.YamlStore;
@@ -74,12 +78,12 @@ class BudgetServiceCurrencyAndCountryTest {
         paths = new YamlPaths(props);
         TripLocks locks = new TripLocks();
 
-        budget = new BudgetRepository(store, paths, locks);
-        destinations = new DestinationRepository(store, paths, locks);
-        ItineraryRepository itinerary = new ItineraryRepository(store, paths, locks);
+        budget = new YamlBudgetRepository(store, paths, locks);
+        destinations = new YamlDestinationRepository(store, paths, locks);
+        ItineraryRepository itinerary = new YamlItineraryRepository(store, paths, locks);
         YamlUserRepository users = new YamlUserRepository(store, paths, locks);
 
-        rates = new RatesRepository(store, paths);
+        rates = new YamlRatesRepository(store, paths);
         service = new BudgetService(budget, itinerary, destinations, users, new TripAccessService(null),
                 new TripCountries(destinations),
                 new RatesService(new ExchangeRatesClient(RestClient.create(), props), rates));

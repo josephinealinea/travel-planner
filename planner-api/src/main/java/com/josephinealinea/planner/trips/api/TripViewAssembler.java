@@ -10,7 +10,7 @@ import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.publish.api.PersonalPages;
-import com.josephinealinea.planner.storage.YamlPaths;
+import com.josephinealinea.planner.publish.infra.PageStore;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.trips.domain.TripMember;
 import org.springframework.stereotype.Service;
@@ -31,7 +31,7 @@ public class TripViewAssembler {
     private final ItineraryRepository itinerary;
     private final BudgetService budgets;
     private final RatesService rates;
-    private final YamlPaths paths;
+    private final PageStore pages;
     private final String publicBaseUrl;
 
     public TripViewAssembler(UserRepository users,
@@ -40,7 +40,7 @@ public class TripViewAssembler {
                              ItineraryRepository itinerary,
                              BudgetService budgets,
                              RatesService rates,
-                             YamlPaths paths,
+                             PageStore pages,
                              AppProperties props) {
         this.users = users;
         this.destinations = destinations;
@@ -48,7 +48,7 @@ public class TripViewAssembler {
         this.itinerary = itinerary;
         this.budgets = budgets;
         this.rates = rates;
-        this.paths = paths;
+        this.pages = pages;
         this.publicBaseUrl = props.publish().publicBaseUrl();
     }
 
@@ -151,6 +151,10 @@ public class TripViewAssembler {
      * between ticking it and republishing there is a setting that is on and no
      * page behind it. Offering the link anyway would hand somebody a 404 to
      * share.
+     *
+     * One listing of the trip's personal pages rather than an existence check
+     * for this member: against R2 every check is a network round trip, and
+     * this runs on every trip load.
      */
     private String personalUrl(Trip trip, String currentUserId) {
         if (currentUserId == null || !trip.isPublished()) return null;
@@ -158,10 +162,7 @@ public class TripViewAssembler {
                 .slugsFor(trip, usersById(trip))
                 .get(currentUserId);
         if (memberSlug == null) return null;
-        if (!java.nio.file.Files.exists(
-                paths.publishedMemberPage(trip.getSlug(), memberSlug).resolve("index.html"))) {
-            return null;
-        }
+        if (!pages.publishedMemberPages(trip.getSlug()).contains(memberSlug)) return null;
         String base = publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/";
         return base + trip.getSlug() + "/m/" + memberSlug;
     }

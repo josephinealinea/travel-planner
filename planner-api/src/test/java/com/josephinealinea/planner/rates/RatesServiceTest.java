@@ -4,6 +4,7 @@ import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.rates.api.RatesService;
 import com.josephinealinea.planner.rates.domain.RateTable;
 import com.josephinealinea.planner.rates.infra.RatesRepository;
+import com.josephinealinea.planner.rates.infra.YamlRatesRepository;
 import com.josephinealinea.planner.storage.YamlPaths;
 import com.josephinealinea.planner.storage.YamlStore;
 import org.junit.jupiter.api.Test;
@@ -80,7 +81,7 @@ class RatesServiceTest {
         AppProperties props = props(dir);
         return new RatesService(
                 new ExchangeRatesClient(RestClient.builder().requestFactory(stub).build(), props),
-                new RatesRepository(new YamlStore(), new YamlPaths(props)));
+                new YamlRatesRepository(new YamlStore(), new YamlPaths(props)));
     }
 
     @Test

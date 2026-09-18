@@ -1,0 +1,12 @@
+# This is a security list, not a tidiness one. data/ holds users.yml
+# (password hashes), secret.yml (the JWT signing key) and every trip, and
+# anything in the build context can end up in an image layer.
+data/
+build/
+.gradle/
+.idea/
+*.log
+.DS_Store
+*.iml
+Dockerfile
+.dockerignore

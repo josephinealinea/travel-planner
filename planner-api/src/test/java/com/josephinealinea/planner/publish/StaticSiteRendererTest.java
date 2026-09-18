@@ -4,17 +4,21 @@ import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.publish.api.PublishOptions;
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.checklist.domain.ChecklistStatus;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
+import com.josephinealinea.planner.checklist.infra.YamlChecklistRepository;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
 import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.itinerary.infra.YamlItineraryRepository;
 import com.josephinealinea.planner.publish.api.StaticSiteRenderer;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlPaths;
@@ -71,10 +75,10 @@ class StaticSiteRendererTest {
         YamlPaths paths = new YamlPaths(props);
         TripLocks locks = new TripLocks();
 
-        var destinations = new DestinationRepository(store, paths, locks);
-        var checklist = new ChecklistRepository(store, paths, locks);
-        var itinerary = new ItineraryRepository(store, paths, locks);
-        var budget = new BudgetRepository(store, paths, locks);
+        var destinations = new YamlDestinationRepository(store, paths, locks);
+        var checklist = new YamlChecklistRepository(store, paths, locks);
+        var itinerary = new YamlItineraryRepository(store, paths, locks);
+        var budget = new YamlBudgetRepository(store, paths, locks);
 
         seed(destinations, checklist, itinerary, budget);
 
@@ -86,7 +90,7 @@ class StaticSiteRendererTest {
                         new TripCountries(destinations),
                         TestRates.with(store, paths, props,
                                 Map.of("USD", new BigDecimal("1.17")))),
-                store, paths);
+                new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths));
     }
 
     private void seed(DestinationRepository destinations,

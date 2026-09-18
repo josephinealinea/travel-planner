@@ -14,8 +14,10 @@ import java.util.function.Function;
  * write under that trip's lock. This holds that behaviour once.
  *
  * Subclasses supply the file path and how to read an entity's id.
+ *
+ * The YAML half of {@link TripScopedRepository}; database mode has the other.
  */
-public abstract class TripScopedYamlRepository<T> {
+public abstract class TripScopedYamlRepository<T> implements TripScopedRepository<T> {
 
     protected final YamlStore store;
     protected final YamlPaths paths;
@@ -39,15 +41,18 @@ public abstract class TripScopedYamlRepository<T> {
     /** Where this entity's list lives for the given trip slug. */
     protected abstract Path fileFor(String tripSlug);
 
+    @Override
     public List<T> findAll(String tripSlug) {
         return locks.read(tripSlug, () -> store.readList(fileFor(tripSlug), listType));
     }
 
+    @Override
     public Optional<T> findById(String tripSlug, String id) {
         return findAll(tripSlug).stream().filter(item -> idOf.apply(item).equals(id)).findFirst();
     }
 
     /** Inserts or replaces by id, preserving list order. */
+    @Override
     public T save(String tripSlug, T entity) {
         return locks.write(tripSlug, () -> {
             List<T> items = new ArrayList<>(store.readList(fileFor(tripSlug), listType));
@@ -61,6 +66,7 @@ public abstract class TripScopedYamlRepository<T> {
     }
 
     /** One write for a batch — used when seeding a destination's three checklist items. */
+    @Override
     public List<T> saveAll(String tripSlug, List<T> entities) {
         if (entities.isEmpty()) return entities;
         return locks.write(tripSlug, () -> {
@@ -75,6 +81,7 @@ public abstract class TripScopedYamlRepository<T> {
         });
     }
 
+    @Override
     public void delete(String tripSlug, String id) {
         locks.writeVoid(tripSlug, () -> {
             List<T> remaining = store.readList(fileFor(tripSlug), listType).stream()
@@ -88,6 +95,7 @@ public abstract class TripScopedYamlRepository<T> {
      * Replaces the whole list in one write. Used for reordering and for the
      * cascades that touch several rows at once, so they cannot half-apply.
      */
+    @Override
     public void replaceAll(String tripSlug, List<T> items) {
         locks.writeVoid(tripSlug, () -> store.write(fileFor(tripSlug), items));
     }

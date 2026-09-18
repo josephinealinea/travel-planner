@@ -27,6 +27,12 @@ import java.util.concurrent.CompletableFuture;
  * publishes {@code time_next_update_utc} around 00:30 UTC); asking more often
  * than once a day returns the same numbers. Configurable as
  * {@code app.rates.cron}.
+ *
+ * <b>Neither is relied on where the CPU is not always there.</b> On free-tier
+ * Cloud Run a background thread only runs during a request and a cron may
+ * never fire, so {@link RatesService#current()} also refreshes a table that is
+ * a day old when it is read. Both triggers here stay because they are harmless
+ * where they do run, and mean a read there never has to wait.
  */
 @Component
 public class RatesRefresher {

@@ -1,33 +1,23 @@
 package com.josephinealinea.planner.destinations.infra;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.josephinealinea.planner.destinations.domain.Destination;
-import com.josephinealinea.planner.storage.TripLocks;
-import com.josephinealinea.planner.storage.TripScopedYamlRepository;
-import com.josephinealinea.planner.storage.YamlPaths;
-import com.josephinealinea.planner.storage.YamlStore;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Repository;
+import com.josephinealinea.planner.storage.TripScopedRepository;
 
-import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
-@Repository
-@ConditionalOnProperty(name = "feature-enable-database", havingValue = "false", matchIfMissing = true)
-public class DestinationRepository extends TripScopedYamlRepository<Destination> {
-
-    public DestinationRepository(YamlStore store, YamlPaths paths, TripLocks locks) {
-        super(store, paths, locks, new TypeReference<List<Destination>>() {}, Destination::getId);
-    }
-
-    @Override
-    protected Path fileFor(String tripSlug) {
-        return paths.destinations(tripSlug);
-    }
+/**
+ * The storage contract for destinations: {@link YamlDestinationRepository}
+ * with the database flag off, a JDBC implementation with it on. Services
+ * depend on this interface only.
+ *
+ * {@link #findAllOrdered} is a default method so its ordering is written once
+ * for both stores — see BudgetRepository for why.
+ */
+public interface DestinationRepository extends TripScopedRepository<Destination> {
 
     /** Route order: by start date where known, then by explicit sort order. */
-    public List<Destination> findAllOrdered(String tripSlug) {
+    default List<Destination> findAllOrdered(String tripSlug) {
         return findAll(tripSlug).stream()
                 .sorted(Comparator
                         .comparing(Destination::getStartDate,

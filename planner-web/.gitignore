@@ -2,3 +2,8 @@ node_modules/
 assets/css/
 .sass-cache/
 .DS_Store
+# `npm run build` output: what Cloudflare Pages uploads.
+dist/
+# wrangler's local state, and local secrets (see .dev.vars.example).
+.wrangler/
+.dev.vars

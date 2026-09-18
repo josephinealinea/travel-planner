@@ -7,9 +7,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Guards "feature-enable-database". The flag exists so the storage layer can be
- * swapped for JPA later, but no JPA implementation is written yet — so rather
- * than let the flag silently do nothing, startup fails with a clear message.
+ * Reads "feature-enable-database" and says, once at startup, which store is in
+ * use — the one line worth finding in a log when records seem to be missing.
+ *
+ * It used to refuse to start with the flag on, because no database
+ * implementation existed and a flag that silently did nothing was worse than
+ * one that failed. The flag now chooses between two implementations of every
+ * repository interface: the YAML ones carry
+ * {@code @ConditionalOnProperty(havingValue = "false", matchIfMissing = true)}
+ * and the JDBC ones {@code havingValue = "true"}. It also decides whether a
+ * DataSource is configured at all — see {@link DatabaseModeEnvironment}.
  */
 @Component
 public class FeatureFlags implements InitializingBean {
@@ -29,14 +36,9 @@ public class FeatureFlags implements InitializingBean {
     @Override
     public void afterPropertiesSet() {
         if (databaseEnabled) {
-            throw new IllegalStateException("""
-                    feature-enable-database=true, but no database-backed repositories are \
-                    implemented yet. Each module's infra/ package holds the repository \
-                    interface and its YAML implementation; add a JPA implementation \
-                    annotated @ConditionalOnProperty(name="feature-enable-database", \
-                    havingValue="true") before turning this flag on. Set it back to false \
-                    to use the YAML file store.""");
+            log.info("Storage: PostgreSQL (feature-enable-database=true)");
+        } else {
+            log.info("Storage: YAML file store (feature-enable-database=false)");
         }
-        log.info("Storage: YAML file store (feature-enable-database=false)");
     }
 }

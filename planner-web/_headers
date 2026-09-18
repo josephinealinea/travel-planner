@@ -1,0 +1,9 @@
+# Cloudflare Pages response headers, copied into dist/ by `npm run build`.
+#
+# no-cache means "keep it, but ask before using it" — a cheap 304 when nothing
+# changed. It matters most for js/: stylesheets are busted by the ?v= query in
+# each page's <head>, but ES module imports have no such escape hatch, so a
+# stale module behind a fresh page fails with "X is not defined" (CLAUDE.md,
+# Traps). /* rather than /*.html, because Pages also serves trip.html at /trip.
+/*
+  Cache-Control: no-cache

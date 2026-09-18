@@ -13,6 +13,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.util.List;
 
@@ -35,7 +36,8 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http,
                                     JwtCookieAuthFilter authFilter,
                                     CsrfFilter csrfFilter,
-                                    PasswordChangeGate passwordGate) throws Exception {
+                                    PasswordChangeGate passwordGate,
+                                    ProxySecretFilter proxySecretFilter) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsSource()))
             // Replaced by CsrfFilter, which speaks the double-submit contract
@@ -62,6 +64,10 @@ public class SecurityConfig {
                 response.getWriter().write("""
                         {"status":401,"code":"unauthorized","detail":"Please sign in."}""");
             }))
+            // ProxySecretFilter → CORS → CsrfFilter → JwtCookieAuthFilter →
+            // PasswordChangeGate. The proxy check goes first so a caller going
+            // around Cloudflare is refused before anything else answers.
+            .addFilterBefore(proxySecretFilter, CorsFilter.class)
             .addFilterBefore(csrfFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(authFilter, CsrfFilter.class)
             .addFilterAfter(passwordGate, JwtCookieAuthFilter.class);

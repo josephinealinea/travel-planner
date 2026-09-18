@@ -2,6 +2,7 @@ package com.josephinealinea.planner.itinerary;
 
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.itinerary.api.BudgetSync;
@@ -44,7 +45,7 @@ class BudgetSyncTest {
                 new AppProperties.Bootstrap(null, null),
                 new AppProperties.Currencies(null, null, null));
 
-        budget = new BudgetRepository(new YamlStore(), new YamlPaths(props), new TripLocks());
+        budget = new YamlBudgetRepository(new YamlStore(), new YamlPaths(props), new TripLocks());
         sync = new BudgetSync(budget);
     }
 

@@ -1,37 +1,19 @@
 package com.josephinealinea.planner.rates.infra;
 
 import com.josephinealinea.planner.rates.domain.RateTable;
-import com.josephinealinea.planner.storage.YamlPaths;
-import com.josephinealinea.planner.storage.YamlStore;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Repository;
 
 /**
- * One file for the whole install: {@code data/rates.yml}.
+ * The storage contract for the install's one exchange-rate table:
+ * {@link YamlRatesRepository} with the database flag off, a JDBC
+ * implementation with it on.
  *
- * Not trip-scoped, so it does not extend TripScopedYamlRepository and takes no
- * lock — there is a single writer (the scheduled refresh) and YamlStore already
- * writes through a temp file and moves it into place, so a reader never sees a
- * half-written table.
+ * Not trip-scoped — rates are a property of the day, not of a trip — so this
+ * is two calls rather than a TripScopedRepository.
  */
-@Repository
-@ConditionalOnProperty(name = "feature-enable-database", havingValue = "false", matchIfMissing = true)
-public class RatesRepository {
-
-    private final YamlStore store;
-    private final YamlPaths paths;
-
-    public RatesRepository(YamlStore store, YamlPaths paths) {
-        this.store = store;
-        this.paths = paths;
-    }
+public interface RatesRepository {
 
     /** An empty table when nothing has been fetched yet — never null. */
-    public RateTable load() {
-        return store.read(paths.rates(), RateTable.class, new RateTable());
-    }
+    RateTable load();
 
-    public void save(RateTable table) {
-        store.write(paths.rates(), table);
-    }
+    void save(RateTable table);
 }

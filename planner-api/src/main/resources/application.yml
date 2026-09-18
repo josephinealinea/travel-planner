@@ -8,10 +8,31 @@ spring:
     port: ${SMTP_PORT:1025}
     username: ${SMTP_USER:}
     password: ${SMTP_PASSWORD:}
+  # Only read in database mode. With feature-enable-database off,
+  # DatabaseModeEnvironment excludes every DataSource and Flyway
+  # auto-configuration, so none of this is ever used or connected to.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/planner}
+    username: ${DB_USER:planner}
+    password: ${DB_PASSWORD:planner}   # local-dev default, matches compose.yaml
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      # An idle pool must not keep Neon awake: it sleeps after five idle
+      # minutes, and held connections would spend the free tier's CU-hours.
+      minimum-idle: 0
+      # Milliseconds, as numbers — Hikari's setters take a long, not "30s".
+      idle-timeout: 30000
+      # Room for Neon to wake from sleep on the first request.
+      connection-timeout: 30000
+  flyway:
+    # Schema only: migrations never insert, update or delete rows.
+    locations: classpath:db/migration
 
 server:
   port: ${PORT:8080}
   forward-headers-strategy: framework
+  # Cloud Run sends SIGTERM before stopping an instance; let requests drain.
+  shutdown: graceful
 
 management:
   endpoints:
@@ -25,10 +46,9 @@ management:
       enabled: false
 
 # Off by default: all records are written as YAML files under app.storage.root.
-# Turning this on requires a JPA implementation of each module's repository
-# interface first — see FeatureFlags, which fails fast rather than silently
-# doing nothing.
-feature-enable-database: false
+# On, every record lives in PostgreSQL (spring.datasource above) and Flyway
+# applies db/migration at startup. See FeatureFlags and DatabaseModeEnvironment.
+feature-enable-database: ${FEATURE_ENABLE_DATABASE:false}
 
 app:
   storage:
@@ -36,6 +56,24 @@ app:
   publish:
     dir: ${PUBLISH_DIR:./data/published}
     public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080/p}
+    # filesystem | r2 — where published pages are written. Independent of the
+    # database flag, so local development keeps writing files.
+    store: ${PUBLISH_STORE:filesystem}
+  # Cloudflare R2, only read when app.publish.store=r2.
+  r2:
+    account-id: ${R2_ACCOUNT_ID:}
+    bucket: ${R2_BUCKET:}
+    access-key-id: ${R2_ACCESS_KEY_ID:}
+    secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  proxy:
+    # Shared secret the Cloudflare proxy adds to every request. Set only in
+    # the cloud; empty locally.
+    secret: ${PROXY_SECRET:}
+  import:
+    # The one-off YAML -> PostgreSQL import runs only when this is set, and
+    # only in database mode.
+    yaml-dir: ${IMPORT_YAML_DIR:}
+    dry-run: ${IMPORT_DRY_RUN:false}
   mail:
     # log | file | smtp. "file" drops .eml files in data/outbox so you can read
     # a new member's default password in local development.

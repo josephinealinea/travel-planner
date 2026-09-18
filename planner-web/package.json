@@ -6,8 +6,9 @@
   "scripts": {
     "css": "sass scss/minima.scss:assets/css/minima.css scss/y2k.scss:assets/css/y2k.css scss/dark.scss:assets/css/dark.css --no-source-map --style=expanded",
     "css:watch": "npm run css -- --watch",
-    "build": "npm run css",
-    "dev": "npm run css && ./serve.sh"
+    "build": "npm run css && rm -rf dist && mkdir dist && cp -R *.html _headers js assets vendor dist/",
+    "dev": "npm run css && ./serve.sh",
+    "pages:dev": "npm run build && npx wrangler@4 pages dev"
   },
   "devDependencies": {
     "sass": "^1.100.0"

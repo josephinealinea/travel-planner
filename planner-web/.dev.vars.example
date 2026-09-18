@@ -1,0 +1,7 @@
+# Copy to .dev.vars (gitignored) for `npx wrangler@4 pages dev`. Secrets only;
+# plain settings live in wrangler.toml. In the cloud the same secret is set in
+# the Pages dashboard, or with `npx wrangler@4 pages secret put PROXY_SECRET`.
+#
+# Must equal the API's PROXY_SECRET (app.proxy.secret). Leave it empty locally
+# unless you are testing the shared-secret check itself.
+PROXY_SECRET=

@@ -1,0 +1,4 @@
+# Switches the database auto-configurations off when feature-enable-database is
+# false, so YAML mode starts exactly as it did before the JDBC starter existed.
+org.springframework.boot.env.EnvironmentPostProcessor=\
+  com.josephinealinea.planner.config.DatabaseModeEnvironment

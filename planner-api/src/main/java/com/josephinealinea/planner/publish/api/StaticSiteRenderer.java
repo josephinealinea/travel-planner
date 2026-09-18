@@ -8,8 +8,9 @@ import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
-import com.josephinealinea.planner.storage.YamlPaths;
-import com.josephinealinea.planner.storage.YamlStore;
+import com.josephinealinea.planner.publish.infra.PageStore;
+import com.josephinealinea.planner.publish.infra.PageStore.Area;
+import com.josephinealinea.planner.publish.infra.PageStore.PageFile;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -81,22 +82,19 @@ public class StaticSiteRenderer {
     private final ChecklistRepository checklist;
     private final ItineraryRepository itinerary;
     private final BudgetService budgets;
-    private final YamlStore store;
-    private final YamlPaths paths;
+    private final PageStore pages;
     private final ObjectMapper json;
 
     public StaticSiteRenderer(DestinationRepository destinations,
                               ChecklistRepository checklist,
                               ItineraryRepository itinerary,
                               BudgetService budgets,
-                              YamlStore store,
-                              YamlPaths paths) {
+                              PageStore pages) {
         this.destinations = destinations;
         this.checklist = checklist;
         this.itinerary = itinerary;
         this.budgets = budgets;
-        this.store = store;
-        this.paths = paths;
+        this.pages = pages;
         this.json = JsonMapper.builder()
                 .addModule(new JavaTimeModule())
                 .build();
@@ -139,10 +137,9 @@ public class StaticSiteRenderer {
      * never outlive the trip it belongs to. See YamlPaths.publishedMemberPage.
      */
     public void render(Trip trip, PublishOptions options, List<PersonalPage> personal) {
-        var dir = paths.publishedTrip(trip.getSlug());
         var theme = safeTheme(trip.getPublishedTheme());
-        write(trip, options, theme, dir, null);
-        writePersonal(trip, theme, dir, personal);
+        write(trip, options, theme, Area.PUBLISHED, null, null);
+        writePersonal(trip, theme, Area.PUBLISHED, personal);
         log.info("Published \"{}\"{}", trip.getTitle(),
                 personal.isEmpty() ? "" : " with " + personal.size() + " personal page(s)");
     }
@@ -162,9 +159,8 @@ public class StaticSiteRenderer {
 
     public void renderPending(Trip trip, PublishOptions options, String theme,
                               List<PersonalPage> personal) {
-        var dir = paths.pendingTrip(trip.getSlug());
-        write(trip, options, safeTheme(theme), dir, null);
-        writePersonal(trip, safeTheme(theme), dir, personal);
+        write(trip, options, safeTheme(theme), Area.PENDING, null, null);
+        writePersonal(trip, safeTheme(theme), Area.PENDING, personal);
         log.info("Staged \"{}\" for approval", trip.getTitle());
     }
 
@@ -177,11 +173,11 @@ public class StaticSiteRenderer {
      * spending at a URL they believe they turned off — the same failure as a
      * published page outliving its trip, and just as silent.
      */
-    private void writePersonal(Trip trip, String theme, java.nio.file.Path dir,
+    private void writePersonal(Trip trip, String theme, Area area,
                                List<PersonalPage> personal) {
-        store.deleteTree(dir.resolve("m"));
+        pages.clearMemberPages(area, trip.getSlug());
         for (PersonalPage page : personal) {
-            write(trip, page.options(), theme, dir.resolve("m").resolve(page.memberSlug()), page.member());
+            write(trip, page.options(), theme, area, page.memberSlug(), page.member());
         }
     }
 
@@ -203,12 +199,14 @@ public class StaticSiteRenderer {
      *   by anyone who opens the source, so another member's spending must not
      *   be in the file to begin with.
      */
-    private void write(Trip trip, PublishOptions options, String theme, java.nio.file.Path dir,
+    private void write(Trip trip, PublishOptions options, String theme, Area area,
+                       String memberSlug,
                        com.josephinealinea.planner.identity.domain.User viewer) {
         PublishedTrip snapshot = snapshot(trip, options, viewer);
         String payload = writeJson(snapshot);
-        store.writeText(dir.resolve("index.html"), page(trip, snapshot, payload, theme));
-        store.writeText(dir.resolve("trip.json"), payload);
+        pages.write(area, trip.getSlug(), memberSlug, PageFile.INDEX,
+                page(trip, snapshot, payload, theme));
+        pages.write(area, trip.getSlug(), memberSlug, PageFile.DATA, payload);
     }
 
     /**
@@ -221,41 +219,23 @@ public class StaticSiteRenderer {
      * how the caller knows to fall back to rendering.
      */
     public boolean promotePending(String slug) {
-        var staged = paths.pendingTrip(slug);
-        if (!java.nio.file.Files.exists(staged.resolve("index.html"))) return false;
-
-        var live = paths.publishedTrip(slug);
-        // Files.move refuses to replace a non-empty directory, so the old page
-        // goes first. A crash between the two leaves no page rather than a
-        // half-merged one, which is the safe direction to fail in.
-        store.deleteTree(live);
-        try {
-            java.nio.file.Files.createDirectories(live.getParent());
-            java.nio.file.Files.move(staged, live);
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException("Could not publish " + slug, e);
-        }
-        return true;
+        // The store keeps the safe ordering: the old live page goes first, so
+        // a failure part-way leaves no page rather than a half-merged one.
+        return pages.promote(slug);
     }
 
     /** Throws the staged page away — a request that was rejected or withdrawn. */
     public void removePending(String slug) {
-        store.deleteTree(paths.pendingTrip(slug));
+        pages.remove(Area.PENDING, slug);
     }
 
     /** The staged page's HTML, for the members-only preview. Null if none. */
     public String readPending(String slug) {
-        var file = paths.pendingTrip(slug).resolve("index.html");
-        if (!java.nio.file.Files.exists(file)) return null;
-        try {
-            return java.nio.file.Files.readString(file);
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException("Could not read the staged page", e);
-        }
+        return pages.read(Area.PENDING, slug, null, PageFile.INDEX).orElse(null);
     }
 
     public void remove(String slug) {
-        store.deleteTree(paths.publishedTrip(slug));
+        pages.remove(Area.PUBLISHED, slug);
     }
 
     // ── snapshot ────────────────────────────────────────────────────────────

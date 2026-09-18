@@ -3,6 +3,7 @@ package com.josephinealinea.planner.weather;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlPaths;
 import com.josephinealinea.planner.storage.YamlStore;
@@ -15,6 +16,7 @@ import com.josephinealinea.planner.trips.infra.YamlTripRepository;
 import com.josephinealinea.planner.weather.api.WeatherService;
 import com.josephinealinea.planner.weather.domain.WeatherRecord;
 import com.josephinealinea.planner.weather.infra.WeatherRepository;
+import com.josephinealinea.planner.weather.infra.YamlWeatherRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -89,8 +91,8 @@ class WeatherServiceTest {
         YamlPaths paths = new YamlPaths(props);
         TripLocks locks = new TripLocks();
 
-        destinations = new DestinationRepository(store, paths, locks);
-        stored = new WeatherRepository(store, paths, locks);
+        destinations = new YamlDestinationRepository(store, paths, locks);
+        stored = new YamlWeatherRepository(store, paths, locks);
         TripRepository trips = new YamlTripRepository(store, paths, locks);
 
         Trip trip = new Trip();

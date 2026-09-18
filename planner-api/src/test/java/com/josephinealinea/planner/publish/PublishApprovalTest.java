@@ -2,16 +2,20 @@ package com.josephinealinea.planner.publish;
 
 import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
+import com.josephinealinea.planner.checklist.infra.YamlChecklistRepository;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
 import com.josephinealinea.planner.identity.api.UserService;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.itinerary.infra.YamlItineraryRepository;
 import com.josephinealinea.planner.notification.LoggingEmailSender;
 import com.josephinealinea.planner.notification.MailTemplates;
 import com.josephinealinea.planner.publish.api.PublishService;
@@ -98,10 +102,10 @@ class PublishApprovalTest {
         publishDir = paths.publishDir();
         pendingDir = paths.pendingDir();
 
-        var destinations = new DestinationRepository(store, paths, locks);
-        var checklist = new ChecklistRepository(store, paths, locks);
-        var itinerary = new ItineraryRepository(store, paths, locks);
-        var budget = new BudgetRepository(store, paths, locks);
+        var destinations = new YamlDestinationRepository(store, paths, locks);
+        var checklist = new YamlChecklistRepository(store, paths, locks);
+        var itinerary = new YamlItineraryRepository(store, paths, locks);
+        var budget = new YamlBudgetRepository(store, paths, locks);
         trips = new YamlTripRepository(store, paths, locks);
         users = new YamlUserRepository(store, paths, locks);
 
@@ -143,9 +147,9 @@ class PublishApprovalTest {
         var budgets = new BudgetService(budget, itinerary, destinations, users, access,
                 new TripCountries(destinations), TestRates.empty(store, paths, props));
         var renderer = new StaticSiteRenderer(destinations, checklist, itinerary, budgets,
-                store, paths);
+                new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths));
         views = new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
-                TestRates.empty(store, paths, props), paths, props);
+                TestRates.empty(store, paths, props), new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
         publish = new PublishService(trips, access, views, renderer,
                 new UserService(users, new BCryptPasswordEncoder(), props),
                 new LoggingEmailSender(), new MailTemplates(props));
