@@ -63,6 +63,24 @@ public record TripMembers(List<String> userIds) {
     }
 
     /**
+     * Validates a single member id — the payer of an expense, where validate
+     * above takes the list of people sharing it.
+     *
+     * Null or blank is returned as null, meaning nobody. Deciding whether that
+     * nobody should clear a stored value or leave it alone is the caller's
+     * business, because only the caller knows whether the field was sent. An id
+     * that is not a member is rejected for the reason validate gives.
+     */
+    public String validateOne(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String id = raw.trim();
+        if (!userIds.contains(id)) {
+            throw ApiException.badRequest("That person is not a member of this trip.");
+        }
+        return id;
+    }
+
+    /**
      * Who actually shares a row: whoever it names, or every member when it
      * names nobody.
      *

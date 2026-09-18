@@ -30,6 +30,8 @@ export function checklistTab() {
     costCharged: false,
     // Nobody named means the whole trip — see TripMembers on the API.
     sharedByUserIds: [],
+    // One member or nobody; openPlanForm fills in the member at the keyboard.
+    paidByUserId: '',
     countryCodes: [],
   });
 
@@ -350,6 +352,8 @@ export function checklistTab() {
     async openPlanForm() {
       this.planError = '';
       this.planForm = blankPlan();
+      // A new cost defaults to whoever is typing it, as on the expense form.
+      this.planForm.paidByUserId = this.currentUserId || '';
       // Defaults to the checklist item's own locations — "Plan activities in
       // Paris" obviously happens in Paris — but stays fully editable.
       this.planForm.countryCodes = [...(this.openItem.countryCodes || [])];
@@ -393,6 +397,7 @@ export function checklistTab() {
         currency: plan.currency || this.budget.displayCurrency || '',
         costCharged: this.chargedOfPlan(plan),
         sharedByUserIds: this.sharersOfPlan(plan),
+        paidByUserId: this.paidByOfPlan(plan),
         countryCodes: [...(plan.countryCodes || [])],
       };
       this.planOpen = true;
@@ -437,6 +442,8 @@ export function checklistTab() {
             currency: this.planForm.currency || null,
             costCharged: this.planForm.costCharged,
             costSharedByUserIds: this.planForm.sharedByUserIds,
+            // Always sent: absent would leave the payer alone, '' clears it.
+            costPaidByUserId: this.planForm.paidByUserId || '',
             // An empty array clears every link server-side.
             countryCodes: this.planForm.countryCodes,
           });
@@ -456,6 +463,7 @@ export function checklistTab() {
           currency: cost == null ? null : (this.planForm.currency || null),
             costCharged: this.planForm.costCharged,
             costSharedByUserIds: this.planForm.sharedByUserIds,
+            costPaidByUserId: this.planForm.paidByUserId || '',
             countryCodes: this.planForm.countryCodes,
           });
           toast.success(cost == null

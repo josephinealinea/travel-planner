@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Account — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=70"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=70"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=70"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=72"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=72"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=72"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -95,6 +95,12 @@
       </div>
 
       <div class="field">
+        <label for="budget-page-size">Budget rows per page</label>
+        <select id="budget-page-size" class="control-narrow"></select>
+        <p class="field-hint">Remembered in this browser. Applies the next time a trip opens.</p>
+      </div>
+
+      <div class="field">
         <span class="label">Published page</span>
         <p class="small muted" style="margin:0 0 8px">
           Saved to your account. Applies the next time you publish a trip —
@@ -151,6 +157,7 @@
   import { passwordScore } from './js/password-toggle.js';
   import { THEME_REGISTRY, THEME_NAMES, applyTheme, savedTheme } from './js/theme-selector.js';
   import { toast } from './js/toast.js';
+  import { BUDGET_PAGE_SIZES, savedBudgetPageSize, saveBudgetPageSize } from './js/page-size.js';
 
   await api.initCsrf();
   const user = await requireUser();
@@ -246,6 +253,16 @@
   document.addEventListener('themechange', (event) => {
     const radio = radios.querySelector(`input[value="${event.detail.theme}"]`);
     if (radio) radio.checked = true;
+  });
+
+  // Budget rows per page — localStorage like the theme, read by the trip page
+  // when it loads, so a change applies the next time a trip is opened.
+  const pageSizeSelect = document.querySelector('#budget-page-size');
+  pageSizeSelect.innerHTML = BUDGET_PAGE_SIZES
+    .map((size) => `<option value="${size}">${size}</option>`).join('');
+  pageSizeSelect.value = String(savedBudgetPageSize());
+  pageSizeSelect.addEventListener('change', () => {
+    pageSizeSelect.value = String(saveBudgetPageSize(pageSizeSelect.value));
   });
 
   // ── published page ────────────────────────────────

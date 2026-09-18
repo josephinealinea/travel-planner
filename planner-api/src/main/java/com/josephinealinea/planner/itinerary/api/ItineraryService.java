@@ -50,6 +50,12 @@ public class ItineraryService {
                          * "leave it". See TripMembers.
                          */
                         List<String> costSharedByUserIds,
+                        /**
+                         * "Paid by", for the budget row a cost creates. Null
+                         * means "leave it", an empty string clears it, and on
+                         * a create both mean nobody. See BudgetSync.
+                         */
+                        String costPaidByUserId,
                         List<String> countryCodes) {}
 
     private final ItineraryRepository itinerary;
@@ -144,10 +150,14 @@ public class ItineraryService {
         plan.setCountryCodes(tripCountries.validate(trip, input.countryCodes()));
         applyCost(plan, input.cost(), input.currency(), trip);
         Audit.created(plan, userId);
+        // Both checked before anything is saved, so a stale member list gets a
+        // 400 and leaves nothing behind — not a plan whose cost never reached
+        // the budget.
+        List<String> sharers = validatedSharers(trip, input.costSharedByUserIds());
+        String payer = validatedPayer(trip, input.costPaidByUserId());
 
         itinerary.save(trip.getSlug(), plan);
-        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged(),
-                validatedSharers(trip, input.costSharedByUserIds()));
+        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged(), sharers, payer);
         // Saved again because the sync writes back the new budget row's id.
         itinerary.save(trip.getSlug(), plan);
 
@@ -240,10 +250,12 @@ public class ItineraryService {
             plan.setCurrency(input.currency().trim().toUpperCase());
         }
         Audit.touched(plan, userId);
+        // Before the save, as in create: a rejected edit changes nothing.
+        List<String> sharers = validatedSharers(trip, input.costSharedByUserIds());
+        String payer = validatedPayer(trip, input.costPaidByUserId());
 
         itinerary.save(trip.getSlug(), plan);
-        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged(),
-                validatedSharers(trip, input.costSharedByUserIds()));
+        budgetSync.afterSave(trip.getSlug(), plan, userId, input.costCharged(), sharers, payer);
         return itinerary.save(trip.getSlug(), plan);
     }
 
@@ -330,6 +342,20 @@ public class ItineraryService {
      */
     private static List<String> validatedSharers(Trip trip, List<String> wanted) {
         return wanted == null ? null : TripMembers.of(trip).validate(wanted);
+    }
+
+    /**
+     * Keeps the three answers a request can give apart, because BudgetSync
+     * treats each differently on an existing row: null (not sent, leave it),
+     * an empty string (sent blank, clear it), or a validated member id (set
+     * it). Handing validateOne a blank would collapse the second into the
+     * first, and clearing the payer from the Plan form would silently do
+     * nothing.
+     */
+    private static String validatedPayer(Trip trip, String wanted) {
+        if (wanted == null) return null;
+        if (wanted.isBlank()) return "";
+        return TripMembers.of(trip).validateOne(wanted);
     }
 
     private void applyCost(ItineraryItem plan, BigDecimal cost, String currency, Trip trip) {

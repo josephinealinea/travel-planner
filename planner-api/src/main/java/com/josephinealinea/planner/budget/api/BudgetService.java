@@ -53,6 +53,12 @@ public class BudgetService {
                          */
                         List<String> sharedByUserIds,
                         /**
+                         * "Paid by" — one trip-member user id. On a patch, null
+                         * means "leave it" and an empty string clears it; on a
+                         * create both mean nobody. Never counted in any figure.
+                         */
+                        String paidByUserId,
+                        /**
                          * "Expense already charged". Null on a patch means
                          * "leave the status alone"; null on a create means
                          * charged, which is what adding an expense by hand
@@ -504,6 +510,7 @@ public class BudgetService {
         item.setDate(input.date());
         item.setCountryCodes(countries.validate(trip, input.countryCodes()));
         item.setSharedByUserIds(TripMembers.of(trip).validate(input.sharedByUserIds()));
+        item.setPaidByUserId(TripMembers.of(trip).validateOne(input.paidByUserId()));
         // Charged unless said otherwise: an expense typed into the budget by
         // hand is nearly always one that has already been paid, which is why
         // the form's own box starts ticked. A plan's cost is the other way
@@ -545,6 +552,11 @@ public class BudgetService {
         if (input.sharedByUserIds() != null) {
             // An empty list clears the names, which reads as the whole trip.
             item.setSharedByUserIds(TripMembers.of(trip).validate(input.sharedByUserIds()));
+        }
+        if (input.paidByUserId() != null) {
+            // Null is a form that said nothing. An empty string is a member
+            // clearing the payer, which validateOne turns into null.
+            item.setPaidByUserId(TripMembers.of(trip).validateOne(input.paidByUserId()));
         }
         if (input.charged() != null) {
             // Ticking the box on save is what confirms the charge and stamps

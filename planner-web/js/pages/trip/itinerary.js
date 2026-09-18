@@ -64,6 +64,8 @@ export function itineraryTab() {
     // Unticked by default, like the Plan form — see checklist.js.
     costCharged: false,
     sharedByUserIds: [],
+    // One member or nobody; openAddEntry fills in the member at the keyboard.
+    paidByUserId: '',
     countryCodes: [],
   });
 
@@ -228,6 +230,8 @@ export function itineraryTab() {
       this.entryForm = blankEntry();
       this.entryForm.currency = this.budget.displayCurrency || '';
       this.entryForm.startDate = this.trip.startDate || '';
+      // A new cost defaults to whoever is typing it, as on the expense form.
+      this.entryForm.paidByUserId = this.currentUserId || '';
       this.entryError = '';
       this.entryOpen = true;
       this.focusWhenShown('entryDescription');
@@ -249,6 +253,7 @@ export function itineraryTab() {
         currency: item.currency || this.budget.displayCurrency || '',
         costCharged: this.chargedOfPlan(item),
         sharedByUserIds: this.sharersOfPlan(item),
+        paidByUserId: this.paidByOfPlan(item),
         countryCodes: [...(item.countryCodes || [])],
       };
       this.entryError = '';
@@ -296,6 +301,8 @@ export function itineraryTab() {
           currency: cost == null ? null : (this.entryForm.currency || null),
           costCharged: this.entryForm.costCharged,
           costSharedByUserIds: this.entryForm.sharedByUserIds,
+          // Always sent: absent would leave the payer alone, '' clears it.
+          costPaidByUserId: this.entryForm.paidByUserId || '',
           countryCodes: this.entryForm.countryCodes,
         };
         if (this.entryForm.id) {

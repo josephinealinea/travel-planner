@@ -61,6 +61,18 @@ public class BudgetItem implements Audited {
     private List<String> sharedByUserIds = new ArrayList<>();
 
     /**
+     * Who put the money down — what the forms label "Paid by". One trip-member
+     * user id, or nobody, which is every row written before this existed.
+     *
+     * It is never counted in any figure. Paying for the table's dinner does
+     * not make it your dinner: whose money a row is, and how much of it counts
+     * on each Budget tab, stays decided by sharedByUserIds alone. A plain field
+     * with a plain getter and setter and no derived accessor beside it, for the
+     * Jackson reasons in CLAUDE.md, Traps.
+     */
+    private String paidByUserId;
+
+    /**
      * Charged already, or still to come. CONFIRMED by default so a record
      * written before this field existed reads as the charge it was — see
      * BudgetStatus.
@@ -153,6 +165,9 @@ public class BudgetItem implements Audited {
         this.sharedByUserIds = sharedByUserIds == null
                 ? new ArrayList<>() : new ArrayList<>(sharedByUserIds);
     }
+
+    public String getPaidByUserId() { return paidByUserId; }
+    public void setPaidByUserId(String paidByUserId) { this.paidByUserId = paidByUserId; }
 
     /**
      * Every record written before this became a country link carried

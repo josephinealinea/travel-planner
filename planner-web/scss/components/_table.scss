@@ -125,3 +125,18 @@
 
   .table.table-cards .cell-emphasis { font-weight: 600; color: var(--tp-text); }
 }
+
+// Pager under a paginated table. Wraps on a phone, status line first.
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: t.$space-2 t.$space-3;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: t.$space-3;
+  font-size: 0.85rem;
+  color: var(--tp-muted);
+}
+
+.pager-controls { display: flex; gap: t.$space-2; align-items: center; }
+.pager-page { font-variant-numeric: tabular-nums; }

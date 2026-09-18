@@ -1,5 +1,6 @@
 @use "../abstracts/tokens" as t;
 @use "../abstracts/mixins" as m;
+@use "../abstracts/breakpoints" as bp;
 
 .site-header {
   position: sticky;
@@ -67,4 +68,15 @@
   .site-header-inner { gap: t.$space-2; padding: 0 t.$space-3; }
   .nav-user { display: none; }
   .nav-link { padding: 6px 7px; font-size: 0.82rem; }
+}
+
+// The wordmark is the one thing here that can give way. Brand (166px) plus nav
+// (269px) plus padding needs ~467px, so below that the header pushes the whole
+// page sideways — 455px of header in a 400px viewport, and every tab under it
+// scrolls horizontally with nothing indicating why.
+//
+// It is hidden rather than removed: the compass beside it is aria-hidden, so
+// `display: none` would leave the brand link with no accessible name at all.
+@include m.below(bp.$bp-sm) {
+  .site-brand-name { @include m.visually-hidden; }
 }

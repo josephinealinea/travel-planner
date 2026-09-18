@@ -64,3 +64,7 @@ function globalOverride(name, allowed, fallback) {
 /** How a tab's detail view opens: 'popup' (centred) or 'side' (right-hand panel). */
 export const DEFAULT_PANEL_MODE =
   globalOverride('PLANNER_PANEL_MODE', ['popup', 'side'], 'popup');
+
+/** Budget table rows per page until a member picks their own in Account → Appearance. */
+export const DEFAULT_BUDGET_PAGE_SIZE =
+  globalOverride('PLANNER_BUDGET_PAGE_SIZE', [10, 20, 50, 100], 20);

@@ -80,6 +80,7 @@ class BudgetSharingTest {
     private BudgetService service;
     private ItineraryService itineraryService;
     private BudgetRepository budget;
+    private ItineraryRepository itinerary;
     private DestinationRepository destinations;
     private TripRepository trips;
     private Trip trip;
@@ -105,7 +106,7 @@ class BudgetSharingTest {
         budget = new BudgetRepository(store, paths, locks);
         destinations = new DestinationRepository(store, paths, locks);
         ChecklistRepository checklist = new ChecklistRepository(store, paths, locks);
-        ItineraryRepository itinerary = new ItineraryRepository(store, paths, locks);
+        itinerary = new ItineraryRepository(store, paths, locks);
         trips = new YamlTripRepository(store, paths, locks);
         UserRepository users = new YamlUserRepository(store, paths, locks);
 
@@ -149,7 +150,7 @@ class BudgetSharingTest {
     private BudgetItem expense(String description, String amount, List<String> sharers) {
         return service.create(TRIP_ID, ALEX, new BudgetService.Input(
                 description, ChecklistCategory.OTHERS, new BigDecimal(amount), "EUR",
-                null, null, sharers, true));
+                null, null, sharers, null, true));
     }
 
     /** Summarises as one member, the way the Budget tab asks. */
@@ -286,7 +287,7 @@ class BudgetSharingTest {
         place("Cusco", "PE", "Peru");
         service.create(TRIP_ID, ALEX, new BudgetService.Input(
                 "Hotel in Cusco", ChecklistCategory.LODGING, new BigDecimal("220.00"), "USD",
-                null, List.of("PE"), List.of(ALEX, SAM), true));
+                null, List.of("PE"), List.of(ALEX, SAM), null, true));
 
         BudgetService.Summary summary = as(ALEX);
 
@@ -304,7 +305,7 @@ class BudgetSharingTest {
     void theForecastRollupDividesTheSameWayTheChargedOneDoes() {
         service.create(TRIP_ID, ALEX, new BudgetService.Input(
                 "Tour deposit", ChecklistCategory.ACTIVITIES, new BigDecimal("200.00"), "EUR",
-                null, null, List.of(ALEX, SAM), false));
+                null, null, List.of(ALEX, SAM), null, false));
 
         BudgetService.Summary summary = as(ALEX);
 
@@ -319,7 +320,7 @@ class BudgetSharingTest {
         ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(ALEX, SAM), List.of()));
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX, SAM), null, List.of()));
 
         BudgetItem row = budget.findByItineraryItem(SLUG, plan.getId()).orElseThrow();
         assertThat(row.getSharedByUserIds()).containsExactly(ALEX, SAM);
@@ -332,12 +333,12 @@ class BudgetSharingTest {
         ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(ALEX), List.of()));
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX), null, List.of()));
         assertThat(as(ALEX).charged().total()).isEqualByComparingTo("240.00");
 
         itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
                 null, null, null, null, null, null,
-                new BigDecimal("240.00"), "EUR", null, List.of(SAM), null));
+                new BigDecimal("240.00"), "EUR", null, List.of(SAM), null, null));
 
         assertThat(as(ALEX).charged().total()).isEqualByComparingTo("0.00");
         assertThat(as(SAM).charged().total()).isEqualByComparingTo("240.00");
@@ -349,11 +350,11 @@ class BudgetSharingTest {
         ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
                 null, ChecklistCategory.LODGING, "Hotel in Cusco",
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
-                new BigDecimal("240.00"), "EUR", true, List.of(SAM), List.of()));
+                new BigDecimal("240.00"), "EUR", true, List.of(SAM), null, List.of()));
 
         itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
                 null, null, null, null, null, null,
-                new BigDecimal("300.00"), "EUR", null, null, null));
+                new BigDecimal("300.00"), "EUR", null, null, null, null));
 
         assertThat(budget.findByItineraryItem(SLUG, plan.getId()).orElseThrow()
                 .getSharedByUserIds()).containsExactly(SAM);
@@ -369,6 +370,44 @@ class BudgetSharingTest {
                 .hasMessageContaining("not a member of this trip");
     }
 
+    /**
+     * The plan used to be written before its sharers were checked, so a stale
+     * member list got a 400 back and still left the plan on the itinerary —
+     * with no budget row behind its cost, invisible to every total.
+     */
+    @Test
+    void aPlanSharedWithSomebodyWhoIsNotAMemberIsNotSavedAtAll() {
+        assertThatThrownBy(() -> itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
+                null, ChecklistCategory.LODGING, "Hotel in Cusco",
+                LocalDateTime.parse("2026-10-25T15:00"), null, null,
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX, "user-nobody"), null, List.of())))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("not a member of this trip");
+
+        assertThat(itinerary.findAll(SLUG)).isEmpty();
+        assertThat(budget.findAll(SLUG)).isEmpty();
+    }
+
+    /** The same on an edit: a rejected request changes nothing it came with. */
+    @Test
+    void anEditSharingWithSomebodyWhoIsNotAMemberChangesNothing() {
+        ItineraryItem plan = itineraryService.create(TRIP_ID, ALEX, new ItineraryService.Input(
+                null, ChecklistCategory.LODGING, "Hotel in Cusco",
+                LocalDateTime.parse("2026-10-25T15:00"), null, null,
+                new BigDecimal("240.00"), "EUR", true, List.of(ALEX), null, List.of()));
+
+        assertThatThrownBy(() -> itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
+                null, null, "Hotel in Cusco, renamed", null, null, null,
+                new BigDecimal("300.00"), "EUR", null, List.of("user-nobody"), null, null)))
+                .isInstanceOf(ApiException.class);
+
+        ItineraryItem stored = itinerary.findById(SLUG, plan.getId()).orElseThrow();
+        assertThat(stored.getDescription()).isEqualTo("Hotel in Cusco");
+        assertThat(stored.getCost()).isEqualByComparingTo("240.00");
+        assertThat(budget.findByItineraryItem(SLUG, plan.getId()).orElseThrow().getAmount())
+                .isEqualByComparingTo("240.00");
+    }
+
     @Test
     void namingTheSameMemberTwiceCountsThemOnce() {
         expense("Taxi", "100.00", List.of(ALEX, ALEX, SAM));
@@ -382,7 +421,7 @@ class BudgetSharingTest {
         assertThat(as(SAM).charged().total()).isEqualByComparingTo("0.00");
 
         service.update(TRIP_ID, ALEX, row.getId(), new BudgetService.Input(
-                null, null, null, null, null, null, List.of(), null));
+                null, null, null, null, null, null, List.of(), null, null));
 
         assertThat(as(ALEX).charged().total()).isEqualByComparingTo("30.00");
         assertThat(as(SAM).charged().total()).isEqualByComparingTo("30.00");

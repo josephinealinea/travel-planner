@@ -261,6 +261,26 @@ Rules that are easy to break by accident, all with tests:
     be converted, split by country and then quietly totalled at full price. A
     published page has no signed-in reader, so it passes every row in full and
     ships an empty `shares`.
+- **"Paid by" is who put the money down, and it is never counted.**
+  `BudgetItem.paidByUserId` is one trip member or nobody — every row written
+  before it existed has nobody and shows "—". Paying for the table's dinner
+  does not make it your dinner: whose money a row is stays decided by
+  `sharedByUserIds` alone, and `thePayerChangesNoFigure` pins that. Four things:
+  - **Three answers, not two.** On a PATCH (`paidByUserId` on budget,
+    `costPaidByUserId` on itinerary) absent/`null` leaves it alone, `""`
+    clears it, an id sets it. The forms therefore always send the field, as
+    `|| ''`, or clearing it in a form would silently do nothing.
+    `TripMembers.validateOne` collapses blank to null, so
+    `ItineraryService.validatedPayer` keeps the blank before `BudgetSync` sees
+    it.
+  - **A new cost defaults to the member filling in the form**; one click on
+    their own chip clears it. Editing a plan that already has a budget row
+    shows that row's payer (`paidByOfPlan`).
+  - **Validated before the plan is saved**, so a stale member list cannot leave
+    a plan behind whose cost never reached the budget.
+  - **Planner only.** `StaticSiteRenderer` never names it, so no payer reaches a
+    published file. A payer who has since left the trip reads "Former
+    member": only current members' names are known to the page.
 - **The budget rollup is computed twice, and the two halves never mix.**
   `BudgetService.Summary` carries `charged` and `forecast`, each a whole
   `Breakdown` — category slices, country slices, native totals, total and
@@ -588,6 +608,15 @@ behaviour in both modes. Only surfaces marked `panel-switchable` participate —
 the four tab detail views. Confirmation dialogs stay centred in both modes on
 purpose: a yes/no question does not belong in a working side panel. **A new
 detail surface must carry `panel-switchable`** or it will ignore the setting.
+
+**The budget table is paged; nothing else about the Budget tab is.**
+`js/page-size.js` holds the rows-per-page choice (10/20/50/100, default 20 from
+`config.js`) in localStorage, set under Account → Appearance and read once when
+the trip page loads. Only the table body reads `pagedBudgetItems`; the chart,
+totals, bulk selection and every count read `filteredBudgetItems`, so figures
+cover every page and "Delete selected" can include rows ticked on another page.
+`budgetCurrentPage` clamps, so deleting the last rows of the last page never
+strands the table past its end, and the Category filter resets to page 1.
 
 **Every modal and drawer carries `x-dialog`.** `js/dialog.js` registers it
 before Alpine starts (from `boot.js`, like the components); put it on the

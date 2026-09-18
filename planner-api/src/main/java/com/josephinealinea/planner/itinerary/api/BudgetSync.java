@@ -17,9 +17,9 @@ import java.time.Instant;
  *  - a cost on a plan with no budget row yet creates one, copying category,
  *    amount, currency, description, date and countryCodes;
  *  - a later cost or currency change updates only the amount and currency —
- *    plus `status` and `sharedByUserIds`, and only when the form actually
- *    sends them — so a description, category or set of locations somebody has
- *    since corrected in the budget is never clobbered;
+ *    plus `status`, `sharedByUserIds` and `paidByUserId`, and only when the
+ *    form actually sends them — so a description, category or set of
+ *    locations somebody has since corrected in the budget is never clobbered;
  *  - the row it creates starts <b>pending</b>, not charged: a plan is
  *    something you intend to do, and its cost is money still to leave. That is
  *    the opposite default from an expense typed into the budget by hand, and
@@ -43,9 +43,14 @@ public class BudgetSync {
      * whose plan produced the charge: a row this creates was never typed into
      * the budget by anybody, so without it the only expenses on the trip with
      * no author would be exactly the automatic ones.
+     *
+     * paidByUserId has three meanings rather than two: null when the form did
+     * not send it (leave the row alone), an empty string when it sent a blank
+     * (clear it), or an already-validated member id (set it).
      */
     public void afterSave(String tripSlug, ItineraryItem plan, String userId,
-                          Boolean charged, java.util.List<String> sharedByUserIds) {
+                          Boolean charged, java.util.List<String> sharedByUserIds,
+                          String paidByUserId) {
         if (!plan.hasCost()) {
             removeLinked(tripSlug, plan);
             return;
@@ -70,6 +75,7 @@ public class BudgetSync {
             // expense's default. See the class comment.
             created.markCharged(Boolean.TRUE.equals(charged), Instant.now());
             if (sharedByUserIds != null) created.setSharedByUserIds(sharedByUserIds);
+            if (paidByUserId != null && !paidByUserId.isBlank()) created.setPaidByUserId(paidByUserId);
             Audit.created(created, userId);
             budget.save(tripSlug, created);
             plan.setBudgetItemId(created.getId());
@@ -85,6 +91,10 @@ public class BudgetSync {
             // row's real "Shared by", so submitting it is the member saying who
             // shares the cost — not this sync deciding for them.
             if (sharedByUserIds != null) existing.setSharedByUserIds(sharedByUserIds);
+            // And again for who paid: absent leaves it, blank clears it.
+            if (paidByUserId != null) {
+                existing.setPaidByUserId(paidByUserId.isBlank() ? null : paidByUserId);
+            }
             Audit.touched(existing, userId);
             budget.save(tripSlug, existing);
         }

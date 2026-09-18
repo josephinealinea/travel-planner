@@ -30,11 +30,39 @@ import { toggleId } from './selection.js';
  *
  * `form.sharedByUserIds` is a plain array of member user ids on whatever form
  * object the field belongs to.
+ *
+ * "Paid by" sits directly after it on the same three forms, drawn from the same
+ * member list but holding one id rather than a list — the same chips, pressed
+ * one at a time:
+ *
+ *   <div class="field">
+ *     <label id="my-paid-by-label">Paid by</label>
+ *     <div class="chip-group" role="group" aria-labelledby="my-paid-by-label">
+ *       <template x-for="person in tripSharers" :key="person.userId">
+ *         <button type="button" class="chip"
+ *                 :aria-pressed="form.paidByUserId === person.userId"
+ *                 @click="choosePayer(form, person.userId)"
+ *                 x-text="person.label"></button>
+ *       </template>
+ *     </div>
+ *   </div>
+ *
+ * `form.paidByUserId` is a member user id, or '' for nobody. Who paid changes
+ * no figure: every total and share is decided by "Shared by" alone.
  */
 
 /** Adds or removes a member, mutating the array in place. */
 export function toggleSharer(sharedByUserIds, userId) {
   toggleId(sharedByUserIds, userId);
+}
+
+/**
+ * Picks the one member who paid, or clears it when they are picked again.
+ * Single choice rather than a list: one card goes down per expense. Nobody
+ * is a valid answer — every row written before Paid by existed has nobody.
+ */
+export function choosePayer(form, userId) {
+  form.paidByUserId = form.paidByUserId === userId ? '' : userId;
 }
 
 /**

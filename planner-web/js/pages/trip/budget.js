@@ -2,7 +2,8 @@ import { toast } from '../../toast.js';
 import { category, money, shortDate, CATEGORIES } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
-import { toggleSharer, sharersOfTrip } from '../../member-picker.js';
+import { toggleSharer, choosePayer, sharersOfTrip } from '../../member-picker.js';
+import { savedBudgetPageSize } from '../../page-size.js';
 
 /**
  * Colours for the country pie/bars, cycled by rank. Countries are not a fixed
@@ -48,6 +49,9 @@ export function budgetTab() {
     // Nobody named means the whole trip, which is what this defaulting empty
     // preserves: adding an expense never quietly makes it one person's.
     sharedByUserIds: [],
+    // Who put the money down: one member or nobody. openAddExpense fills in
+    // the member at the keyboard; blank here so the factory needs no context.
+    paidByUserId: '',
     // "Expense already charged", ticked by default: an expense typed in here
     // by hand is nearly always one that has already been paid. A plan's cost
     // is the other way round — see BudgetSync on the API.
@@ -62,6 +66,10 @@ export function budgetTab() {
 
     // filtering
     budgetCategoryFilters: [],
+
+    // paging — the size is read once, when the trip page loads
+    budgetPage: 1,
+    budgetPageSize: savedBudgetPageSize(),
 
     /**
      * Which rollup the panel shows, as "<dimension>" or
@@ -103,6 +111,8 @@ export function budgetTab() {
       const index = this.budgetCategoryFilters.indexOf(value);
       if (index >= 0) this.budgetCategoryFilters.splice(index, 1);
       else this.budgetCategoryFilters.push(value);
+      // A new filter starts from its first row.
+      this.budgetPage = 1;
     },
 
     /**
@@ -128,6 +138,40 @@ export function budgetTab() {
       const items = this.myBudgetItems;
       if (!this.budgetCategoryFilters.length) return items;
       return items.filter((item) => this.budgetCategoryFilters.includes(item.category));
+    },
+
+    /**
+     * Paging is presentation only: the chart, totals and bulk selection all
+     * read filteredBudgetItems, so every figure still covers every page.
+     */
+    get budgetPageCount() {
+      return Math.max(1, Math.ceil(this.filteredBudgetItems.length / this.budgetPageSize));
+    },
+
+    /**
+     * budgetPage clamped to what exists, so deleting the last rows of the last
+     * page, or narrowing a filter, never leaves the table past its own end.
+     */
+    get budgetCurrentPage() {
+      return Math.min(Math.max(1, this.budgetPage), this.budgetPageCount);
+    },
+
+    get pagedBudgetItems() {
+      const start = (this.budgetCurrentPage - 1) * this.budgetPageSize;
+      return this.filteredBudgetItems.slice(start, start + this.budgetPageSize);
+    },
+
+    get budgetPageFrom() {
+      return this.filteredBudgetItems.length
+        ? (this.budgetCurrentPage - 1) * this.budgetPageSize + 1 : 0;
+    },
+
+    get budgetPageTo() {
+      return Math.min(this.budgetCurrentPage * this.budgetPageSize, this.filteredBudgetItems.length);
+    },
+
+    goToBudgetPage(page) {
+      this.budgetPage = Math.min(Math.max(1, page), this.budgetPageCount);
     },
 
     // ── rollup ──────────────────────────────────────
@@ -325,6 +369,8 @@ export function budgetTab() {
     openAddExpense() {
       this.expenseForm = blankExpense();
       this.expenseForm.currency = this.budget.displayCurrency || '';
+      // Whoever is typing it in most likely paid; one click clears it.
+      this.expenseForm.paidByUserId = this.currentUserId || '';
       this.expenseError = '';
       this.expenseOpen = true;
       this.focusWhenShown('expenseDescription');
@@ -340,6 +386,7 @@ export function budgetTab() {
         date: item.date || '',
         countryCodes: [...(item.countryCodes || [])],
         sharedByUserIds: [...(item.sharedByUserIds || [])],
+        paidByUserId: item.paidByUserId || '',
         charged: item.status !== 'PENDING',
       };
       this.expenseError = '';
@@ -377,6 +424,9 @@ export function budgetTab() {
           countryCodes: this.expenseForm.countryCodes,
           // An empty array clears the names, which reads as the whole trip.
           sharedByUserIds: this.expenseForm.sharedByUserIds,
+          // Always sent: on an edit an absent field leaves the payer alone,
+          // so '' is what makes clearing it in the form actually clear it.
+          paidByUserId: this.expenseForm.paidByUserId || '',
           charged: this.expenseForm.charged,
         };
         if (this.expenseForm.id) {
@@ -405,8 +455,9 @@ export function budgetTab() {
     },
 
     /**
-     * Selected rows that are actually on screen — everything else derives from
-     * this, so "Delete selected" can never remove a row a filter is hiding.
+     * Selected rows the filter leaves, on any page — everything else derives
+     * from this, so "Delete selected" can never remove a row a filter is
+     * hiding, but does include rows ticked on another page of the table.
      */
     get budgetSelected() {
       return selectedPresent(this.budgetSelectedIds, this.filteredBudgetItems);
@@ -542,6 +593,26 @@ export function budgetTab() {
     },
 
     /**
+     * Who paid for the budget row a plan's cost created. A plan with no row yet
+     * (no cost so far) starts with the member filling in the form, the same
+     * default a brand-new cost gets.
+     */
+    paidByOfPlan(plan) {
+      const row = this.budgetRowOfPlan(plan);
+      return row ? (row.paidByUserId || '') : (this.currentUserId || '');
+    },
+
+    /**
+     * The Paid by cell. Only current members' names are known here, so a payer
+     * who has since left reads "Former member" — the id stays on the row.
+     */
+    paidByLabel(item) {
+      if (!item.paidByUserId) return '—';
+      const member = this.members.find((m) => m.userId === item.paidByUserId);
+      return member ? (member.displayName || member.email) : 'Former member';
+    },
+
+    /**
      * The budget row a plan's cost created, or undefined.
      *
      * Searches `budget.items`, which is every row on the trip rather than only
@@ -560,6 +631,7 @@ export function budgetTab() {
 
     // ── member picker (shared with the Plan and itinerary forms) ────────
     toggleSharer,
+    choosePayer,
 
     /** The trip's members, as the pills every "Shared by" field offers. */
     get tripSharers() {

@@ -41,12 +41,14 @@ public class ItineraryController {
             Boolean costCharged,
             /** "Shared by" for that row. Absent means the whole trip. */
             List<String> costSharedByUserIds,
+            /** "Paid by" for that row. Absent or empty means nobody. */
+            String costPaidByUserId,
             List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
-                    costCharged, costSharedByUserIds, countryCodes);
+                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes);
         }
     }
 
@@ -60,12 +62,14 @@ public class ItineraryController {
             String currency,
             Boolean costCharged,
             List<String> costSharedByUserIds,
+            /** Absent leaves the budget row's payer as it is; an empty string clears it. */
+            String costPaidByUserId,
             List<String> countryCodes) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     null, category, description, startAt, endAt, allDay, cost, currency,
-                    costCharged, costSharedByUserIds, countryCodes);
+                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes);
         }
     }
 

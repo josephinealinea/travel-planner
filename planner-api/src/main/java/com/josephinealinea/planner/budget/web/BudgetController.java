@@ -27,12 +27,14 @@ public class BudgetController {
             List<String> countryCodes,
             /** "Shared by" — member user ids. Absent means the whole trip. */
             List<String> sharedByUserIds,
+            /** "Paid by" — one member user id. Absent or empty means nobody. */
+            String paidByUserId,
             /** "Expense already charged". Absent means charged — see BudgetService.Input. */
             Boolean charged) {
 
         BudgetService.Input toInput() {
             return new BudgetService.Input(description, category, amount, currency, date,
-                    countryCodes, sharedByUserIds, charged);
+                    countryCodes, sharedByUserIds, paidByUserId, charged);
         }
     }
 
@@ -44,12 +46,14 @@ public class BudgetController {
             LocalDate date,
             List<String> countryCodes,
             List<String> sharedByUserIds,
+            /** Absent leaves the payer as it is; an empty string clears it. */
+            String paidByUserId,
             /** Absent leaves the status as it is, like every other field here. */
             Boolean charged) {
 
         BudgetService.Input toInput() {
             return new BudgetService.Input(description, category, amount, currency, date,
-                    countryCodes, sharedByUserIds, charged);
+                    countryCodes, sharedByUserIds, paidByUserId, charged);
         }
     }
 

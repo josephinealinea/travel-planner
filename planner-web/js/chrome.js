@@ -22,7 +22,7 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
     header.className = 'site-header';
     header.innerHTML = `
       <div class="site-header-inner">
-        <a class="site-brand" href="${user ? 'trips.html' : 'login.html'}"><span aria-hidden="true">🧭</span> <span>Travel Planner</span></a>
+        <a class="site-brand" href="${user ? 'trips.html' : 'login.html'}"><span aria-hidden="true">🧭</span> <span class="site-brand-name">Travel Planner</span></a>
         <nav class="site-nav">
           ${links}
           <span id="theme-selector-slot"></span>

@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trip — Travel Planner</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=70"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=70"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=70"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=72"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=72"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=72"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -671,12 +671,13 @@
                   <th>Description</th><th>Category</th>
                   <th class="num">Amount</th>
                   <th class="num">Shared Amount</th>
+                  <th>Paid by</th>
                   <th>Status</th>
                   <th>Date</th><th>Source</th><th class="actions"></th>
                 </tr>
               </thead>
               <tbody>
-                <template x-for="item in filteredBudgetItems" :key="item.id">
+                <template x-for="item in pagedBudgetItems" :key="item.id">
                   <tr>
                     <td class="select-cell">
                       <input type="checkbox" :checked="isBudgetSelected(item.id)"
@@ -706,6 +707,9 @@
                     <td class="num cell-emphasis" data-label="Your share"
                         x-text="convertedShareOf(item) == null
                                 ? '—' : fmt(convertedShareOf(item), budget.totalsCurrency)"></td>
+                    <!-- Who put the money down. Informational only: the share
+                         beside it is decided by "Shared by" alone. -->
+                    <td data-label="Paid by" x-text="paidByLabel(item)"></td>
                     <!-- A pending row is listed like any other. It is only
                          left out of the total that claims to be money spent. -->
                     <td data-label="Status">
@@ -729,6 +733,21 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Shown only when there is more than one page. The figures above
+               the table cover every page; only the rows are paged. -->
+          <nav class="pager" x-show="budgetPageCount > 1" aria-label="Budget table pages">
+            <span class="pager-status"
+                  x-text="`Showing ${budgetPageFrom}–${budgetPageTo} of ${filteredBudgetItems.length}`"></span>
+            <span class="pager-controls">
+              <button type="button" class="btn btn-sm" :disabled="budgetCurrentPage <= 1"
+                      @click="goToBudgetPage(budgetCurrentPage - 1)">← Previous</button>
+              <span class="pager-page" aria-live="polite"
+                    x-text="`Page ${budgetCurrentPage} of ${budgetPageCount}`"></span>
+              <button type="button" class="btn btn-sm" :disabled="budgetCurrentPage >= budgetPageCount"
+                      @click="goToBudgetPage(budgetCurrentPage + 1)">Next →</button>
+            </span>
+          </nav>
         </div>
       </section>
 
@@ -1054,6 +1073,18 @@
                       Splits the cost between them. Pick nobody and it belongs to
                       everyone on the trip.
                     </p>
+                  </div>
+
+                  <div class="field" x-show="planForm.cost">
+                    <label id="plan-paid-by-label">Paid by</label>
+                    <div class="chip-group" role="group" aria-labelledby="plan-paid-by-label">
+                      <template x-for="person in tripSharers" :key="person.userId">
+                        <button type="button" class="chip"
+                                :aria-pressed="planForm.paidByUserId === person.userId"
+                                @click="choosePayer(planForm, person.userId)"
+                                x-text="person.label"></button>
+                      </template>
+                    </div>
                   </div>
 
                   <div class="field">
@@ -1542,6 +1573,21 @@
                           x-text="person.label"></button>
                 </template>
               </div>
+              <p class="field-hint">
+                Splits the cost between them. Pick nobody and it belongs to
+                everyone on the trip.
+              </p>
+            </div>
+            <div class="field" x-show="entryForm.cost">
+              <label id="entry-paid-by-label">Paid by</label>
+              <div class="chip-group" role="group" aria-labelledby="entry-paid-by-label">
+                <template x-for="person in tripSharers" :key="person.userId">
+                  <button type="button" class="chip"
+                          :aria-pressed="entryForm.paidByUserId === person.userId"
+                          @click="choosePayer(entryForm, person.userId)"
+                          x-text="person.label"></button>
+                </template>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn" @click="entryOpen = false">Cancel</button>
@@ -1745,6 +1791,17 @@
                 Picking two or more splits the cost between them, and each sees
                 only their part. Pick nobody and it belongs to everyone on the trip.
               </p>
+            </div>
+            <div class="field">
+              <label id="expense-paid-by-label">Paid by</label>
+              <div class="chip-group" role="group" aria-labelledby="expense-paid-by-label">
+                <template x-for="person in tripSharers" :key="person.userId">
+                  <button type="button" class="chip"
+                          :aria-pressed="expenseForm.paidByUserId === person.userId"
+                          @click="choosePayer(expenseForm, person.userId)"
+                          x-text="person.label"></button>
+                </template>
+              </div>
             </div>
             <div class="field">
               <label class="checkbox">
