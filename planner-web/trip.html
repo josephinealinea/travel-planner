@@ -1110,14 +1110,7 @@
                        form: a plan is something you intend to do, and its cost
                        is usually money still to leave. -->
                   <div class="field" x-show="planForm.cost">
-                    <label class="checkbox">
-                      <input type="checkbox" x-model="planForm.costCharged"
-                             @change="chargedToggled(planForm, currentUserId, $event.target.checked)">
-                      Expense already charged
-                    </label>
-                  </div>
 
-                  <div class="field" x-show="planForm.cost">
                     <label id="plan-paid-by-label">Paid by</label>
                     <div class="chip-group" role="group" aria-labelledby="plan-paid-by-label">
                       <template x-for="person in tripSharers" :key="person.userId">
@@ -1126,6 +1119,11 @@
                                 @click="choosePayer(planForm, person.userId)"
                                 x-text="person.label"></button>
                       </template>
+                      <label class="checkbox">
+                        <input type="checkbox" x-model="planForm.costCharged"
+                               @change="chargedToggled(planForm, currentUserId, $event.target.checked)">
+                        Expense already charged
+                      </label>
                     </div>
                   </div>
 
@@ -1401,10 +1399,6 @@
                 <input id="dest-lon" type="number" step="any" min="-180" max="180"
                        x-model="destForm.longitude" placeholder="-71.96701">
               </div>
-              <p class="coord-hint">
-                Filled in when you pick a suggestion, and editable either way —
-                some places are not in the lookup under the name travellers use.
-              </p>
             </div>
 
             <div class="field-row">
@@ -1417,13 +1411,6 @@
                 <input id="dest-end" type="date" x-model="destForm.endDate" :min="trip.startDate" :max="trip.endDate">
               </div>
             </div>
-            <p class="field-hint" style="margin-top:-8px" x-show="!destForm.id">
-              Transportation and activities checklist items are added either way.
-              Accommodation is added only if the dates cover a night, with the count
-              — “Plan 6N accommodation in Cusco”. Leave them empty, or arrive and
-              leave the same day, and there is nothing to book; fill them in later
-              and it appears then.
-            </p>
             <p class="field-hint" style="margin-top:-8px" x-show="destForm.id">
               If these dates come to cover a night, an accommodation checklist item
               is added now. Shortening the stay never removes one.
@@ -1615,13 +1602,6 @@
               A cost here creates or updates its budget entry. Clearing it removes that entry.
             </p>
             <div class="field" x-show="entryForm.cost">
-              <label class="checkbox">
-                <input type="checkbox" x-model="entryForm.costCharged"
-                       @change="chargedToggled(entryForm, currentUserId, $event.target.checked)">
-                Expense already charged
-              </label>
-            </div>
-            <div class="field" x-show="entryForm.cost">
               <label id="entry-paid-by-label">Paid by</label>
               <div class="chip-group" role="group" aria-labelledby="entry-paid-by-label">
                 <template x-for="person in tripSharers" :key="person.userId">
@@ -1630,6 +1610,11 @@
                           @click="choosePayer(entryForm, person.userId)"
                           x-text="person.label"></button>
                 </template>
+                <label class="checkbox">
+                  <input type="checkbox" x-model="entryForm.costCharged"
+                         @change="chargedToggled(entryForm, currentUserId, $event.target.checked)">
+                  Expense already charged
+                </label>
               </div>
             </div>
             <div class="field" x-show="entryForm.cost">
@@ -1845,6 +1830,11 @@
                           @click="choosePayer(expenseForm, person.userId)"
                           x-text="person.label"></button>
                 </template>
+                <label class="checkbox">
+                  <input type="checkbox" x-model="expenseForm.charged"
+                         @change="chargedToggled(expenseForm, currentUserId, $event.target.checked)">
+                  Expense already charged
+                </label>
               </div>
             </div>
             <div class="field">
@@ -1865,16 +1855,6 @@
                 </template>
               </div>
             </div>
-            <div class="field">
-              <label class="checkbox">
-                <input type="checkbox" x-model="expenseForm.charged"
-                       @change="chargedToggled(expenseForm, currentUserId, $event.target.checked)">
-                Expense already charged
-              </label>
-            </div>
-            <p class="field-hint" x-show="expenseForm.id && expenseForm.amount">
-              Changing the cost on an expense that came from a plan updates that plan's cost too.
-            </p>
             <div class="modal-footer">
               <button type="button" class="btn" @click="expenseOpen = false">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="expenseBusy"

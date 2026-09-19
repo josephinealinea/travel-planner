@@ -3,8 +3,9 @@
 Plan a trip with the people you are travelling with, then publish it as a public
 page — modelled on the trip pages at [josephinealinea.dev](https://josephinealinea.dev/travel/).
 
-- **`planner-api/`** — Spring Boot 3.5 / Java 21. No database: every record is a
-  YAML file, laid out like the `_data/travels/` folder on the personal site.
+- **`planner-api/`** — Spring Boot 3.5 / Java 21. YAML files by default, laid
+  out like the `_data/travels/` folder on the personal site; PostgreSQL behind
+  the `feature-enable-database` flag.
 - **`planner-web/`** — static HTML, vanilla ES modules and Alpine.js. Sass is the
   only build step.
 
@@ -24,9 +25,30 @@ git remote add origin https://github.com/josephinealinea/travel-planner.git
 
 You need Java 21, Node (for Sass) and Python 3 (for the static server).
 
-#### Start the API
+If either the API or the frontend is already running from a previous session,
+starting it again fails with "port already in use" rather than restarting it.
+Stop both first:
+
+#### Stop everything
+```bash
+lsof -ti :8080 | xargs -r kill; lsof -ti :3000 | xargs -r kill
+```
+#### Stop Postgres
+```bash
+./docker-stop.sh
+```
+#### Start the API (yml mode ON)
 ```bash
 cd planner-api && BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
+```
+#### If database mode ON
+#### Start Postgres
+```bash
+./docker-start.sh
+```
+#### Start the API in database mode
+```bash
+cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
 ```
 #### Build the stylesheets
 ```bash
@@ -104,8 +126,8 @@ the file from any static server, with the API stopped.
 
 ## Storage, and the database flag
 
-`feature-enable-database` is **off**, and every record is a YAML file under
-`planner-api/data/`:
+By default `feature-enable-database` is **off**, and every record is a YAML
+file under `planner-api/data/`:
 
 ```
 users.yml                            every account
@@ -122,13 +144,32 @@ outbox/                              sent email, in local development
 The files are meant to be readable next to the hand-written ones on the personal
 site — ISO dates, no document markers, optional fields simply absent.
 
-Every repository is an interface, so a database implementation drops in behind
-the flag without touching a service or a controller. None is written yet, and
-`FeatureFlags` fails startup with an explanation rather than letting the flag
-silently do nothing.
+**One instance only** in this mode. The file store is guarded by in-process
+locks and atomic renames, which is enough for a single API but not for two.
 
-**One instance only.** The file store is guarded by in-process locks and atomic
-renames, which is enough for a single API but not for two.
+### Database mode
+
+Every repository is also backed by PostgreSQL, so the same app runs on a real
+database — needed for more than one instance, and what the [Cloud Run
+deployment](docs/deploy.md) uses. Locally, a Postgres 17 container
+(`compose.yaml`) stands in for it. Start it, then point the API at it:
+
+#### Start Postgres
+```bash
+./docker-start.sh
+```
+#### Start the API in database mode
+```bash
+cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
+```
+#### Stop Postgres
+```bash
+./docker-stop.sh
+```
+
+`docker-stop.sh` leaves the container's data in place — `docker-start.sh` picks
+up where it left off. To also wipe the data, run `docker compose down
+--volumes` instead.
 
 #### Run the tests
 ```bash
