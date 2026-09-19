@@ -22,7 +22,7 @@ bucket_name = "travel-planner-pages"
 # Production. Vars and bindings are not inherited once an environment
 # overrides any of them, so the bucket is repeated on purpose.
 [env.production.vars]
-API_ORIGIN = "https://planner-api-REPLACE-ME.europe-west3.run.app"
+API_ORIGIN = "https://planner-api-135344516404.europe-west3.run.app"
 
 [[env.production.r2_buckets]]
 binding = "PAGES_BUCKET"
