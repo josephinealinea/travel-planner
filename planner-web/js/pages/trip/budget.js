@@ -619,7 +619,7 @@ export function budgetTab() {
     paidByLabel(item) {
       if (!item.paidByUserId) return '—';
       const member = this.members.find((m) => m.userId === item.paidByUserId);
-      return member ? (member.displayName || member.email) : 'Former member';
+      return member ? (member.displayName || member.email) : 'Former travel buddy';
     },
 
     /**
@@ -691,7 +691,7 @@ export function budgetTab() {
     /** Same fallback as the Paid by cell: only current members have names. */
     settleMemberName(userId) {
       const member = this.members.find((m) => m.userId === userId);
-      return member ? (member.displayName || member.email) : 'Former member';
+      return member ? (member.displayName || member.email) : 'Former travel buddy';
     },
 
     /**

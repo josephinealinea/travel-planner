@@ -154,7 +154,7 @@ class AuditTrailTest {
                 new StaticSiteRenderer(destinations, checklist, itinerary,
                         new BudgetService(budget, itinerary, destinations, users, access,
                                 tripCountries, testRates),
-                        new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths)));
+                        new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props));
     }
 
     // ── helpers ─────────────────────────────────────

@@ -141,7 +141,7 @@ class PersonalPageTest {
         var budgets = new BudgetService(budget, itinerary, destinations, users, access,
                 new TripCountries(destinations), TestRates.empty(store, paths, props));
         var renderer = new StaticSiteRenderer(destinations, checklist, itinerary, budgets,
-                new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths));
+                new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
         views = new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
                 TestRates.empty(store, paths, props), new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
         publish = new PublishService(trips, access, views, renderer,

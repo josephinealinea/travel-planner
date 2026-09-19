@@ -22,7 +22,7 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
     header.className = 'site-header';
     header.innerHTML = `
       <div class="site-header-inner">
-        <a class="site-brand" href="${user ? 'trips.html' : 'login.html'}"><span aria-hidden="true">🧭</span> <span class="site-brand-name">Travel Planner</span></a>
+        <a class="site-brand" href="${user ? 'trips.html' : 'login.html'}"><span aria-hidden="true">🦙</span> <span class="site-brand-name">Travelling Llama</span></a>
         <nav class="site-nav">
           ${links}
           <span id="theme-selector-slot"></span>
@@ -42,7 +42,7 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
   const footer = document.querySelector('#site-footer');
   if (footer) {
     footer.className = 'site-footer';
-    footer.textContent = 'Travel Planner — plan a trip together, publish it when you are ready.';
+    footer.textContent = 'Travelling Llama — your travel buddy for planning trips.';
   }
 
   // Panels are hidden at load, so unlike the theme this needs no pre-paint

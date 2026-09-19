@@ -15,7 +15,7 @@ import { publishTab } from './trip/publish.js';
 
 const TABS = [
   { id: 'overview',     label: 'Overview' },
-  { id: 'members',      label: 'Members' },
+  { id: 'members',      label: 'Travel Buddies' },
   { id: 'destinations', label: 'Destinations' },
   { id: 'checklist',    label: 'Checklist' },
   { id: 'itinerary',    label: 'Itinerary' },

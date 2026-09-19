@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds, pushes and deploys the API to Cloud Run — docs/deploy.md step 5.
+# Builds, pushes and deploys the API to Cloud Run — docs/deploy.md Part 7.
 #
 #   ./deploy.sh              build, push and deploy IMAGE_TAG
 #   ./deploy.sh --no-build   redeploy IMAGE_TAG as it is, e.g. after a settings change

@@ -104,7 +104,7 @@ export function publishTab() {
         this.publish = await this.api.publish(this.trip.id, this.themeToPublish);
         this.trip.status = 'PUBLISHED';
         this.confirmingPublish = false;
-        toast.success('Trip published');
+        toast.success('🦙 Your trip is live!');
         await this.reload();
       } catch (error) {
         toast.error(error.fullMessage);
@@ -159,7 +159,7 @@ export function publishTab() {
         // one publishing it.
         this.publish = await this.api.approvePublish(this.trip.id, request.id,
           this.themeToPublish);
-        toast.success('Published');
+        toast.success('🦙 Your trip is live!');
         await this.reload();
       } catch (error) {
         toast.error(error.fullMessage);

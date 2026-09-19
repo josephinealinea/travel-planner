@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trip — Travel Planner</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=72"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=72"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=72"       id="dark-css"       disabled>
+<title>Trip — Travelling Llama</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/minima.css?v=75"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=75"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=75"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -40,13 +40,13 @@
             <span class="badge" :class="trip.status === 'PUBLISHED' ? 'badge-published' : 'badge-draft'"
                   x-text="trip.status === 'PUBLISHED' ? 'Published' : 'Draft'"></span>
             <span class="badge" :class="isOwner ? 'badge-owner' : ''"
-                  x-text="isOwner ? 'Owner' : 'Member'"></span>
+                  x-text="isOwner ? 'Owner' : 'Travel buddy'"></span>
           </h1>
           <div class="trip-head-meta">
             <span x-text="tripDates()"></span>
             <span x-show="ownerName()"> · owned by <span x-text="ownerName()"></span></span>
             <span> · <span x-text="members.length"></span>
-              member<span x-show="members.length !== 1">s</span></span>
+              travel <span x-text="members.length === 1 ? 'buddy' : 'buddies'"></span></span>
           </div>
         </div>
         <div class="trip-head-actions">
@@ -134,14 +134,14 @@
       <section x-show="tab === 'members'" role="tabpanel" id="panel-members"
                aria-labelledby="tab-members" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">Members</h2>
+          <h2 class="section-title">Travel Buddies</h2>
         </div>
 
         <div class="card" style="margin-bottom:16px">
           <div class="alert alert-error" x-show="memberError" x-text="memberError" x-cloak></div>
           <form class="field-inline" @submit.prevent="addMember()">
             <div class="field grow">
-              <label for="member-email">Add a member by email</label>
+              <label for="member-email">Add a travel buddy by email</label>
               <input id="member-email" type="email" x-model="memberEmail"
                      placeholder="name@example.com" required>
               <p class="field-hint">
@@ -155,6 +155,11 @@
             </div>
           </form>
         </div>
+
+        <!-- Only you so far: the one screen where inviting is the obvious next step. -->
+        <p class="solo-hint" x-show="members.length === 1" x-cloak>
+          <span aria-hidden="true">🦙</span> Travelling solo so far — add a travel buddy by email above.
+        </p>
 
         <div class="table-wrap">
           <table class="table">
@@ -174,7 +179,7 @@
                   </td>
                   <td class="muted" x-text="member.email"></td>
                   <td><span class="badge" :class="member.role === 'OWNER' ? 'badge-owner' : ''"
-                            x-text="member.role === 'OWNER' ? 'Owner' : 'Member'"></span></td>
+                            x-text="member.role === 'OWNER' ? 'Owner' : 'Travel buddy'"></span></td>
                   <td class="muted tiny" x-text="addedLabel(member)"></td>
                   <td class="actions">
                     <button type="button" class="btn btn-sm btn-danger"
@@ -1247,7 +1252,7 @@
           </div>
           <p class="small">
             This permanently removes <strong x-text="trip.title"></strong> and everything in it,
-            for every member. It cannot be undone.
+            for every travel buddy. It cannot be undone.
           </p>
           <div class="field">
             <label for="delete-confirm">Type the trip title to confirm</label>
@@ -1268,7 +1273,7 @@
              x-dialog="removingMember">
           <div class="modal-header">
             <h2 class="modal-title" id="remove-member-title"
-                x-text="isSelf(removingMember || {}) ? 'Leave this trip?' : 'Remove this member?'"></h2>
+                x-text="isSelf(removingMember || {}) ? 'Leave this trip?' : 'Remove this travel buddy?'"></h2>
             <button type="button" class="modal-close" @click="removingMember = null" aria-label="Close">✕</button>
           </div>
           <p class="small" x-show="removingMember && !isSelf(removingMember)">
@@ -1276,7 +1281,7 @@
             Their account and their other trips are unaffected.
           </p>
           <p class="small" x-show="removingMember && isSelf(removingMember)">
-            You will lose access to this trip. Another member can add you again.
+            You will lose access to this trip. Another travel buddy can add you again.
           </p>
           <div class="modal-footer">
             <button type="button" class="btn" @click="removingMember = null">Cancel</button>

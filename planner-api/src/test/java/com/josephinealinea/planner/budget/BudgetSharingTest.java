@@ -376,7 +376,7 @@ class BudgetSharingTest {
     void sharingWithSomebodyWhoIsNotAMemberIsRejected() {
         assertThatThrownBy(() -> expense("Taxi", "100.00", List.of(ALEX, "user-nobody")))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not a member of this trip");
+                .hasMessageContaining("isn't one of this trip's travel buddies");
     }
 
     /**
@@ -391,7 +391,7 @@ class BudgetSharingTest {
                 LocalDateTime.parse("2026-10-25T15:00"), null, null,
                 new BigDecimal("240.00"), "EUR", true, List.of(ALEX, "user-nobody"), ALEX, List.of())))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not a member of this trip");
+                .hasMessageContaining("isn't one of this trip's travel buddies");
 
         assertThat(itinerary.findAll(SLUG)).isEmpty();
         assertThat(budget.findAll(SLUG)).isEmpty();

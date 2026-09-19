@@ -125,7 +125,7 @@ public class PublishService {
         PublishRequest request = require(trip, requestId);
 
         if (!request.getRequestedByUserId().equals(userId)) {
-            throw ApiException.forbidden("Only the member who asked can cancel that request.");
+            throw ApiException.forbidden("Only the travel buddy who asked can cancel that request.");
         }
         if (!request.isPending()) {
             throw ApiException.conflict("already_decided", "That request has already been decided.");

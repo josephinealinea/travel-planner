@@ -535,6 +535,12 @@ While `mustChangePassword` is set the gate answers **409
 `password_change_required`** to everything except `/auth/me`, `/auth/logout` and
 `/account/password`; `js/api.js` turns that into a redirect.
 
+**On screen a member is a "travel buddy".** The Travel Buddies tab, the
+"Travel buddy" role badge, the counts, the emails and the API's error messages
+all say it. The code, the API paths (`/members`), the `#members` tab link and
+these docs keep "member": renaming a URL would break bookmarks and a code
+identifier gains nothing. Keep new user-facing text on the screen's word.
+
 **Accounts only exist via invitation.** `UserService.findOrCreate` is called when
 a member is added, so every invited member has an account immediately. That is
 what makes the display rule work without a separate "pending invite" concept:
@@ -545,7 +551,11 @@ and data all inlined, no external requests except the reader's own weather
 lookup — from `resources/publish/page.css` and `page.js`. Those assets live in
 the API on purpose, so publishing never depends on the frontend having been
 built. Output is a plain static directory; copying it to a CDN is the whole
-deployment.
+deployment. Its one absolute URL is the "Planned with 🦙 Travelling Llama"
+link at the foot of the page. It is an anchor, not a fetch, so it doesn't break
+self-containment, and it points at `AppProperties.Cors.siteUrl()` (the first
+CORS origin, the same site the emails link to), never at the API. The
+self-containment test cuts out that exact link and still fails on any other.
 
 **Where pages are written is a `PageStore`** (`publish/infra`), chosen by
 `app.publish.store` and **independent of the database flag**:
@@ -1261,7 +1271,7 @@ refused), so the bootstrap never runs on an import start. The rules, all in
   rows) are deliberately not imported; the report lists the trips to publish
   again.
 
-The procedure is `docs/deploy.md` step 7.
+The procedure is `docs/deploy.md` Part 9, Option B.
 
 ## Conventions
 

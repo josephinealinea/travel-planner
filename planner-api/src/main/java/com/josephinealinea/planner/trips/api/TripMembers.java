@@ -55,7 +55,7 @@ public record TripMembers(List<String> userIds) {
             if (raw == null || raw.isBlank()) continue;
             String id = raw.trim();
             if (!userIds.contains(id)) {
-                throw ApiException.badRequest("That person is not a member of this trip.");
+                throw ApiException.badRequest("That person isn't one of this trip's travel buddies.");
             }
             if (!valid.contains(id)) valid.add(id);
         }
@@ -75,7 +75,7 @@ public record TripMembers(List<String> userIds) {
         if (raw == null || raw.isBlank()) return null;
         String id = raw.trim();
         if (!userIds.contains(id)) {
-            throw ApiException.badRequest("That person is not a member of this trip.");
+            throw ApiException.badRequest("That person isn't one of this trip's travel buddies.");
         }
         return id;
     }

@@ -106,3 +106,16 @@
   gap: t.$space-2;
   align-items: center;
 }
+
+// Travel Buddies tab, while you are the only one on the trip.
+.solo-hint {
+  margin: 0 0 t.$space-4;
+  padding: t.$space-3 t.$space-4;
+  background: var(--tp-surface-alt);
+  border: 1px dashed var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  color: var(--tp-muted);
+  font-size: 0.9rem;
+}
+// A space after an emoji collapses to almost nothing next to its wide glyph.
+.solo-hint > [aria-hidden] { margin-right: 0.3em; }

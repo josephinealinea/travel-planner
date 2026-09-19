@@ -432,6 +432,19 @@ a { color: var(--tp-accent); }
   text-align: center;
 }
 
+/* "Planned with 🦙 Travelling Llama", written into the page itself rather than
+   by page.js, so it shows even with scripts off. It sits outside #app, under
+   the published date. #app ends in 72px of bottom padding, so the negative
+   margin pulls this line up to sit just under that date instead of 72px away. */
+.brand-footer {
+  margin-top: -60px;
+  padding: 0 16px 32px;
+  color: var(--tp-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.brand-footer a { color: var(--tp-accent); font-weight: 600; margin-left: 0.2em; }
+
 @media (max-width: 600px) {
   .page { padding: 20px 14px 56px; }
   .entry { flex-wrap: wrap; }

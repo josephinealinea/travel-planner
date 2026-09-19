@@ -52,6 +52,16 @@ public record AppProperties(
                 allowedOrigins = List.of("http://localhost:3000");
             }
         }
+
+        /**
+         * Where the website lives, with no trailing slash: the first allowed
+         * origin, because that is the frontend the API was deployed for. The
+         * emails and the published pages both link people here.
+         */
+        public String siteUrl() {
+            String origin = allowedOrigins.get(0);
+            return origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin;
+        }
     }
 
     public record Geocoding(String baseUrl, Duration timeout, int cityLimit, int placeLimit) {

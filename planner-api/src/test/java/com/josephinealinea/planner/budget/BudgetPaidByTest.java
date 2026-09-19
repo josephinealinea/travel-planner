@@ -294,12 +294,12 @@ class BudgetPaidByTest {
     void aPayerWhoIsNotAMemberIsRejected() {
         assertThatThrownBy(() -> expense("80.00", List.of(), "user-nobody"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not a member of this trip");
+                .hasMessageContaining("isn't one of this trip's travel buddies");
 
         BudgetItem row = expense("80.00", List.of(), SAM);
         assertThatThrownBy(() -> patchPayer(row.getId(), "user-nobody"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not a member of this trip");
+                .hasMessageContaining("isn't one of this trip's travel buddies");
         assertThat(reload(row.getId()).getPaidByUserId()).isEqualTo(SAM);
     }
 
@@ -338,7 +338,7 @@ class BudgetPaidByTest {
 
         assertThatThrownBy(() -> planWithCost("user-nobody"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not a member of this trip");
+                .hasMessageContaining("isn't one of this trip's travel buddies");
     }
 
     /** Clearing stays available on a plan whose cost nobody has paid yet. */

@@ -70,10 +70,11 @@ trip.
 ## How a trip comes together
 
 1. **Create a trip** — title, start date, end date.
-2. **Add members** by email. Each one gets an account and an emailed temporary
-   password; in local development the email is written to
-   `planner-api/data/outbox/*.eml`, so you can read it. Until a member signs in
-   and picks a screen name, the member list shows their email address.
+2. **Add travel buddies** by email, on the **Travel Buddies** tab. Each one gets
+   an account and an emailed temporary password; in local development the email
+   is written to `planner-api/data/outbox/*.eml`, so you can read it. Until a
+   buddy signs in and picks a screen name, the list shows their email address.
+   (Everywhere below, and in the code, a travel buddy is a trip *member*.)
 3. **Add destinations.** Typing a name looks the place up on
    [countries.dev](https://countries.dev) and fills in the country and
    coordinates, all of which stay editable — free text always saves.

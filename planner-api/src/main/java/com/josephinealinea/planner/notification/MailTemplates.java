@@ -9,17 +9,27 @@ import java.util.List;
 @Component
 public class MailTemplates {
 
+    private final String siteUrl;
     private final String signInUrl;
 
     public MailTemplates(AppProperties props) {
-        // The first configured CORS origin is where the frontend lives.
-        String origin = props.cors().allowedOrigins().get(0);
-        this.signInUrl = origin.endsWith("/") ? origin + "login.html" : origin + "/login.html";
+        this.siteUrl = props.cors().siteUrl();
+        this.signInUrl = siteUrl + "/login.html";
+    }
+
+    /**
+     * Every message goes out through here, so every one ends with the same
+     * sign-off: somebody reading an email about a trip should be able to tell
+     * where it came from. The subject stays about the trip.
+     */
+    private Email email(String to, String subject, String body) {
+        String text = body.endsWith("\n") ? body : body + "\n";
+        return new Email(to, subject, text + "\n— 🦙 Travelling Llama\n" + siteUrl + "\n");
     }
 
     /** New account: carries the default password they will be asked to change. */
     public Email invitedNewMember(String to, String tripTitle, String invitedBy, String defaultPassword) {
-        return new Email(to,
+        return email(to,
                 "You have been added to " + tripTitle,
                 """
                 %s added you to the trip "%s".
@@ -30,14 +40,14 @@ public class MailTemplates {
                   Password: %s
 
                 You will be asked to choose your own password and a screen name the
-                first time you sign in. Your screen name is what the other members
-                of the trip will see.
+                first time you sign in. Your screen name is what your
+                travel buddies will see.
                 """.formatted(invitedBy, tripTitle, signInUrl, to, defaultPassword));
     }
 
     /** Existing account: no credentials, just the news. */
     public Email addedExistingMember(String to, String tripTitle, String invitedBy) {
-        return new Email(to,
+        return email(to,
                 "You have been added to " + tripTitle,
                 """
                 %s added you to the trip "%s".
@@ -47,13 +57,13 @@ public class MailTemplates {
     }
 
     public Email removedFromTrip(String to, String tripTitle) {
-        return new Email(to,
+        return email(to,
                 "You have been removed from " + tripTitle,
                 "You no longer have access to the trip \"%s\".".formatted(tripTitle));
     }
 
     public Email publishRequested(String to, String tripTitle, String requestedBy) {
-        return new Email(to,
+        return email(to,
                 "%s wants to publish %s".formatted(requestedBy, tripTitle),
                 """
                 %s has asked to publish the trip "%s".
@@ -63,7 +73,7 @@ public class MailTemplates {
     }
 
     public Email publishApproved(String to, String tripTitle, String publicUrl) {
-        return new Email(to,
+        return email(to,
                 "%s is now published".formatted(tripTitle),
                 """
                 Your request to publish "%s" was approved.
@@ -73,13 +83,13 @@ public class MailTemplates {
     }
 
     public Email publishRejected(String to, String tripTitle) {
-        return new Email(to,
+        return email(to,
                 "Publish request for %s was declined".formatted(tripTitle),
                 "The owner declined the request to publish \"%s\" for now.".formatted(tripTitle));
     }
 
     public Email tripPublished(List<String> to, String tripTitle, String publicUrl) {
-        return new Email(String.join(", ", to),
+        return email(String.join(", ", to),
                 "%s is now published".formatted(tripTitle),
                 """
                 "%s" has been published.

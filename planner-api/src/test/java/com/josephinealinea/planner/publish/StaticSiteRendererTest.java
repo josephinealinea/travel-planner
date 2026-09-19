@@ -90,7 +90,7 @@ class StaticSiteRendererTest {
                         new TripCountries(destinations),
                         TestRates.with(store, paths, props,
                                 Map.of("USD", new BigDecimal("1.17")))),
-                new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths));
+                new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
     }
 
     private void seed(DestinationRepository destinations,
@@ -277,9 +277,13 @@ class StaticSiteRendererTest {
         assertThat(html).contains("<style>").contains("--tp-bg");
         assertThat(html).contains("window.TRIP =");
         // Nothing may be fetched at view time; the page has to work from a
-        // plain static host with no API behind it.
-        assertThat(html).doesNotContain("src=\"http").doesNotContain("href=\"http");
-        assertThat(html).doesNotContain("localhost");
+        // plain static host with no API behind it. The one absolute URL allowed
+        // is the brand's link to the site: an anchor is somewhere a reader may
+        // go, not something the page loads. It is cut out by its exact text,
+        // so any other link — or a second copy of this one — still fails.
+        String rest = html.replace("<a href=\"http://localhost:3000\">Travelling Llama</a>", "");
+        assertThat(rest).doesNotContain("src=\"http").doesNotContain("href=\"http");
+        assertThat(rest).doesNotContain("localhost");
     }
 
     @Test
@@ -299,7 +303,22 @@ class StaticSiteRendererTest {
 
         // This is what a format string would have destroyed: the data URI's
         // percent escapes must survive assembly untouched.
-        assertThat(html).contains("%3Csvg").contains("%F0%9F%A7%AD");
+        assertThat(html).contains("%3Csvg").contains("%F0%9F%A6%99");
+    }
+
+    /**
+     * A published page is the one screen of the app strangers see, so it says
+     * where it came from — and links to the site, not to the API that wrote it.
+     * The site is the first CORS origin, the same place the emails send people;
+     * with none configured that is the local frontend.
+     */
+    @Test
+    void signsThePageWithTheBrandLinkingToTheSite() throws Exception {
+        String html = render("minima");
+
+        assertThat(html).contains("Planned with")
+                .contains("<a href=\"http://localhost:3000\">Travelling Llama</a>")
+                .doesNotContain("href=\"http://localhost:8080");
     }
 
     /**

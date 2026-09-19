@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>My Trips — Travel Planner</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=72"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=72"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=72"       id="dark-css"       disabled>
+<title>My Trips — Travelling Llama</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/minima.css?v=75"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=75"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=75"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -42,8 +42,8 @@
 
   <!-- Empty state -->
   <div class="empty-state" x-show="!loading && !trips.length" x-cloak>
-    <div class="empty-icon">🧭</div>
-    <h2 class="empty-title">No trips yet</h2>
+    <div class="empty-icon" aria-hidden="true">🦙</div>
+    <h2 class="empty-title">No trips yet — where's the llama off to first?</h2>
     <p class="empty-body">
       A trip holds your destinations, checklist, itinerary and budget —
       and you can invite the people travelling with you.
@@ -60,7 +60,7 @@
 
         <div class="trip-card-badges">
           <span class="badge" :class="trip.isOwner ? 'badge-owner' : ''"
-                x-text="trip.isOwner ? 'Owner' : 'Member'"></span>
+                x-text="trip.isOwner ? 'Owner' : 'Travel buddy'"></span>
           <span class="badge" :class="trip.status === 'PUBLISHED' ? 'badge-published' : 'badge-draft'"
                 x-text="trip.status === 'PUBLISHED' ? 'Published' : 'Draft'"></span>
           <span class="badge" x-text="memberLabel(trip)"></span>
@@ -134,7 +134,7 @@
       </div>
       <p class="small">
         This permanently removes <strong x-text="deleting?.title"></strong> and everything in it —
-        destinations, checklist, itinerary and budget — for every member.
+        destinations, checklist, itinerary and budget — for every travel buddy.
       </p>
       <div class="field">
         <label for="confirm-title">Type the trip title to confirm</label>
@@ -190,7 +190,7 @@
     dates: (trip) => dateRange(trip.startDate, trip.endDate),
 
     memberLabel(trip) {
-      return `${trip.memberCount} member${trip.memberCount === 1 ? '' : 's'}`;
+      return `${trip.memberCount} travel ${trip.memberCount === 1 ? 'buddy' : 'buddies'}`;
     },
 
     // Only worth showing while the trip is still ahead.

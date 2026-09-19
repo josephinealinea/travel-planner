@@ -3,9 +3,22 @@
 .auth-wrap { padding-top: t.$space-6; }
 
 .auth-logo {
-  font-size: 2rem;
+  font-size: 2.75rem;
+  line-height: 1;
   text-align: center;
   margin-bottom: t.$space-2;
+}
+
+// The brand, above the page's own heading. It's a <p>, not the <h1>: the
+// heading still says what the page is for ("Sign in"), which is what a screen
+// reader announces first.
+.auth-brand {
+  margin: 0 0 t.$space-3;
+  font-family: var(--tp-font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--tp-accent);
+  text-align: center;
 }
 
 .auth-title { text-align: center; margin-bottom: t.$space-1; }

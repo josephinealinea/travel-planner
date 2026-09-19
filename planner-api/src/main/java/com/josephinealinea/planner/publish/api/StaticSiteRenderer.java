@@ -1,5 +1,6 @@
 package com.josephinealinea.planner.publish.api;
 
+import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
@@ -84,12 +85,16 @@ public class StaticSiteRenderer {
     private final BudgetService budgets;
     private final PageStore pages;
     private final ObjectMapper json;
+    /** Where the "Planned with Travelling Llama" line links: the website, not the API. */
+    private final String siteUrl;
 
     public StaticSiteRenderer(DestinationRepository destinations,
                               ChecklistRepository checklist,
                               ItineraryRepository itinerary,
                               BudgetService budgets,
-                              PageStore pages) {
+                              PageStore pages,
+                              AppProperties props) {
+        this.siteUrl = props.cors().siteUrl();
         this.destinations = destinations;
         this.checklist = checklist;
         this.itinerary = itinerary;
@@ -487,7 +492,7 @@ public class StaticSiteRenderer {
                 <meta name="description" content="{{title}} — {{startDate}} to {{endDate}}">
                 <meta property="og:title" content="{{ogTitle}}">
                 <meta name="robots" content="index, follow">
-                <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
+                <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
                 <style>
                 {{css}}
                 </style>
@@ -497,6 +502,7 @@ public class StaticSiteRenderer {
                   <div class="noscript">This trip page needs JavaScript to render its itinerary.</div>
                 </noscript>
                 <div id="app" class="page"></div>
+                <footer class="brand-footer">Planned with 🦙 <a href="{{siteUrl}}">Travelling Llama</a></footer>
                 <script>window.TRIP = {{payload}};</script>
                 <script>
                 {{vendor}}
@@ -518,6 +524,7 @@ public class StaticSiteRenderer {
         // inherent to a static file and harmless: every palette is inlined.
         values.put("themes", String.join(",", offeredThemes()));
         values.put("title", escapeHtml(trip.getTitle()));
+        values.put("siteUrl", escapeHtml(siteUrl));
         values.put("ogTitle", escapeHtml(trip.getTitle() + " " + flags));
         values.put("startDate", snapshot.startDate() == null ? "" : snapshot.startDate());
         values.put("endDate", snapshot.endDate() == null ? "" : snapshot.endDate());
