@@ -4,9 +4,9 @@ The free-tier deployment described in
 `.claude/plans/2026-09-18-postgres-and-cloud-run.md`. Nothing here has been run
 yet — this is the runbook for when you do.
 
-> **Not deployable yet.** Database mode can't start until the Postgres
-> repositories exist (Phase 2), and your YAML data needs the importer (Phase 3).
-> Everything else below is ready.
+> **Ready to deploy.** The app runs fully on Postgres, and step 7 moves your
+> existing trips across. Everything was rehearsed locally against a copy of
+> your real data; the only untested part is the cloud accounts themselves.
 
 ```
 yourdomain.com  (Cloudflare DNS + TLS)
@@ -257,9 +257,72 @@ the `*.pages.dev` address. That's expected.
 
 ## 7. Your data, and first sign-in
 
-*Pending Phase 3.* The importer copies your YAML data (accounts included, so
-existing passwords keep working) into Neon from your laptop, then you publish
-once to render the pages into R2. Its exact commands will be added here.
+The importer copies your YAML data into Neon, run once, from your laptop, where
+the YAML lives. It is the API itself started with one extra setting: it
+imports, verifies, and exits. It brings every account over with its password
+hash intact, so **everyone signs in with the password they already have**.
+
+What it guarantees:
+
+- **All or nothing.** The whole import is one transaction; any failure leaves
+  Neon exactly as empty as it was.
+- **It proves the copy before committing it.** Every record is compared field
+  by field, in order, and every member's budget — shares and settlements
+  included — is recomputed from both stores. Any difference and nothing is
+  committed.
+- **It never merges.** A database with any user or trip in it is refused.
+- **It only reads your YAML**, and writes nothing into your data folder: the
+  commands below give the run a scratch folder of its own.
+
+Rehearsed on a copy of your real data (1 trip, 8 accounts, 9 destinations, 23
+checklist items, 34 itinerary entries, 17 expenses): both verifications passed
+(92 records, 7 budget summaries), and a second run was refused.
+
+**Before you start:** Neon must be empty (a fresh project is), and the Cloud
+Run service must **not** have `BOOTSTRAP_OWNER_*` set, or its first start
+creates an account and the importer, rightly, refuses. The commands run the
+import on a random port (`--server.port=0`), so your local API on 8080 can stay
+running.
+
+Replace the four Neon placeholders with the values from step 1.
+
+#### 1. Dry run: import, verify, then roll back
+```bash
+cd planner-api && FEATURE_ENABLE_DATABASE=true DB_URL='jdbc:postgresql://NEON_HOST/NEON_DB?sslmode=require' DB_USER=NEON_ROLE DB_PASSWORD='NEON_PASSWORD' DATA_DIR=/tmp/planner-import ./gradlew bootRun --args='--app.import.yaml-dir=./data --app.import.dry-run=true --server.port=0'
+```
+
+Read the report it prints. You're looking for both lines under
+*Verification* reading **PASSED**, and **Result: DRY RUN**. Nothing is written.
+
+#### 2. The real import
+```bash
+cd planner-api && FEATURE_ENABLE_DATABASE=true DB_URL='jdbc:postgresql://NEON_HOST/NEON_DB?sslmode=require' DB_USER=NEON_ROLE DB_PASSWORD='NEON_PASSWORD' DATA_DIR=/tmp/planner-import ./gradlew bootRun --args='--app.import.yaml-dir=./data --server.port=0'
+```
+
+This time it should end with **Result: COMMITTED**. Run it again by mistake
+and it answers **REFUSED** — the database is no longer empty — and changes
+nothing.
+
+What it reports but deliberately does **not** import:
+
+| | Why |
+|---|---|
+| Weather readings | A cache; it refills on the first trip load |
+| Exchange rates | Refetched on the first read that finds none |
+| Published pages | They are rendered files, not records; the report lists the trips to publish again |
+| An old per-trip rate table | Not read since rates became install-wide |
+
+If it reports rows with an old `destinationId(s)` link: they import exactly as
+the app shows them today. The app doesn't read that link either.
+
+**3. Sign in and publish.** Open `https://yourdomain.com`, sign in with your
+usual email and password, and for each trip under *Published trips* in the
+report, open its **Publish** tab and publish it again. That renders its page,
+and every member's personal page, into R2. Undecided publish requests came
+across too; approving one renders its page afresh.
+
+Your laptop's YAML is untouched throughout, and stays your fallback: the local
+API in YAML mode still works exactly as before.
 
 ---
 

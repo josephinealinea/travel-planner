@@ -46,6 +46,15 @@ class NoteRepository extends TripScopedJdbcRepository<NoteRepository.Note> {
         }
     }
 
+    /**
+     * A test-only table, in the same database as the real schema. <b>The
+     * {@code test_} prefix is load-bearing, not decoration:</b>
+     * JdbcTripRepositoryContractTest.everyTableReferencingTripsIsCovered reads
+     * every foreign key onto {@code trips} from the catalogue and fails for any
+     * table its cascade test doesn't cover — ignoring exactly the ones named
+     * {@code test_…}. A test table under any other name would read as a real
+     * table missing from that check.
+     */
     static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS test_notes (
                 trip_id text   NOT NULL REFERENCES trips (id) ON DELETE CASCADE,

@@ -1,7 +1,7 @@
 package com.josephinealinea.planner.identity.infra;
 
 import com.josephinealinea.planner.identity.domain.User;
-import com.josephinealinea.planner.trips.infra.EveryField;
+import com.josephinealinea.planner.storage.EveryField;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

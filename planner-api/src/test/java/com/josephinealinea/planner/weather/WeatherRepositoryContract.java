@@ -1,6 +1,6 @@
 package com.josephinealinea.planner.weather;
 
-import com.josephinealinea.planner.destinations.PerTripStores;
+import com.josephinealinea.planner.storage.EveryField;
 import com.josephinealinea.planner.storage.TripScopedRepository;
 import com.josephinealinea.planner.storage.TripScopedRepositoryContract;
 import com.josephinealinea.planner.weather.domain.WeatherRecord;
@@ -96,7 +96,7 @@ public abstract class WeatherRepositoryContract extends TripScopedRepositoryCont
     @Test
     void everyFieldComesBackAsItWasSaved() {
         WeatherRecord full = fullyPopulated();
-        PerTripStores.assertEveryStoredFieldIsSet(full);
+        EveryField.assertEverySet(full);
 
         store().save(TRIP, full);
 

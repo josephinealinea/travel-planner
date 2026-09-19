@@ -2,7 +2,7 @@ package com.josephinealinea.planner.budget;
 
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
 import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
-import com.josephinealinea.planner.destinations.PerTripStores;
+import com.josephinealinea.planner.storage.TestYamlPaths;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +17,7 @@ class YamlBudgetRepositoryTest extends BudgetRepositoryContract {
 
     @BeforeEach
     void store(@TempDir Path dir) {
-        repository = new YamlBudgetRepository(new YamlStore(), PerTripStores.yamlPaths(dir), new TripLocks());
+        repository = new YamlBudgetRepository(new YamlStore(), TestYamlPaths.under(dir), new TripLocks());
     }
 
     @Override

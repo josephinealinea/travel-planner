@@ -1,8 +1,8 @@
 package com.josephinealinea.planner.itinerary;
 
-import com.josephinealinea.planner.destinations.PerTripStores;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.itinerary.infra.YamlItineraryRepository;
+import com.josephinealinea.planner.storage.TestYamlPaths;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +17,7 @@ class YamlItineraryRepositoryTest extends ItineraryRepositoryContract {
 
     @BeforeEach
     void store(@TempDir Path dir) {
-        repository = new YamlItineraryRepository(new YamlStore(), PerTripStores.yamlPaths(dir), new TripLocks());
+        repository = new YamlItineraryRepository(new YamlStore(), TestYamlPaths.under(dir), new TripLocks());
     }
 
     @Override

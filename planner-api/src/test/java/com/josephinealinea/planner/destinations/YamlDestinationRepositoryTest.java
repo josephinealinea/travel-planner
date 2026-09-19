@@ -2,6 +2,7 @@ package com.josephinealinea.planner.destinations;
 
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
+import com.josephinealinea.planner.storage.TestYamlPaths;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +20,7 @@ class YamlDestinationRepositoryTest extends DestinationRepositoryContract {
 
     @BeforeEach
     void store(@TempDir Path dir) {
-        repository = new YamlDestinationRepository(new YamlStore(), PerTripStores.yamlPaths(dir), new TripLocks());
+        repository = new YamlDestinationRepository(new YamlStore(), TestYamlPaths.under(dir), new TripLocks());
     }
 
     @Override

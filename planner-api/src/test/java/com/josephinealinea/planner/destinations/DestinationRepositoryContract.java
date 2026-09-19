@@ -2,6 +2,7 @@ package com.josephinealinea.planner.destinations;
 
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.storage.EveryField;
 import com.josephinealinea.planner.storage.TripScopedRepository;
 import com.josephinealinea.planner.storage.TripScopedRepositoryContract;
 import org.junit.jupiter.api.Test;
@@ -76,7 +77,7 @@ public abstract class DestinationRepositoryContract extends TripScopedRepository
     @Test
     void everyFieldComesBackAsItWasSaved() {
         Destination full = fullyPopulated();
-        PerTripStores.assertEveryStoredFieldIsSet(full);
+        EveryField.assertEverySet(full);
 
         store().save(TRIP, full);
 

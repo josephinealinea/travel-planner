@@ -1,10 +1,10 @@
 # Plan — PostgreSQL, and a free-tier deployment on Cloud Run + Neon + Cloudflare
 
-**Status:** **Phases 1 and 2 done** (18 Sep) — in the working tree,
-uncommitted; 673 tests green, none skipped. The whole application starts and
-runs in database mode (`DatabaseModeApplicationTest`). Phase 3 next: the
-importer (Agent E), then CLAUDE.md, the brief, and a browser run with the flag
-on.
+**Status:** **All three phases done** (19 Sep). Phases 1–2 committed
+(`b2223d9`); Phase 3 (importer, CLAUDE.md, brief, docs) in the working tree,
+uncommitted. 672 tests green, none skipped. The importer was rehearsed on a copy
+of the real data and verified end to end — see the brief. Next: deploying,
+per `docs/deploy.md`, by the 4 Oct milestone.
 Found during Phase 1: Testcontainers must be 1.21.4+ for this machine's
 Docker 29 (pinned in `build.gradle.kts`), and under Colima the container tests
 are skipped rather than failed unless Testcontainers is told where Docker is —

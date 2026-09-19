@@ -4,7 +4,7 @@ import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.domain.BudgetStatus;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
-import com.josephinealinea.planner.destinations.PerTripStores;
+import com.josephinealinea.planner.storage.EveryField;
 import com.josephinealinea.planner.storage.TripScopedRepository;
 import com.josephinealinea.planner.storage.TripScopedRepositoryContract;
 import org.junit.jupiter.api.Test;
@@ -126,7 +126,7 @@ public abstract class BudgetRepositoryContract extends TripScopedRepositoryContr
     @Test
     void everyFieldComesBackAsItWasSaved() {
         BudgetItem full = fullyPopulated();
-        PerTripStores.assertEveryStoredFieldIsSet(full, UNSTORED);
+        EveryField.assertEverySet(full, UNSTORED);
 
         store().save(TRIP, full);
 

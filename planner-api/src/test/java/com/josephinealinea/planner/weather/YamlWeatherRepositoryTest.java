@@ -1,6 +1,6 @@
 package com.josephinealinea.planner.weather;
 
-import com.josephinealinea.planner.destinations.PerTripStores;
+import com.josephinealinea.planner.storage.TestYamlPaths;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlStore;
 import com.josephinealinea.planner.weather.infra.WeatherRepository;
@@ -17,7 +17,7 @@ class YamlWeatherRepositoryTest extends WeatherRepositoryContract {
 
     @BeforeEach
     void store(@TempDir Path dir) {
-        repository = new YamlWeatherRepository(new YamlStore(), PerTripStores.yamlPaths(dir), new TripLocks());
+        repository = new YamlWeatherRepository(new YamlStore(), TestYamlPaths.under(dir), new TripLocks());
     }
 
     @Override

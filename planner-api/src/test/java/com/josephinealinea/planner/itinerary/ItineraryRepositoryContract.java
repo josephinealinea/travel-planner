@@ -1,9 +1,9 @@
 package com.josephinealinea.planner.itinerary;
 
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
-import com.josephinealinea.planner.destinations.PerTripStores;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
+import com.josephinealinea.planner.storage.EveryField;
 import com.josephinealinea.planner.storage.TripScopedRepository;
 import com.josephinealinea.planner.storage.TripScopedRepositoryContract;
 import org.junit.jupiter.api.Test;
@@ -92,7 +92,7 @@ public abstract class ItineraryRepositoryContract extends TripScopedRepositoryCo
     @Test
     void everyFieldComesBackAsItWasSaved() {
         ItineraryItem full = fullyPopulated();
-        PerTripStores.assertEveryStoredFieldIsSet(full, UNSTORED);
+        EveryField.assertEverySet(full, UNSTORED);
 
         store().save(TRIP, full);
 

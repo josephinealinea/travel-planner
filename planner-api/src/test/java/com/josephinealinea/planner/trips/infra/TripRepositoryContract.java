@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.trips.infra;
 
 import com.josephinealinea.planner.publish.domain.PublishRequest;
+import com.josephinealinea.planner.storage.EveryField;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.trips.domain.TripMember;
 import com.josephinealinea.planner.trips.domain.TripRole;

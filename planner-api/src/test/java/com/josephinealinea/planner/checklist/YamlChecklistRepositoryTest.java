@@ -2,7 +2,7 @@ package com.josephinealinea.planner.checklist;
 
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
 import com.josephinealinea.planner.checklist.infra.YamlChecklistRepository;
-import com.josephinealinea.planner.destinations.PerTripStores;
+import com.josephinealinea.planner.storage.TestYamlPaths;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +17,7 @@ class YamlChecklistRepositoryTest extends ChecklistRepositoryContract {
 
     @BeforeEach
     void store(@TempDir Path dir) {
-        repository = new YamlChecklistRepository(new YamlStore(), PerTripStores.yamlPaths(dir), new TripLocks());
+        repository = new YamlChecklistRepository(new YamlStore(), TestYamlPaths.under(dir), new TripLocks());
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.josephinealinea.planner.rates.infra;
 
 import com.josephinealinea.planner.rates.domain.RateTable;
-import com.josephinealinea.planner.trips.infra.EveryField;
+import com.josephinealinea.planner.storage.EveryField;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

@@ -2,7 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Two independent projects: `planner-api` (Spring Boot 3.5 / Java 21, no database)
+Two independent projects: `planner-api` (Spring Boot 3.5 / Java 21; YAML files
+locally, PostgreSQL behind `feature-enable-database`)
 and `planner-web` (static pages, Alpine.js, Sass). The [root README](README.md)
 covers product behaviour; this file covers what is hard to see from any single
 file.
@@ -82,10 +83,35 @@ cd planner-web && npm run css:watch
 ```bash
 cd planner-web && ./serve.sh
 ```
+#### Start local Postgres (for database mode)
+```bash
+docker compose up -d postgres
+```
+#### Run the API in database mode
+```bash
+cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
+```
+#### Serve the frontend through the Cloudflare proxy, as deployed (:8788)
+```bash
+cd planner-web && npm run pages:dev
+```
+#### Build the API image
+```bash
+docker build -t planner-api planner-api
+```
 
 There is no linter and no frontend test suite. Failures land in
 `planner-api/build/reports/tests/test/index.html`, and the machine-readable
 detail is in `build/test-results/test/*.xml`.
+
+**Check that container tests ran, not just that the suite is green.** The
+Postgres and MinIO tests are `@Testcontainers(disabledWithoutDocker = true)`: if
+Testcontainers can't reach Docker they are **skipped**, and a run that tested
+no database reports BUILD SUCCESSFUL. On this machine Docker is Colima, which
+needs `docker.host` in `~/.testcontainers.properties` and
+`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE` in `~/.zshrc` (both set — see
+`docs/deploy.md`, *Local development*). Count the `skipped` attribute in
+`build/test-results/test/*.xml`; it should be 0.
 
 `PUBLIC_BASE_URL` must track `PORT` — it is what the app shows as a published
 trip's public link. `app.cors.allowed-origins` must list the frontend origin,
@@ -349,21 +375,88 @@ Rules that are easy to break by accident, all with tests:
 
 Feature modules, each with the same four layers — `domain/` (stored records),
 `api/` (services, where the rules live), `infra/` (repository interface plus its
-YAML implementation), `web/` (controllers and request/response types).
+YAML and JDBC implementations), `web/` (controllers and request/response types).
 
-**Storage.** Every repository is an interface with a
-`@ConditionalOnProperty(name = "feature-enable-database", havingValue = "false",
-matchIfMissing = true)` YAML implementation, so a database implementation drops
-in without touching a service. None exists yet, and `FeatureFlags` fails startup
-with an explanation rather than letting the flag silently do nothing.
+**Storage: two stores behind one set of interfaces.** Every repository is an
+interface — `UserRepository`, `TripRepository`, and the six that were concrete
+YAML classes until the database work (`Budget`, `Checklist`, `Destination`,
+`Itinerary`, `Weather`, `Rates`), which kept their names so **no service
+changed**. Each has a `Yaml…` implementation, `@ConditionalOnProperty(name =
+"feature-enable-database", havingValue = "false", matchIfMissing = true)`, and a
+`Jdbc…` one with `havingValue = "true"`. The flag (`FEATURE_ENABLE_DATABASE`)
+defaults to off: local development is YAML, the cloud deployment is Postgres.
+The plan and its reasoning are in
+`.claude/plans/2026-09-18-postgres-and-cloud-run.md`.
 
-- `TripScopedYamlRepository` holds the shape shared by destinations, checklist,
-  itinerary and budget: one YAML list per trip, replaced wholesale under that
-  trip's lock. Adding a fifth per-trip entity means extending it, not copying it.
+- **The per-trip entities share one base per store.** `TripScopedRepository<T>`
+  is the interface; `TripScopedYamlRepository` (one YAML list per trip,
+  replaced wholesale under that trip's lock) and
+  `storage/jdbc/TripScopedJdbcRepository` implement it. Adding another per-trip
+  entity means extending both bases, not copying either. The module finders
+  (`findAllOrdered`, `findByItineraryItem`, `findByChecklistItem`) are
+  **`default` methods on the interfaces**, so the sort rules exist once and the
+  two stores cannot disagree about them.
+- **With the flag off, YAML mode starts exactly as it did before the database
+  existed.** The JDBC starter and Flyway are on the classpath, so Spring Boot
+  would build a DataSource on every start and die with "url not specified".
+  `config/DatabaseModeEnvironment` (an `EnvironmentPostProcessor`, registered in
+  `META-INF/spring.factories`) prevents that: with the flag off it adds the
+  DataSource, JDBC, SQL-init and Flyway auto-configurations to
+  `spring.autoconfigure.exclude`, merged with any excludes already set.
+  `YamlModeStartupTest` pins it, and was written before the dependency was added
+  precisely so this couldn't break unnoticed.
+- **Flyway owns the schema, and only the schema.** `db/migration/` never
+  inserts, updates or deletes rows — `MigrationsAreSchemaOnlyTest` enforces it.
+  Data moves once, through the importer (application code, not a migration).
+- **The schema rules** (`V1__baseline_schema.sql`), each there because a
+  cheaper choice would silently change behaviour:
+  - every per-trip table is keyed `(trip_id, id)` — weather ids repeat across
+    trips — and carries `seq`, an identity column recording insertion order.
+    Budget and weather have no `sortOrder` and tie-break on YAML list order;
+    `seq` is that order. Upserts leave it alone; `replaceAll` re-inserts in the
+    order given.
+  - **order that decides money is stored as order.** `trip_members.position`
+    and `budget_items.shared_by_user_ids` as an ordered `text[]` — the odd cent
+    of a split goes to the earliest sharer, so a set would move pennies between
+    people.
+  - itinerary `start_at`/`end_at` are `timestamp` **without** time zone:
+    wall-clock time at the destination. `timestamptz` would shift a 06:00
+    departure by the JVM's zone.
+  - foreign keys only where the app guarantees the target exists — `trip_id →
+    trips ON DELETE CASCADE`, owner and members → `users`. Cross-row links
+    (itinerary↔budget, checklist↔itinerary, `seededFromDestinationId`, payer,
+    sharers, audit ids) have none, because the app deliberately keeps them after
+    their target is gone ("Former member", unlinking, `adoptOrphanedDays`).
+  - enums as `text` with no `CHECK`, so adding a category stays a four-place
+    change rather than five.
+  - `Trip.exchangeRates` has no column: it is "no longer read", kept only so old
+    YAML loads.
+- **Repositories resolve the trip from the slug, never from the entity.** The
+  per-trip methods are keyed by slug (immutable, set once in `TripService`);
+  SQL uses `trip_id = (SELECT id FROM trips WHERE slug = :slug)` and ignores
+  whatever `tripId` the entity carries.
+- **Every column has an every-field round-trip test that fails when a domain
+  field is added but not mapped** — `storage/EveryField` (test code). Add a
+  field to a stored class and the round-trip tests for it fail until the
+  fixture sets it, which is the moment to add the column and map it.
+- **YAML and Postgres are proven equivalent, not assumed.** Each repository has
+  one abstract `…RepositoryContract` run by two subclasses — YAML (temp dir) and
+  Postgres (`@PostgresTest`, Testcontainers). A behaviour that differs between
+  the stores fails a test. The few intentional differences (microsecond
+  timestamps, `exchangeRates` unstored, database-enforced uniqueness) are
+  pinned by name.
+- `DatabaseModeApplicationTest` boots the **whole application** on Postgres and
+  runs a trip through the real services — the cascade, the budget, the view
+  assembly and a delete that must leave every table empty.
 - **A trip's file is the single source of truth.** `trips/index.yml` is only an
   id-to-slug directory, so there is no duplicated trip data to fall out of sync.
 - **Deleting a trip must delete everything it put anywhere.** The five per-trip
-  YAML files go in `YamlTripRepository.delete`; the *rendered public page* goes
+  YAML files go in `YamlTripRepository.delete`; in database mode one `DELETE
+  FROM trips` does it through `ON DELETE CASCADE`, and
+  `JdbcTripRepositoryContractTest.everyTableReferencingTripsIsCovered` reads
+  every foreign key onto `trips` from the catalogue and fails if a new table
+  isn't in its cascade test (test-only tables must be named `test_…` — see
+  `NoteRepository`). The *rendered public page* goes
   in `TripService.delete`, via `renderer.remove(slug)`. That second one is the
   easy cascade to forget and the only one where forgetting is a privacy
   problem rather than a tidiness one: a published page is a plain static
@@ -372,8 +465,12 @@ with an explanation rather than letting the flag silently do nothing.
   directories were found doing exactly that. Pinned by
   `AuditTrailTest.deletingATripRemovesItsPublishedPage`.
 - `TripLocks` guards read-modify-write; `YamlStore` writes to a `.tmp` and moves
-  it into place. Both are process-local, which is why this is **single-instance
-  only**.
+  it into place. Both are process-local, which is why YAML mode is
+  **single-instance only**. The JDBC repositories don't use `TripLocks`: two
+  row upserts can't clobber each other the way two rewrites of one YAML file
+  can. Service-level read-modify-write sequences are exactly as racy in both
+  modes, and service-level `@Transactional` was deliberately left for later —
+  hence `--max-instances=1` on Cloud Run.
 - **Derived values are never stored.** Nights are recomputed from the dates, in
   Java for the seeder and in JS for the destinations table.
 
@@ -449,6 +546,35 @@ lookup — from `resources/publish/page.css` and `page.js`. Those assets live in
 the API on purpose, so publishing never depends on the frontend having been
 built. Output is a plain static directory; copying it to a CDN is the whole
 deployment.
+
+**Where pages are written is a `PageStore`** (`publish/infra`), chosen by
+`app.publish.store` and **independent of the database flag**:
+`FileSystemPageStore` (the default — today's directories, used locally) or
+`R2PageStore` (Cloudflare R2 over its S3-compatible API, used in the cloud). The
+publish code only ever touches pages through it — `StaticSiteRenderer`,
+`PublicPageController` and `TripViewAssembler` — so everything below holds for
+both. Four things are easy to break:
+
+- **Approving a request renames a whole directory** on the filesystem. That is
+  why the cloud stores pages in R2 rather than on a mounted Cloud Storage
+  bucket: Cloud Storage FUSE refuses directory renames on an ordinary bucket.
+  `R2PageStore.promote` is copy-then-delete, deleting the live page first so a
+  failure leaves no page rather than a half-merged one — the filesystem's own
+  ordering.
+- **Listing a trip's personal pages is one call.** `TripViewAssembler` used to
+  check for a file once per member on every trip load; on R2 that would be one
+  network round trip per member. `PageStore.publishedMemberPages(slug)` lists
+  them in one.
+- **One private bucket, two prefixes**: `published/<slug>/…` and
+  `pending/<slug>/…`. Nothing about the bucket is public. The Cloudflare
+  Function `planner-web/functions/p/[[path]].js` serves `/p/*` straight from R2
+  — so a public reader never wakes the API — and it only ever reads
+  `published/`, validating each segment the way `Slugs.requireSafe` does. It
+  mirrors `PublicPageController`'s routes exactly; when one changes, change the
+  other.
+- The R2 client is created **lazily**, on first publish, so the AWS SDK adds
+  nothing to a cold start that doesn't publish. Settings are the `app.r2.*`
+  record `R2Properties`, bound only when the R2 store is selected.
 
 **A publish request builds the page; approving it only reveals it.** A member
 who is not the owner cannot publish, and their request now renders the page
@@ -817,6 +943,37 @@ in Alpine while pre-existing ones still work. `serve.sh` now sends
 restart the server and close the browser tab (a plain reload is not enough —
 the module graph survives it).
 
+**A container test that can't reach Docker is skipped, not failed.** Every
+Postgres and MinIO test is `@Testcontainers(disabledWithoutDocker = true)`, so a
+build that tested no database still says BUILD SUCCESSFUL. It happened twice
+while this was built, for two different reasons: Spring Boot 3.5.3's BOM ships
+Testcontainers 1.21.2, whose Docker client Docker Engine 29 refuses ("minimum
+supported API version is 1.44") — hence the `testcontainers.version` pin in
+`build.gradle.kts`, removable once the BOM carries ≥ 1.21.4; and under Colima
+there is no `/var/run/docker.sock` on the host. Colima needs **two** settings
+in two places, because Testcontainers reads them from different sources:
+`docker.host` from `~/.testcontainers.properties`, but the socket path it mounts
+into its cleanup container (`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`) **only from
+the environment** — a `docker.socket.override` line in the properties file is
+silently ignored, and the cleanup container then fails to mount the Mac-side
+path. Without it, every container test reports skipped. Always read the
+`skipped` count.
+
+**`DatabaseModeEnvironment` reads the flag before `@DynamicPropertySource`
+exists.** It decides which auto-configurations to exclude while the environment
+is being prepared, so a test must set `feature-enable-database` through
+`@SpringBootTest(properties = …)`, a command-line argument or an environment
+variable. Set it in a `@DynamicPropertySource` and the repositories follow the
+flag while the auto-configurations don't — a context with JDBC repositories and
+no DataSource, or the reverse.
+
+**An explicit NULL does not fall back to a column's default.** `category`,
+checklist and budget `status`, the arrays and the like are `NOT NULL DEFAULT …`,
+but an `INSERT` that names the column with a NULL value fails the constraint
+rather than taking the default. The JDBC mappers therefore write the default
+themselves when the domain field is null — budget `status` → `CONFIRMED`,
+the same "a row with no status reads as a charge" rule the YAML store follows.
+
 ## countries.dev
 
 Free, no key. Three behaviours are load-bearing, all confirmed live and encoded
@@ -984,6 +1141,17 @@ readable and no code nobody can pick ever appears in it.
   to `CompletableFuture.runAsync`; until it lands, `RatesService.current()`
   answers from `data/rates.yml`, which after any normal restart is yesterday's
   table rather than nothing.
+- **…and also refreshed on read once older than 24 h.** On free-tier Cloud Run
+  the CPU exists only while a request is running, so neither the 01:30 cron nor
+  the startup thread can be relied on. `RatesService.current()` therefore
+  refreshes a table that is stale (older than `MAX_AGE`, or never fetched),
+  synchronously, with the client's own timeout. **This is the one place a
+  request can wait on the provider**, so it is fenced three ways: a `tryLock`
+  means only one reader fetches while every other reader gets the held table at
+  once; a failure (from a read or the cron) stops reads retrying for
+  `RETRY_AFTER_FAILURE` (15 min), or an outage would add the whole timeout to
+  every request; and a failed fetch still keeps the old table. The cron and the
+  startup fetch are unchanged and take the same lock.
 - **A failed refresh never clears what is held.** The client returns null and
   the service keeps the previous table. Rates a day old are a rounding
   difference; no rates at all is every total on the install reading as
@@ -1002,10 +1170,104 @@ readable and no code nobody can pick ever appears in it.
   fallback inside `AppProperties.Currencies` is majors-only, so a deployment
   that omits the list gets no LATAM currencies at all.
 
+## Deployment: Cloud Run + Neon + Cloudflare
+
+Built to stay inside three free tiers. The runbook is `docs/deploy.md`; the plan
+and every decision's reasoning are in
+`.claude/plans/2026-09-18-postgres-and-cloud-run.md`.
+
+```
+yourdomain.com  (Cloudflare DNS + TLS)
+ ├─ /*       Cloudflare Pages → planner-web/dist        static, unmetered
+ ├─ /api/*   Pages Function → Cloud Run (API)           + X-Proxy-Secret
+ └─ /p/*     Pages Function → R2 (published pages)      never wakes the API
+Cloud Run  europe-west3 · 0–1 instances  ──►  Neon Postgres  aws-eu-central-1
+```
+
+- **One origin is the requirement; one container is not.** The auth cookies are
+  host-only and `SameSite=Lax`, and `js/api.js` reads the CSRF cookie from
+  `document.cookie` to echo it as `X-XSRF-TOKEN`. Split across two hosts, a page
+  on `app.example.com` cannot read a cookie set by `api.example.com`, so every
+  write fails CSRF; across `pages.dev` and `run.app` (different sites — `run.app`
+  is on the Public Suffix List) the login cookie isn't even sent. **Local
+  development only works split because browsers don't separate cookies by
+  port** — `localhost:3000` reads what `localhost:8080` set — which is exactly
+  why it can't be copied to production. The proxy Function makes the browser see
+  one origin, so no auth code changed. (Firebase Hosting rewrites were ruled out
+  for the same reason: its CDN strips every cookie except `__session`.)
+- **The proxy** (`functions/api/[[path]].js`) forwards method, body, query and
+  cookies untouched, drops any client-sent `Forwarded`/`X-Forwarded-*` headers
+  before setting its own (the API trusts them — `forward-headers-strategy`),
+  and adds `X-Proxy-Secret`. **`ProxySecretFilter`** in the API refuses anything
+  without that secret (403 `proxy_required`), except `/actuator/health`, so the
+  public `run.app` URL isn't a second front door around Cloudflare. With
+  `PROXY_SECRET` blank — local development — it does nothing.
+- **`config.js` defaults the API base to the page's own origin**, except on
+  `localhost:3000`, where it stays `http://localhost:8080`. `?api=` and
+  `window.PLANNER_API_BASE` still override.
+- **`npm run build` copies the deployable site into `dist/`**, including
+  `_headers` (`Cache-Control: no-cache` on everything, so browsers revalidate —
+  the ES-module trap below, defused for the CDN) and `404.html` (so unknown
+  paths are a real 404, not Pages' fallback to `index.html`).
+  `npm run pages:dev` runs the whole thing locally through wrangler on :8788.
+- **The image is API-only** (`planner-api/Dockerfile`): extracted into layers,
+  with a class-data-sharing archive written by a training run in the image, which
+  cut cold start from ~8.9 s to ~6.7 s at 1 CPU / 1 GiB. It runs as a non-root
+  user. **`.dockerignore` is a security list** — `data/` holds password hashes,
+  the JWT signing key and every trip.
+- **Scale to zero shapes three things:** cold starts on the first request after
+  a quiet spell; the rates refresh-on-read above; and `JWT_SECRET` must come
+  from Secret Manager, because a generated one lives in the data directory,
+  which Cloud Run discards on every restart — logging everybody out.
+- **Neon:** the *direct* endpoint, not `-pooler` (Flyway holds a session lock the
+  transaction-mode pooler can't), `sslmode=require`, and Hikari `minimum-idle:
+  0` — an idle pool holding connections would stop Neon sleeping and spend its
+  monthly compute hours while nobody uses the app.
+- **New settings go in their own `@ConfigurationProperties` record**
+  (`ProxyProperties`, `R2Properties`, `ImportProperties`), each registered on its
+  own config class — never into `AppProperties`, which about twenty tests
+  construct positionally.
+
+**The importer** (`importer/`) is how YAML data reaches Postgres — once, as
+application code, never as a Flyway migration. It is the API started with
+`--app.import.yaml-dir=<data dir>` in database mode: `ImportRunner` runs ahead
+of the bootstrap-owner runner (`HIGHEST_PRECEDENCE`), imports, prints a report
+and **exits the process** (0 committed or dry run verified, 1 failed, 2
+refused), so the bootstrap never runs on an import start. The rules, all in
+`YamlImporterTest`:
+
+- **One transaction around everything**; the repositories' own transactions
+  join it, so any failure leaves the database as empty as it was. `--app.import.dry-run=true`
+  does the whole thing and rolls back.
+- **Empty or nothing.** `users` and `trips` are locked, then must both be
+  empty. It never merges.
+- **Read through the YAML repositories, written through the JDBC ones**, so it
+  sees exactly what the app sees in YAML mode — rows carrying the pre-country
+  `destinationIds` link import *as the app shows them today* (it doesn't read
+  that link either) and are counted in the report, not converted.
+- **Each trip's rows go in with `replaceAll` in file order**, which is what
+  gives `seq` the YAML's order.
+- **History survives.** The user and trip repositories stamp timestamps on
+  save; right after each save an `UPDATE` restores the file's own values.
+  (Which is also why `YamlImporterTest` writes its fixtures straight through
+  `YamlStore`: written through the repositories, every timestamp would read
+  "now", and a restore could not be told from an overwrite.)
+- **`ImportVerifier` proves the copy inside the transaction**, before it can
+  commit: every record field by field, in order, via the same Jackson mapper
+  YAML is written with (exact decimals, instants to the microsecond); and every
+  member's `BudgetService` summary — shares, settlements and all — recomputed
+  from both stores against one fixed rate table. Any difference rolls back.
+- Weather (a cache), exchange rates (refetched) and rendered pages (files, not
+  rows) are deliberately not imported; the report lists the trips to publish
+  again.
+
+The procedure is `docs/deploy.md` step 7.
+
 ## Conventions
 
-- Boot 3.5 with Jackson 2 is deliberate: YAML *is* the persistence layer, and
-  Jackson 3's relocation to `tools.jackson.*` was unverified. The sibling
+- Boot 3.5 with Jackson 2 is deliberate: YAML is still a persistence layer (the
+  local store, and what the importer reads), and Jackson 3's relocation to
+  `tools.jackson.*` was unverified. The sibling
   `../travel-app` uses Boot 4.1; switching is a two-line change in
   `build.gradle.kts`.
 - YAML files are meant to be readable next to the hand-written ones in
