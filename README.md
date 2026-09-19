@@ -86,14 +86,18 @@ trip.
    Plan activities in Cusco
    ```
 
-4. **Work the checklist.** Open an item to edit it, add a note, or press **Plan**
+4. **Say who's going.** A destination can be for some travel buddies only, and
+   its checklist and plans follow it unless you change them. Each buddy sees
+   their own part; the trip's owner can switch between **Mine** and
+   **Whole trip**.
+5. **Work the checklist.** Open an item to edit it, add a note, or press **Plan**
    to record a flight or booking — the form arrives pre-filled. Add as many
    plans as the job needs with **Plan another**; nothing is complete until
    somebody presses **Set this Checklist to Complete**.
-5. **Costs become budget.** A cost on a plan creates a matching budget record.
+6. **Costs become budget.** A cost on a plan creates a matching budget record.
    Editing the cost updates the amount; clearing it removes the record. Expenses
    can also be added by hand.
-6. **Publish.** The owner can publish at any point, however unfinished. Any other
+7. **Publish.** The owner can publish at any point, however unfinished. Any other
    member gets **Request to Publish**, and the owner's approval publishes.
 
 ## What publishing produces

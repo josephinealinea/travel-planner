@@ -25,10 +25,15 @@ public class ChecklistController {
             @NotBlank(message = "Describe what needs doing")
             @Size(max = 300, message = "That description is too long") String description,
             String note,
-            List<String> countryCodes) {
+            List<String> countryCodes,
+            /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
+            List<String> travellerIds,
+            /** True puts it back to following its destination. */
+            Boolean inheritTravellers) {
 
         ChecklistService.Input toInput() {
-            return new ChecklistService.Input(category, description, note, countryCodes);
+            return new ChecklistService.Input(category, description, note, countryCodes,
+                    travellerIds, inheritTravellers);
         }
     }
 
@@ -36,10 +41,15 @@ public class ChecklistController {
             ChecklistCategory category,
             @Size(max = 300, message = "That description is too long") String description,
             String note,
-            List<String> countryCodes) {
+            List<String> countryCodes,
+            /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
+            List<String> travellerIds,
+            /** True puts it back to following its destination. */
+            Boolean inheritTravellers) {
 
         ChecklistService.Input toInput() {
-            return new ChecklistService.Input(category, description, note, countryCodes);
+            return new ChecklistService.Input(category, description, note, countryCodes,
+                    travellerIds, inheritTravellers);
         }
     }
 

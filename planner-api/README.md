@@ -125,7 +125,7 @@ BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gra
 ```
 #### Start it on a different port
 ```bash
-PORT=8090 PUBLIC_BASE_URL=http://localhost:8090/p ./gradlew bootRun
+PORT=8080 PUBLIC_BASE_URL=http://localhost:8080/p ./gradlew bootRun
 ```
 #### Start fresh
 ```bash

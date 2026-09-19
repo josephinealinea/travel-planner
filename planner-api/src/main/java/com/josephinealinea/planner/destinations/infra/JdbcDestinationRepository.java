@@ -43,7 +43,7 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
                 List.of("name", "country_code", "country_name", "country_flag",
                         "latitude", "longitude", "geoname_id", "timezone",
                         "start_date", "end_date", "notes", "sort_order",
-                        "lodging_seeded", "suppress_checklist",
+                        "lodging_seeded", "suppress_checklist", "traveller_ids",
                         "created_at", "created_by_user_id", "updated_at", "updated_by_user_id"),
                 Destination::getId);
     }
@@ -65,6 +65,7 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
         values.put("sort_order", d.getSortOrder());
         values.put("lodging_seeded", d.getLodgingSeeded());
         values.put("suppress_checklist", d.getSuppressChecklist());
+        values.put("traveller_ids", JdbcValues.nullableTextArray(d.getTravellerIds()));
         values.put("created_at", JdbcValues.timestamptz(d.getCreatedAt()));
         values.put("created_by_user_id", d.getCreatedByUserId());
         values.put("updated_at", JdbcValues.timestamptz(d.getUpdatedAt()));
@@ -91,6 +92,8 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
         d.setSortOrder(rs.getInt("sort_order"));
         d.setLodgingSeeded(JdbcValues.nullableBoolean(rs, "lodging_seeded"));
         d.setSuppressChecklist(JdbcValues.nullableBoolean(rs, "suppress_checklist"));
+        // NULL and '{}' are different states: see Travellers.
+        d.setTravellerIds(JdbcValues.nullableTextList(rs, "traveller_ids"));
         d.setCreatedAt(JdbcValues.instant(rs, "created_at"));
         d.setCreatedByUserId(rs.getString("created_by_user_id"));
         d.setUpdatedAt(JdbcValues.instant(rs, "updated_at"));

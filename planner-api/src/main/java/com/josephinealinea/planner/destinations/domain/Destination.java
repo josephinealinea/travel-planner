@@ -8,6 +8,8 @@ import com.josephinealinea.planner.shared.Audited;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A place on the trip, captured as free text. Coordinates come from the
@@ -63,7 +65,22 @@ public class Destination implements Audited {
      */
     private Boolean suppressChecklist;
 
+    /**
+     * Which travel buddies this is for. Three states, and the first two are
+     * not the same: null is "not set, same as the parent" (for a destination
+     * the parent is the whole trip); an empty list is explicitly the whole
+     * trip; otherwise those member user ids, in the order picked. Resolved by
+     * trips.api.Travellers; never read directly to decide who sees what.
+     */
+    private List<String> travellerIds;
+
     public Destination() {}
+
+    public List<String> getTravellerIds() { return travellerIds; }
+    public void setTravellerIds(List<String> travellerIds) {
+        // Null stays null: it is a state ("follow the parent"), not an empty list.
+        this.travellerIds = travellerIds == null ? null : new ArrayList<>(travellerIds);
+    }
 
     public Boolean getLodgingSeeded() { return lodgingSeeded; }
     public void setLodgingSeeded(Boolean lodgingSeeded) { this.lodgingSeeded = lodgingSeeded; }

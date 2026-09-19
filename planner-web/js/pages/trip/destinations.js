@@ -1,6 +1,10 @@
 import { toast } from '../../toast.js';
 import { dateRange, daysBetween } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
+import {
+  newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
+  toggleTraveller, everyoneGoes,
+} from '../../traveller-picker.js';
 
 const LOOKUP_DEBOUNCE_MS = 250;
 const COUNTRY_MATCH_LIMIT = 8;
@@ -30,9 +34,15 @@ export function destinationsTab() {
     // rather than acted on once, because the accommodation item is also seeded
     // on a later date edit — see DestinationService.
     suppressChecklist: false,
+    // Who's going. A destination's parent is the trip, so it opens on
+    // Everyone. See traveller-picker.js.
+    travellers: newTravellers(true),
+    travellersInitial: newTravellers(true),
   });
 
   return {
+    toggleTraveller,
+    everyoneGoes,
     destForm: blankForm(),
     destFormOpen: false,
     destError: '',
@@ -186,6 +196,8 @@ export function destinationsTab() {
         endDate: destination.endDate || '',
         notes: destination.notes || '',
         suppressChecklist: !!destination.suppressChecklist,
+        travellers: travellersFromRecord(destination, true),
+        travellersInitial: snapshotTravellers(travellersFromRecord(destination, true)),
       };
       this.destError = '';
       this.suggestions = [];
@@ -313,20 +325,31 @@ export function destinationsTab() {
         endDate: this.destForm.endDate || null,
         notes: this.destForm.notes || null,
         suppressChecklist: this.destForm.suppressChecklist,
+        // Nothing when the picker was not touched: see travellersPayload.
+        ...travellersPayload(this.destForm.travellers, this.destForm.travellersInitial),
       };
 
       this.destBusy = true;
       try {
+        let savedId;
+        let message;
         if (this.destForm.id) {
           await this.api.updateDestination(this.trip.id, this.destForm.id, payload);
-          toast.success(`${name} updated`);
+          savedId = this.destForm.id;
+          message = `${name} updated`;
         } else {
           const created = await this.api.addDestination(this.trip.id, payload);
           const seeded = created.seededChecklist?.length || 0;
-          toast.success(`${name} added — ${seeded} checklist item${seeded === 1 ? '' : 's'} created`);
+          savedId = created.destination?.id;
+          message = `${name} added — ${seeded} checklist item${seeded === 1 ? '' : 's'} created`;
         }
         this.destFormOpen = false;
         await this.reload();
+        // Saved for somebody else while showing Mine: say where it went
+        // rather than letting it silently vanish from the list.
+        toast.success(this.showingMine && savedId && this.isHiddenByScope('destinations', savedId)
+          ? this.notOnListMessage(`${name} saved`)
+          : message);
       } catch (error) {
         this.destError = error.fullMessage;
       } finally {
@@ -351,7 +374,7 @@ export function destinationsTab() {
      * dropped.
      */
     get destSelected() {
-      return selectedPresent(this.destSelectedIds, this.destinations);
+      return selectedPresent(this.destSelectedIds, this.scopedDestinations);
     },
 
     /**
@@ -408,7 +431,7 @@ export function destinationsTab() {
       // seeder's provenance. The link a member picks is the country, and
       // counting by that would give every city in a country the same number —
       // saying nothing about any of them.
-      return this.checklist.filter(
+      return this.scopedChecklist.filter(
         (item) => item.seededFromDestinationId === destination.id).length;
     },
   };

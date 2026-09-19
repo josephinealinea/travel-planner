@@ -9,6 +9,7 @@ import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
+import com.josephinealinea.planner.trips.api.Travellers;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.domain.Trip;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,17 @@ public class ChecklistService {
     public record Input(ChecklistCategory category,
                         String description,
                         String note,
-                        List<String> countryCodes) {}
+                        List<String> countryCodes,
+                        /** Who's going. Null leaves it alone; [] is the whole trip. See Travellers. */
+                        List<String> travellerIds,
+                        /** True clears it back to "not set", i.e. following its destination. */
+                        Boolean inheritTravellers) {
+
+        /** The shape from before travellers existed: says nothing about them. */
+        public Input(ChecklistCategory category, String description, String note, List<String> countryCodes) {
+            this(category, description, note, countryCodes, null, null);
+        }
+    }
 
     private final ChecklistRepository checklist;
     private final ItineraryRepository itinerary;
@@ -45,6 +56,11 @@ public class ChecklistService {
         return checklist.findAllOrdered(trip.getSlug());
     }
 
+    /** Every item on the trip, unordered — for callers that resolve travellers. */
+    public List<ChecklistItem> all(Trip trip) {
+        return checklist.findAll(trip.getSlug());
+    }
+
     /** Checklist items can be added whether or not any destination exists. */
     public ChecklistItem create(String tripId, String userId, Input input) {
         Trip trip = access.requireMember(tripId, userId);
@@ -59,6 +75,7 @@ public class ChecklistService {
         item.setStatus(ChecklistStatus.TODO);
         item.setSortOrder(checklist.findAll(trip.getSlug()).size());
         item.setCountryCodes(countries.validate(trip, input.countryCodes()));
+        item.setTravellerIds(Travellers.change(trip, null, input.travellerIds(), input.inheritTravellers()));
         Audit.created(item, userId);
 
         return checklist.save(trip.getSlug(), item);
@@ -78,6 +95,8 @@ public class ChecklistService {
             // An empty list is how the client clears every link.
             item.setCountryCodes(countries.validate(trip, input.countryCodes()));
         }
+        item.setTravellerIds(Travellers.change(trip, item.getTravellerIds(),
+                input.travellerIds(), input.inheritTravellers()));
         Audit.touched(item, userId);
         return checklist.save(trip.getSlug(), item);
     }

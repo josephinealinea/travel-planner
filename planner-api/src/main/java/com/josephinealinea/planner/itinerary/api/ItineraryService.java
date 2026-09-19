@@ -12,6 +12,7 @@ import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
+import com.josephinealinea.planner.trips.api.Travellers;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.api.TripMembers;
 import com.josephinealinea.planner.trips.api.TripWindow;
@@ -56,7 +57,21 @@ public class ItineraryService {
                          * a create both mean nobody. See BudgetSync.
                          */
                         String costPaidByUserId,
-                        List<String> countryCodes) {}
+                        List<String> countryCodes,
+                        /** Who's going. Null leaves it alone; [] is the whole trip. See Travellers. */
+                        List<String> travellerIds,
+                        /** True clears it back to "not set", i.e. following its checklist item. */
+                        Boolean inheritTravellers) {
+
+        /** The shape from before travellers existed: says nothing about them. */
+        public Input(String checklistItemId, ChecklistCategory category, String description,
+                     LocalDateTime startAt, LocalDateTime endAt, Boolean allDay, BigDecimal cost,
+                     String currency, Boolean costCharged, List<String> costSharedByUserIds,
+                     String costPaidByUserId, List<String> countryCodes) {
+            this(checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
+                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes, null, null);
+        }
+    }
 
     private final ItineraryRepository itinerary;
     private final DestinationRepository destinations;
@@ -148,12 +163,17 @@ public class ItineraryService {
         // it, so both render as "—" with no second rule anywhere.
         if (Boolean.TRUE.equals(input.allDay())) plan.setAllDay(true);
         plan.setCountryCodes(tripCountries.validate(trip, input.countryCodes()));
+        plan.setTravellerIds(Travellers.change(trip, null, input.travellerIds(), input.inheritTravellers()));
         applyCost(plan, input.cost(), input.currency(), trip);
         Audit.created(plan, userId);
         // Both checked before anything is saved, so a stale member list gets a
         // 400 and leaves nothing behind — not a plan whose cost never reached
         // the budget.
         List<String> sharers = validatedSharers(trip, input.costSharedByUserIds());
+        // A cost on a plan for particular buddies starts shared by them. Copied
+        // once: the row is ordinary money from then on, and nothing about
+        // who's going ever rewrites it. See Travellers and defaultSharers.
+        if (sharers == null && plan.hasCost()) sharers = defaultSharers(trip, plan);
         String payer = validatedPayer(trip, input.costPaidByUserId());
 
         itinerary.save(trip.getSlug(), plan);
@@ -227,6 +247,15 @@ public class ItineraryService {
         Trip trip = access.requireMember(tripId, userId);
         ItineraryItem plan = require(trip, itemId);
 
+        // A later day of a stay always follows its booking (see Travellers), so
+        // a list of its own would be stored and then ignored. Refused instead.
+        if (plan.getPlanId() != null && Travellers.changes(input.travellerIds(), input.inheritTravellers())) {
+            throw ApiException.badRequest(
+                    "This day follows its booking. Change who's going on the booking itself.");
+        }
+        plan.setTravellerIds(Travellers.change(trip, plan.getTravellerIds(),
+                input.travellerIds(), input.inheritTravellers()));
+
         if (input.description() != null) {
             requireDescription(input.description());
             plan.setDescription(input.description().trim());
@@ -252,6 +281,11 @@ public class ItineraryService {
         Audit.touched(plan, userId);
         // Before the save, as in create: a rejected edit changes nothing.
         List<String> sharers = validatedSharers(trip, input.costSharedByUserIds());
+        // Only for a row about to be created: an existing row's sharers are
+        // never re-derived from the plan.
+        if (sharers == null && plan.hasCost() && plan.getBudgetItemId() == null) {
+            sharers = defaultSharers(trip, plan);
+        }
         String payer = validatedPayer(trip, input.costPaidByUserId());
 
         itinerary.save(trip.getSlug(), plan);
@@ -342,6 +376,19 @@ public class ItineraryService {
      */
     private static List<String> validatedSharers(Trip trip, List<String> wanted) {
         return wanted == null ? null : TripMembers.of(trip).validate(wanted);
+    }
+
+    /**
+     * Who a new cost is shared by when the request did not say: the plan's
+     * travellers when it is for particular buddies, otherwise null — the same
+     * "not sent" a cost always had before travellers existed, so a whole-trip
+     * plan's cost behaves exactly as it did. Decided with the user; the forms
+     * apply the same rule and always send what they show.
+     */
+    private List<String> defaultSharers(Trip trip, ItineraryItem plan) {
+        List<String> travellers = Travellers.of(trip, destinations.findAll(trip.getSlug()),
+                checklistService.all(trip), itinerary.findAll(trip.getSlug())).ofItineraryItem(plan);
+        return travellers.isEmpty() ? null : new ArrayList<>(travellers);
     }
 
     /**

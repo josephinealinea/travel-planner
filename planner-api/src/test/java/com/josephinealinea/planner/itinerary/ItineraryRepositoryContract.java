@@ -168,6 +168,28 @@ public abstract class ItineraryRepositoryContract extends TripScopedRepositoryCo
         assertThat(store().findById(TRIP, "x").orElseThrow().getCategory()).isEqualTo(ChecklistCategory.OTHERS);
     }
 
+    /**
+     * "Not set" follows the parent and "[]" is explicitly the whole trip, so
+     * the store must keep them apart. See trips.api.Travellers.
+     */
+    @Test
+    void notSetAndWholeTripAreDifferentTravellerStates() {
+        ItineraryItem unset = entity("unset", "Bus to Uyuni");
+        ItineraryItem everyone = entity("everyone", "Welcome dinner");
+        everyone.setTravellerIds(List.of());
+        ItineraryItem named = entity("named", "Cusco hotel");
+        named.setTravellerIds(List.of("user-sam", "user-alex"));
+
+        store().save(TRIP, unset);
+        store().save(TRIP, everyone);
+        store().save(TRIP, named);
+
+        assertThat(store().findById(TRIP, "unset").orElseThrow().getTravellerIds()).isNull();
+        assertThat(store().findById(TRIP, "everyone").orElseThrow().getTravellerIds()).isNotNull().isEmpty();
+        assertThat(store().findById(TRIP, "named").orElseThrow().getTravellerIds())
+                .containsExactly("user-sam", "user-alex");
+    }
+
     private ItineraryItem at(String id, LocalDateTime startAt, int sortOrder) {
         ItineraryItem item = entity(id, id);
         item.setStartAt(startAt);
@@ -195,6 +217,7 @@ public abstract class ItineraryRepositoryContract extends TripScopedRepositoryCo
         item.setCreatedByUserId("user-ana");
         item.setUpdatedAt(Instant.parse("2026-09-02T08:00:00Z"));
         item.setUpdatedByUserId("user-ben");
+        item.setTravellerIds(List.of("user-ana", "user-ben"));
         return item;
     }
 }

@@ -1,11 +1,13 @@
 package com.josephinealinea.planner.storage.jdbc;
 
+import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.jdbc.core.SqlTypeValue;
 import org.springframework.jdbc.core.support.AbstractSqlTypeValue;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,6 +60,15 @@ public final class JdbcValues {
         };
     }
 
+    /**
+     * A nullable {@code text[]} parameter. Null stays SQL NULL — for the
+     * traveller columns that is a state ("follow the parent"), not an empty
+     * list — while any list, even an empty one, becomes an array.
+     */
+    public static Object nullableTextArray(List<String> values) {
+        return values == null ? new SqlParameterValue(Types.ARRAY, null) : textArray(values);
+    }
+
     /** A {@code timestamptz} parameter. PgJDBC does not bind a bare Instant. */
     public static OffsetDateTime timestamptz(Instant instant) {
         return instant == null ? null : OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
@@ -74,6 +85,17 @@ public final class JdbcValues {
     public static List<String> textList(ResultSet rs, String column) throws SQLException {
         java.sql.Array array = rs.getArray(column);
         if (array == null) return new ArrayList<>();
+        try {
+            return new ArrayList<>(Arrays.asList((String[]) array.getArray()));
+        } finally {
+            array.free();
+        }
+    }
+
+    /** A nullable {@code text[]} column: NULL reads as null, never as an empty list. */
+    public static List<String> nullableTextList(ResultSet rs, String column) throws SQLException {
+        java.sql.Array array = rs.getArray(column);
+        if (array == null) return null;
         try {
             return new ArrayList<>(Arrays.asList((String[]) array.getArray()));
         } finally {

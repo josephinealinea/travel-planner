@@ -119,3 +119,21 @@
 }
 // A space after an emoji collapses to almost nothing next to its wide glyph.
 .solo-hint > [aria-hidden] { margin-right: 0.3em; }
+
+// Mine / Whole trip, in the trip header.
+.scope-switch {
+  display: inline-flex;
+  gap: t.$space-1;
+  margin-left: t.$space-2;
+  vertical-align: middle;
+}
+
+// "Showing your part · 2 more destinations on the whole trip · Show whole trip"
+.scope-hint {
+  margin: 0 0 t.$space-3;
+  color: var(--tp-muted);
+  font-size: 0.88rem;
+}
+
+// One pill per travel buddy on rows and in "Same as Cusco:" hints.
+.badge-traveller { margin: 0 t.$space-1 t.$space-1 0; }

@@ -30,12 +30,16 @@ public class DestinationController {
             LocalDate startDate,
             LocalDate endDate,
             String notes,
-            Boolean suppressChecklist) {
+            Boolean suppressChecklist,
+            /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
+            List<String> travellerIds,
+            /** True clears it back to "not set". */
+            Boolean inheritTravellers) {
 
         DestinationService.Input toInput() {
             return new DestinationService.Input(name, countryCode, countryName, latitude,
                     longitude, geonameId, timezone, startDate, endDate, notes,
-                    suppressChecklist);
+                    suppressChecklist, travellerIds, inheritTravellers);
         }
     }
 
@@ -51,12 +55,16 @@ public class DestinationController {
             LocalDate startDate,
             LocalDate endDate,
             String notes,
-            Boolean suppressChecklist) {
+            Boolean suppressChecklist,
+            /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
+            List<String> travellerIds,
+            /** True clears it back to "not set". */
+            Boolean inheritTravellers) {
 
         DestinationService.Input toInput() {
             return new DestinationService.Input(name, countryCode, countryName, latitude,
                     longitude, geonameId, timezone, startDate, endDate, notes,
-                    suppressChecklist);
+                    suppressChecklist, travellerIds, inheritTravellers);
         }
     }
 

@@ -5,6 +5,7 @@ import { countriesOfTrip } from '../location-picker.js';
 import { toast } from '../toast.js';
 import { currentUser } from '../session.js';
 
+import { scopeTab } from './trip/scope.js';
 import { overviewTab } from './trip/overview.js';
 import { membersTab } from './trip/members.js';
 import { destinationsTab } from './trip/destinations.js';
@@ -170,6 +171,9 @@ export function tripPage() {
         this.destinations = detail.destinations || [];
         this.checklist = detail.checklist || [];
         this.itinerary = detail.itinerary || [];
+        // Which of those are this member's, decided by the API (Travellers).
+        this.mine = detail.mine || { destinationIds: [], checklistItemIds: [], itineraryItemIds: [] };
+        this.namedTravellers = detail.travellers || { destinations: {}, checklist: {}, itinerary: {} };
         this.budget = detail.budget || this.budget;
         this.publish = detail.publish || this.publish;
         this.currentUserId = detail.currentUserId;
@@ -260,9 +264,10 @@ export function tripPage() {
     countFor(tabId) {
       switch (tabId) {
         case 'members': return this.members.length;
-        case 'destinations': return this.destinations.length;
-        case 'checklist': return this.checklist.length;
-        case 'itinerary': return this.itinerary.length;
+        // What the tab is showing, so Mine counts Mine.
+        case 'destinations': return this.scopedDestinations.length;
+        case 'checklist': return this.scopedChecklist.length;
+        case 'itinerary': return this.scopedItinerary.length;
         // This member's own rows, matching what the Budget tab lists — a
         // badge counting the whole trip's expenses beside a table showing
         // three of them reads as a bug.
@@ -360,6 +365,7 @@ export function tripPage() {
   };
 
   return mergeTabs(base,
+    scopeTab(),
     overviewTab(),
     membersTab(),
     destinationsTab(),

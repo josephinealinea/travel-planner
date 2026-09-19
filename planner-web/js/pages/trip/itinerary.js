@@ -2,6 +2,10 @@ import { toast } from '../../toast.js';
 import { category, timeRange, longDate, money, dateOf, timeOf } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames } from '../../location-picker.js';
+import {
+  newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
+  defaultCostSharers,
+} from '../../traveller-picker.js';
 import { condition, temperatureRange, sourceNote, sourceBadge, hasReading, unavailableHint }
   from '../../weather.js';
 
@@ -70,6 +74,14 @@ export function itineraryTab() {
     // One member or nobody; openAddEntry fills in the member at the keyboard.
     paidByUserId: '',
     countryCodes: [],
+    // Who's going. An entry added here has no checklist item, so it follows
+    // the whole trip until someone chooses. See traveller-picker.js.
+    checklistItemId: null,
+    planId: null,
+    travellers: newTravellers(),
+    travellersInitial: newTravellers(),
+    // Untouched, Shared by shows the default (entrySharersShown).
+    sharedTouched: false,
   });
 
   return {
@@ -100,7 +112,7 @@ export function itineraryTab() {
       // nothing for them to act on — and a stale tick must not keep an entry
       // on screen in a mode that is meant to exclude them.
       if (this.itinShow === 'WEATHER') return [];
-      return this.itinerary.filter((item) => {
+      return this.scopedItinerary.filter((item) => {
         if (this.itinCategoryFilters.length
             && !this.itinCategoryFilters.includes(item.category)) return false;
         return true;
@@ -109,7 +121,12 @@ export function itineraryTab() {
 
     /** The weather rows the Show filter is letting through. */
     get filteredWeather() {
-      return this.itinShow === 'ITINERARY' ? [] : this.weatherDays;
+      if (this.itinShow === 'ITINERARY') return [];
+      // The lookup covers every destination whatever the view (one call per
+      // trip); Mine only chooses which rows show.
+      if (!this.showingMine) return this.weatherDays;
+      const mine = this.mine.destinationIds || [];
+      return this.weatherDays.filter((day) => !day.destinationId || mine.includes(day.destinationId));
     },
 
     /**
@@ -261,9 +278,41 @@ export function itineraryTab() {
         sharedByUserIds: this.sharersOfPlan(item),
         paidByUserId: this.paidByOfPlan(item),
         countryCodes: [...(item.countryCodes || [])],
+        checklistItemId: item.checklistItemId || null,
+        // A later day of a stay follows its booking and offers no picker.
+        planId: item.planId || null,
+        travellers: travellersFromRecord(item),
+        travellersInitial: snapshotTravellers(travellersFromRecord(item)),
+        sharedTouched: !!this.budgetRowOfPlan(item),
       };
       this.entryError = '';
       this.entryOpen = true;
+    },
+
+    /** What an entry follows while unset: its checklist item's resolved list. */
+    entryInherited() {
+      return (this.namedTravellers.checklist || {})[this.entryForm.checklistItemId] || [];
+    },
+
+    entryParentLabel() {
+      const item = this.checklist.find((c) => c.id === this.entryForm.checklistItemId);
+      return item ? item.description : 'the trip';
+    },
+
+    /** Shared by, as shown and as sent: see defaultCostSharers. */
+    entrySharersShown() {
+      if (this.entryForm.sharedTouched) return this.entryForm.sharedByUserIds;
+      return defaultCostSharers(
+        this.effectiveTravellers(this.entryForm.travellers, this.entryInherited()), this.currentUserId);
+    },
+
+    /** The first click on Shared by takes over the default, then toggles. */
+    toggleEntrySharer(userId) {
+      if (!this.entryForm.sharedTouched) {
+        this.entryForm.sharedByUserIds.splice(0, this.entryForm.sharedByUserIds.length, ...this.entrySharersShown());
+        this.entryForm.sharedTouched = true;
+      }
+      this.toggleSharer(this.entryForm.sharedByUserIds, userId);
     },
 
     async saveEntry() {
@@ -306,21 +355,30 @@ export function itineraryTab() {
           allDay: !this.entryForm.startTime,
           currency: cost == null ? null : (this.entryForm.currency || null),
           costCharged: this.entryForm.costCharged,
-          costSharedByUserIds: this.entryForm.sharedByUserIds,
+          costSharedByUserIds: this.entrySharersShown(),
           // Always sent: absent would leave the payer alone, '' clears it.
           costPaidByUserId: this.entryForm.paidByUserId || '',
           countryCodes: this.entryForm.countryCodes,
+          // Never for a later day of a stay: the API refuses it there.
+          ...(this.entryForm.planId ? {} : travellersPayload(this.entryForm.travellers, this.entryForm.travellersInitial)),
         };
+        let savedId;
+        let message;
         if (this.entryForm.id) {
           await this.api.updatePlan(this.trip.id, this.entryForm.id,
             { ...payload, cost: cost == null ? 0 : cost });
-          toast.success('Entry updated');
+          savedId = this.entryForm.id;
+          message = 'Entry updated';
         } else {
-          await this.api.addPlan(this.trip.id, { ...payload, cost });
-          toast.success('Entry added');
+          const created = await this.api.addPlan(this.trip.id, { ...payload, cost });
+          savedId = created?.id;
+          message = 'Entry added';
         }
         this.entryOpen = false;
         await this.reload();
+        toast.success(this.showingMine && savedId && this.isHiddenByScope('itinerary', savedId)
+          ? this.notOnListMessage(message)
+          : message);
       } catch (error) {
         this.entryError = error.fullMessage;
       } finally {

@@ -45,7 +45,7 @@ public class JdbcChecklistRepository extends TripScopedJdbcRepository<ChecklistI
         super(jdbc, transactionManager, "checklist_items",
                 List.of("country_codes", "seeded_from_destination_id", "category", "description", "note",
                         "status", "auto_seeded", "sort_order", "completed_at",
-                        "created_at", "created_by_user_id", "updated_at", "updated_by_user_id"),
+                        "created_at", "created_by_user_id", "updated_at", "updated_by_user_id", "traveller_ids"),
                 ChecklistItem::getId);
     }
 
@@ -67,6 +67,7 @@ public class JdbcChecklistRepository extends TripScopedJdbcRepository<ChecklistI
         values.put("created_by_user_id", item.getCreatedByUserId());
         values.put("updated_at", JdbcValues.timestamptz(item.getUpdatedAt()));
         values.put("updated_by_user_id", item.getUpdatedByUserId());
+        values.put("traveller_ids", JdbcValues.nullableTextArray(item.getTravellerIds()));
         return values;
     }
 
@@ -88,6 +89,8 @@ public class JdbcChecklistRepository extends TripScopedJdbcRepository<ChecklistI
         item.setCreatedByUserId(rs.getString("created_by_user_id"));
         item.setUpdatedAt(JdbcValues.instant(rs, "updated_at"));
         item.setUpdatedByUserId(rs.getString("updated_by_user_id"));
+        // NULL and '{}' are different states: see Travellers.
+        item.setTravellerIds(JdbcValues.nullableTextList(rs, "traveller_ids"));
         return item;
     }
 }

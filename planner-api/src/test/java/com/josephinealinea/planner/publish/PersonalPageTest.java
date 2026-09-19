@@ -84,6 +84,7 @@ class PersonalPageTest {
     private TripRepository trips;
     private UserRepository users;
     private Path publishDir;
+    private YamlDestinationRepository destinationsRepo;
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
@@ -105,7 +106,7 @@ class PersonalPageTest {
         TripLocks locks = new TripLocks();
         publishDir = paths.publishDir();
 
-        var destinations = new YamlDestinationRepository(store, paths, locks);
+        var destinations = destinationsRepo = new YamlDestinationRepository(store, paths, locks);
         var checklist = new YamlChecklistRepository(store, paths, locks);
         var itinerary = new YamlItineraryRepository(store, paths, locks);
         var budget = new YamlBudgetRepository(store, paths, locks);
@@ -231,6 +232,46 @@ class PersonalPageTest {
         assertThat(alexPage).doesNotContain("2134.56");
         // The trip's own page is the opposite case and is meant to carry it.
         assertThat(tripPage).contains("2134.56");
+    }
+
+    /**
+     * Who's going decides what a personal page lists, and — as with the money
+     * above — what it leaves out is left out of the file, not hidden in it.
+     */
+    @Test
+    void aPersonalPageLeavesOutDestinationsTheBuddyIsNotGoingTo() throws Exception {
+        Destination uyuni = new Destination();
+        uyuni.setId("uyuni");
+        uyuni.setTripId(TRIP_ID);
+        uyuni.setName("Salar de Uyuni");
+        uyuni.setCountryName("Bolivia");
+        uyuni.setTravellerIds(List.of(SAM));
+        destinationsRepo.save(SLUG, uyuni);
+        wantsOwnPage(ALEX);
+        wantsOwnPage(SAM);
+
+        publish.publish(TRIP_ID, ALEX, "minima");
+
+        assertThat(read(personal("alex"))).doesNotContain("Salar de Uyuni").doesNotContain("Bolivia");
+        assertThat(read(personal("sam"))).contains("Salar de Uyuni");
+        assertThat(read(publishDir.resolve(SLUG).resolve("index.html"))).contains("Salar de Uyuni");
+    }
+
+    @Test
+    void noBuddysIdReachesAPublishedFile() throws Exception {
+        Destination uyuni = new Destination();
+        uyuni.setId("uyuni");
+        uyuni.setTripId(TRIP_ID);
+        uyuni.setName("Salar de Uyuni");
+        uyuni.setTravellerIds(List.of(SAM));
+        destinationsRepo.save(SLUG, uyuni);
+        wantsOwnPage(SAM);
+
+        publish.publish(TRIP_ID, ALEX, "minima");
+
+        for (Path file : List.of(publishDir.resolve(SLUG).resolve("index.html"), personal("sam"))) {
+            assertThat(read(file)).doesNotContain(SAM).doesNotContain(ALEX);
+        }
     }
 
     /**

@@ -145,5 +145,14 @@ public final class TripViews {
                              List<ChecklistItem> checklist,
                              List<ItineraryItem> itinerary,
                              BudgetView budget,
-                             PublishView publish) {}
+                             PublishView publish,
+                             /**
+                              * Which destinations, checklist items and plans
+                              * are the signed-in member's, for the Mine view.
+                              * Decided here rather than in the page, the same
+                              * way budget.shares is. See Travellers.
+                              */
+                             Travellers.Mine mine,
+                             /** Who's going, by id, only where it is not the whole trip. */
+                             Travellers.Named travellers) {}
 }

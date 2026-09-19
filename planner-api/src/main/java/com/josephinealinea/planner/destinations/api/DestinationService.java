@@ -12,6 +12,7 @@ import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
+import com.josephinealinea.planner.trips.api.Travellers;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.api.TripWindow;
 import com.josephinealinea.planner.trips.domain.Trip;
@@ -38,7 +39,20 @@ public class DestinationService {
             LocalDate endDate,
             String notes,
             /** Null on a patch means "leave it as it is". */
-            Boolean suppressChecklist) {}
+            Boolean suppressChecklist,
+            /** Who's going. Null leaves it alone; [] is the whole trip. See Travellers. */
+            List<String> travellerIds,
+            /** True clears it back to "not set". */
+            Boolean inheritTravellers) {
+
+        /** The shape from before travellers existed: says nothing about them. */
+        public Input(String name, String countryCode, String countryName, Double latitude,
+                     Double longitude, Long geonameId, String timezone, LocalDate startDate,
+                     LocalDate endDate, String notes, Boolean suppressChecklist) {
+            this(name, countryCode, countryName, latitude, longitude, geonameId, timezone,
+                    startDate, endDate, notes, suppressChecklist, null, null);
+        }
+    }
 
     /** Creating one also produces its three checklist items. */
     public record Created(Destination destination, List<ChecklistItem> seededChecklist) {}
@@ -95,6 +109,8 @@ public class DestinationService {
         destination.setCreatedAt(Instant.now());
         destination.setSortOrder(destinations.findAll(trip.getSlug()).size());
         apply(destination, input);
+        destination.setTravellerIds(Travellers.change(trip, null,
+                input.travellerIds(), input.inheritTravellers()));
         Audit.created(destination, userId);
         destinations.save(trip.getSlug(), destination);
 
@@ -135,6 +151,8 @@ public class DestinationService {
         requireWithinTrip(trip, input);
 
         apply(destination, input);
+        destination.setTravellerIds(Travellers.change(trip, destination.getTravellerIds(),
+                input.travellerIds(), input.inheritTravellers()));
         Audit.touched(destination, userId);
         seedLodgingIfTheDatesNowNeedIt(trip, userId, destination);
         // Deliberately does not rewrite the seeded checklist text — once created

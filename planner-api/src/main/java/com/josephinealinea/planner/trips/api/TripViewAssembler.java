@@ -59,7 +59,12 @@ public class TripViewAssembler {
     }
 
     public TripViews.TripSummary summary(Trip trip, String currentUserId) {
-        List<ChecklistItem> items = checklist.findAll(trip.getSlug());
+        List<ChecklistItem> all = checklist.findAll(trip.getSlug());
+        // The card agrees with the trip's default Mine view: this member's items.
+        Travellers travellers = Travellers.of(trip, destinations.findAll(trip.getSlug()), all, List.of());
+        List<ChecklistItem> items = currentUserId == null ? all : all.stream()
+                .filter(item -> Travellers.includes(travellers.ofChecklistItem(item), currentUserId))
+                .toList();
         long completed = items.stream().filter(ChecklistItem::isCompleted).count();
 
         return new TripViews.TripSummary(
@@ -84,6 +89,10 @@ public class TripViewAssembler {
         // is looking.
         User currentUser = currentUserId == null ? null : users.findById(currentUserId).orElse(null);
         BudgetService.Summary budget = budgets.summarise(trip, currentUser);
+        var tripDestinations = destinations.findAllOrdered(trip.getSlug());
+        var tripChecklist = checklist.findAllOrdered(trip.getSlug());
+        var tripItinerary = itinerary.findAllOrdered(trip.getSlug());
+        Travellers travellers = Travellers.of(trip, tripDestinations, tripChecklist, tripItinerary);
 
         return new TripViews.TripDetail(
                 trip.getId(),
@@ -96,11 +105,13 @@ public class TripViewAssembler {
                 trip.isOwner(currentUserId),
                 currentUserId,
                 members(trip),
-                destinations.findAllOrdered(trip.getSlug()),
-                checklist.findAllOrdered(trip.getSlug()),
-                itinerary.findAllOrdered(trip.getSlug()),
+                tripDestinations,
+                tripChecklist,
+                tripItinerary,
                 TripViews.BudgetView.from(budget, rates.current()),
-                publish(trip, currentUserId));
+                publish(trip, currentUserId),
+                travellers.mineFor(currentUserId),
+                travellers.named());
     }
 
     public List<TripViews.MemberView> members(Trip trip) {

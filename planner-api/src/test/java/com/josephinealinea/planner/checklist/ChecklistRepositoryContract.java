@@ -127,6 +127,28 @@ public abstract class ChecklistRepositoryContract extends TripScopedRepositoryCo
         assertThat(store().findById(TRIP, "x").orElseThrow().getCountryCodes()).containsExactly("PE", "BO", "CL");
     }
 
+    /**
+     * "Not set" follows the parent and "[]" is explicitly the whole trip, so
+     * the store must keep them apart. See trips.api.Travellers.
+     */
+    @Test
+    void notSetAndWholeTripAreDifferentTravellerStates() {
+        ChecklistItem unset = entity("unset", "Book Uyuni tour");
+        ChecklistItem everyone = entity("everyone", "Visas");
+        everyone.setTravellerIds(List.of());
+        ChecklistItem named = entity("named", "Cusco hotel");
+        named.setTravellerIds(List.of("user-sam", "user-alex"));
+
+        store().save(TRIP, unset);
+        store().save(TRIP, everyone);
+        store().save(TRIP, named);
+
+        assertThat(store().findById(TRIP, "unset").orElseThrow().getTravellerIds()).isNull();
+        assertThat(store().findById(TRIP, "everyone").orElseThrow().getTravellerIds()).isNotNull().isEmpty();
+        assertThat(store().findById(TRIP, "named").orElseThrow().getTravellerIds())
+                .containsExactly("user-sam", "user-alex");
+    }
+
     private ChecklistItem item(String id, ChecklistStatus status, int sortOrder) {
         ChecklistItem item = entity(id, id);
         item.setStatus(status);
@@ -151,6 +173,7 @@ public abstract class ChecklistRepositoryContract extends TripScopedRepositoryCo
         item.setUpdatedAt(Instant.parse("2026-09-03T12:00:00Z"));
         item.setUpdatedByUserId("user-ben");
         item.setCompletedAt(Instant.parse("2026-09-03T12:00:00Z"));
+        item.setTravellerIds(List.of("user-ana", "user-ben"));
         return item;
     }
 }

@@ -68,7 +68,7 @@ class DatabaseModeStartupTest {
 
             JdbcClient jdbc = context.getBean(JdbcClient.class);
             assertThat(jdbc.sql("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank")
-                    .query(String.class).list()).containsExactly("1");
+                    .query(String.class).list()).containsExactly("1", "2");
             assertThat(jdbc.sql("SELECT count(*) FROM trips").query(Long.class).single()).isZero();
         }
     }

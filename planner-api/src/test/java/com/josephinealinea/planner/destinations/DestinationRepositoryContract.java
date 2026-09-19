@@ -114,6 +114,29 @@ public abstract class DestinationRepositoryContract extends TripScopedRepository
         assertThat(loaded.getSuppressChecklist()).isFalse();
     }
 
+    /**
+     * "Not set" follows the parent and "[]" is explicitly the whole trip, so
+     * the store must keep them apart. See trips.api.Travellers.
+     */
+    @Test
+    void notSetAndWholeTripAreDifferentTravellerStates() {
+        Destination unset = entity("unset", "Uyuni");
+        Destination everyone = entity("everyone", "La Paz");
+        everyone.setTravellerIds(java.util.List.of());
+        Destination named = entity("named", "Cusco");
+        named.setTravellerIds(java.util.List.of("user-sam", "user-alex"));
+
+        store().save(TRIP, unset);
+        store().save(TRIP, everyone);
+        store().save(TRIP, named);
+
+        assertThat(store().findById(TRIP, "unset").orElseThrow().getTravellerIds()).isNull();
+        assertThat(store().findById(TRIP, "everyone").orElseThrow().getTravellerIds()).isNotNull().isEmpty();
+        // Order is kept: it is the order the buddies were picked in.
+        assertThat(store().findById(TRIP, "named").orElseThrow().getTravellerIds())
+                .containsExactly("user-sam", "user-alex");
+    }
+
     private Destination dated(String id, LocalDate start, int sortOrder) {
         Destination d = entity(id, id);
         d.setStartDate(start);
@@ -143,6 +166,7 @@ public abstract class DestinationRepositoryContract extends TripScopedRepository
         d.setCreatedByUserId("user-ana");
         d.setUpdatedAt(Instant.parse("2026-09-02T08:00:00Z"));
         d.setUpdatedByUserId("user-ben");
+        d.setTravellerIds(java.util.List.of("user-ana", "user-ben"));
         return d;
     }
 }

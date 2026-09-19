@@ -31,7 +31,8 @@ class BaselineSchemaTest extends PostgresTestBase {
                 .migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("1");
+        // Every migration applies to an empty database, in order, ending at the latest.
+        assertThat(result.targetSchemaVersion).isEqualTo("2");
         assertThat(JdbcClient.create(fresh).sql("SELECT count(*) FROM trips").query(Long.class).single())
                 .as("schema only: a migration never writes a row").isZero();
     }
@@ -56,6 +57,26 @@ class BaselineSchemaTest extends PostgresTestBase {
                         WHERE table_name = 'budget_items' AND column_name = 'shared_by_user_ids'
                         """).query(String.class).single())
                 .isEqualTo("_text");
+    }
+
+    /**
+     * Nullable with no default, unlike shared_by_user_ids: NULL is "not set,
+     * follow the parent" and '{}' is "explicitly the whole trip". A default of
+     * '{}' would quietly turn every "same as Cusco" into "everyone".
+     */
+    @Test
+    void travellerColumnsAreNullableTextArraysWithNoDefault() {
+        for (String table : new String[] {"destinations", "checklist_items", "itinerary_items"}) {
+            var column = jdbc().sql("""
+                            SELECT udt_name, is_nullable, column_default FROM information_schema.columns
+                            WHERE table_name = :table AND column_name = 'traveller_ids'
+                            """).param("table", table)
+                    .query((rs, n) -> new String[] {rs.getString(1), rs.getString(2), rs.getString(3)})
+                    .single();
+            assertThat(column[0]).as(table).isEqualTo("_text");
+            assertThat(column[1]).as(table).isEqualTo("YES");
+            assertThat(column[2]).as(table).isNull();
+        }
     }
 
     @Test

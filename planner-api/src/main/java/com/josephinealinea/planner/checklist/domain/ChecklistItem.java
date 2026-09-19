@@ -45,6 +45,16 @@ public class ChecklistItem implements Audited {
     private String updatedByUserId;
     private Instant completedAt;
 
+    /**
+     * Which travel buddies this is for. Three states, and the first two are
+     * not the same: null is "not set, same as the parent" (the destination it
+     * was seeded from, or the whole trip); an empty list is explicitly the
+     * whole trip; otherwise those member user ids, in the order picked.
+     * Resolved by trips.api.Travellers; never read directly to decide who sees
+     * what.
+     */
+    private List<String> travellerIds;
+
     public ChecklistItem() {}
 
     @JsonIgnore
@@ -128,4 +138,10 @@ public class ChecklistItem implements Audited {
 
     public Instant getCompletedAt() { return completedAt; }
     public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+
+    public List<String> getTravellerIds() { return travellerIds; }
+    public void setTravellerIds(List<String> travellerIds) {
+        // Null stays null: it is a state ("follow the parent"), not an empty list.
+        this.travellerIds = travellerIds == null ? null : new ArrayList<>(travellerIds);
+    }
 }

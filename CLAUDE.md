@@ -49,7 +49,7 @@ cd planner-api && BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD
 ```
 #### Run the API on another port
 ```bash
-cd planner-api && PORT=8090 PUBLIC_BASE_URL=http://localhost:8090/p ./gradlew bootRun
+cd planner-api && PORT=8080 PUBLIC_BASE_URL=http://localhost:8080/p ./gradlew bootRun
 ```
 #### Run all tests
 ```bash
@@ -370,6 +370,34 @@ Rules that are easy to break by accident, all with tests:
   makes an existing row uneditable. The frontend mirrors it with `min`/`max` on
   every date input plus `dateOutsideTrip()` in `js/pages/trip.js`; nothing
   retro-validates what is already stored.
+- **Who's going is inherited; money is copied once.** Destinations,
+  checklist items and plans carry an optional `travellerIds`, resolved in one
+  place, `trips/api/Travellers`: a destination names buddies or is the whole
+  trip; a checklist item follows the destination it was seeded from; a plan
+  follows its checklist item; a stay's later days always follow their plan
+  (the API refuses a list of their own). Three states, and the first two
+  differ: null is "not set, follow the parent" — so a later edit to Cusco
+  carries down to everything nobody edited — and `[]` is explicitly the whole
+  trip. That is why `traveller_ids` is a **nullable** `text[]` with no default,
+  unlike `shared_by_user_ids`, why `JdbcValues.nullableTextArray` exists, and
+  why `BaselineSchemaTest` pins the column. An empty *resolved* list means the
+  whole trip, as with Shared by. Four more things:
+  - **The page is sent `mine` and `travellers` and never re-derives them**,
+    the same pattern as `budget.shares`, so the planner and a personal
+    published page cannot disagree. Link pickers keep reading the whole lists.
+  - **A new cost starts shared by the plan's travellers only when the plan is
+    for particular buddies**; otherwise it keeps the old default, the member
+    entering it. The forms send what they show (`defaultCostSharers` in
+    `traveller-picker.js`); `ItineraryService.defaultSharers` covers a request
+    that sends none. After that the row never follows: moving money between
+    buddies silently is the one thing this must not do.
+  - **Only the owner has the Mine / Whole trip switch**; every other buddy is
+    always on Mine (`canSeeWholeTrip` in `js/pages/trip/scope.js`), with no
+    "N more on the whole trip" hint, since they could not act on it. **Focus
+    view, not privacy**: every member is still sent every row. Only a personal
+    published page leaves other buddies' parts out of the file.
+  - **An untouched picker sends nothing** (`travellersPayload`), so opening and
+    saving a form never turns "not set" into `[]`.
 
 ## Backend architecture
 

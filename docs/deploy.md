@@ -52,8 +52,7 @@ attach the domain to Pages with one click.
 1. Create a Cloudflare account at [dash.cloudflare.com](https://dash.cloudflare.com)
    and choose the **Free** plan.
 2. **Add a domain** → `travellingllama.fun`. Cloudflare scans the existing DNS
-   records and gives you **two nameservers**. For this domain they are
-   `dorthy.ns.cloudflare.com` and `kanye.ns.cloudflare.com`.
+   records and gives you **two nameservers**. 
 3. In **Namecheap → Domain List → Manage → Nameservers**, choose **Custom DNS**
    and enter those two nameservers.
 4. Wait. The change spreads through the internet over a few hours, and

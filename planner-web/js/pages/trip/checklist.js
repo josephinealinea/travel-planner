@@ -2,6 +2,11 @@ import { toast } from '../../toast.js';
 import { category, timeRange, longDate, money, dateOf, timeOf } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
+import {
+  newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
+  toggleTraveller, everyoneGoes, chooseTravellers, followParent, effectiveTravellers,
+  defaultCostSharers,
+} from '../../traveller-picker.js';
 
 /**
  * The Checklist tab and its detail drawer — the centre of the app.
@@ -35,9 +40,21 @@ export function checklistTab() {
     // One member or nobody; openPlanForm fills in the member at the keyboard.
     paidByUserId: '',
     countryCodes: [],
+    // Who's going; a new plan follows its checklist item. See traveller-picker.js.
+    travellers: newTravellers(),
+    travellersInitial: newTravellers(),
+    // Untouched, Shared by shows the default (planSharersShown) rather than
+    // this list, so it can follow the plan's travellers as they change.
+    sharedTouched: false,
   });
 
   return {
+    toggleTraveller,
+    everyoneGoes,
+    chooseTravellers,
+    followParent,
+    effectiveTravellers,
+
     // filters
     checkStatusFilter: 'ALL',
     checkCategoryFilters: [],
@@ -56,13 +73,16 @@ export function checklistTab() {
 
     // add form
     addCheckOpen: false,
-    newCheck: { category: 'OTHERS', description: '', note: '', countryCodes: [] },
+    newCheck: { category: 'OTHERS', description: '', note: '', countryCodes: [],
+                travellers: newTravellers(), travellersInitial: newTravellers() },
     addCheckError: '',
     addCheckBusy: false,
 
     // drawer
     openItem: null,
-    drawerForm: { description: '', note: '', category: 'OTHERS', countryCodes: [] },
+    // travellers here too: the drawer's markup exists before any item opens.
+    drawerForm: { description: '', note: '', category: 'OTHERS', countryCodes: [],
+                  travellers: newTravellers(), travellersInitial: newTravellers() },
     drawerError: '',
     drawerBusy: false,
     deletingCheck: false,
@@ -82,7 +102,7 @@ export function checklistTab() {
 
     // ── filtering and grouping ──────────────────────
     get filteredChecklist() {
-      return this.checklist.filter((item) => {
+      return this.scopedChecklist.filter((item) => {
         if (this.checkStatusFilter === 'TODO' && item.status !== 'TODO') return false;
         if (this.checkStatusFilter === 'COMPLETED' && item.status !== 'COMPLETED') return false;
         if (this.checkCategoryFilters.length
@@ -130,13 +150,14 @@ export function checklistTab() {
     },
 
     checkProgress() {
-      const done = this.checklist.filter((item) => item.status === 'COMPLETED').length;
-      return { done, total: this.checklist.length };
+      const done = this.scopedChecklist.filter((item) => item.status === 'COMPLETED').length;
+      return { done, total: this.scopedChecklist.length };
     },
 
     // ── add ─────────────────────────────────────────
     openAddCheck() {
-      this.newCheck = { category: 'OTHERS', description: '', note: '', countryCodes: [] };
+      this.newCheck = { category: 'OTHERS', description: '', note: '', countryCodes: [],
+                        travellers: newTravellers(), travellersInitial: newTravellers() };
       this.addCheckError = '';
       this.addCheckOpen = true;
       this.focusWhenShown('newCheckDescription');
@@ -151,15 +172,18 @@ export function checklistTab() {
       this.addCheckError = '';
       this.addCheckBusy = true;
       try {
-        await this.api.addCheck(this.trip.id, {
+        const created = await this.api.addCheck(this.trip.id, {
           category: this.newCheck.category,
           description,
           note: this.newCheck.note.trim() || null,
           countryCodes: this.newCheck.countryCodes,
+          ...travellersPayload(this.newCheck.travellers, this.newCheck.travellersInitial),
         });
         this.addCheckOpen = false;
-        toast.success('Checklist item added');
         await this.reload();
+        toast.success(this.showingMine && created?.id && this.isHiddenByScope('checklist', created.id)
+          ? this.notOnListMessage('Checklist item added')
+          : 'Checklist item added');
       } catch (error) {
         this.addCheckError = error.fullMessage;
       } finally {
@@ -175,6 +199,8 @@ export function checklistTab() {
         note: item.note || '',
         category: item.category,
         countryCodes: [...(item.countryCodes || [])],
+        travellers: travellersFromRecord(item),
+        travellersInitial: snapshotTravellers(travellersFromRecord(item)),
       };
       this.drawerError = '';
       this.planOpen = false;
@@ -210,7 +236,9 @@ export function checklistTab() {
           || form.description.trim() !== (item.description || '')
           || form.note.trim() !== (item.note || '')
           || form.category !== item.category
-          || !sameCountries;
+          || !sameCountries
+          // A changed "Who's going" is as much an unsaved edit as a note.
+          || (form.travellers && Object.keys(travellersPayload(form.travellers, form.travellersInitial)).length > 0);
     },
 
     /**
@@ -260,9 +288,12 @@ export function checklistTab() {
           category: this.drawerForm.category,
           // An empty array clears every link server-side.
           countryCodes: this.drawerForm.countryCodes,
+          ...travellersPayload(this.drawerForm.travellers, this.drawerForm.travellersInitial),
         });
-        toast.success('Saved');
         await this.reload();
+        toast.success(this.showingMine && this.isHiddenByScope('checklist', this.openItem.id)
+          ? this.notOnListMessage('Saved')
+          : 'Saved');
         this.refreshOpenItem();
       } catch (error) {
         this.drawerError = error.fullMessage;
@@ -350,6 +381,47 @@ export function checklistTab() {
       this.openItem = found || null;
     },
 
+    // ── who's going ─────────────────────────────────
+
+    /** What a checklist item follows while unset: its destination's resolved list. */
+    checklistInherited(item) {
+      const from = item?.seededFromDestinationId;
+      return from ? ((this.namedTravellers.destinations || {})[from] || []) : [];
+    },
+
+    checklistParentLabel(item) {
+      const from = item?.seededFromDestinationId;
+      const destination = from && this.destinations.find((d) => d.id === from);
+      return destination ? destination.name : 'the trip';
+    },
+
+    /** What a plan follows while unset: its checklist item's resolved list. */
+    planInherited() {
+      const itemId = this.planForm.checklistItemId || this.openItem?.id;
+      return (this.namedTravellers.checklist || {})[itemId] || [];
+    },
+
+    planParentLabel() {
+      const itemId = this.planForm.checklistItemId || this.openItem?.id;
+      return this.checklist.find((c) => c.id === itemId)?.description || 'the trip';
+    },
+
+    /** Shared by, as shown and as sent: see defaultCostSharers. */
+    planSharersShown() {
+      if (this.planForm.sharedTouched) return this.planForm.sharedByUserIds;
+      return defaultCostSharers(
+        this.effectiveTravellers(this.planForm.travellers, this.planInherited()), this.currentUserId);
+    },
+
+    /** The first click on Shared by takes over the default, then toggles. */
+    togglePlanSharer(userId) {
+      if (!this.planForm.sharedTouched) {
+        this.planForm.sharedByUserIds.splice(0, this.planForm.sharedByUserIds.length, ...this.planSharersShown());
+        this.planForm.sharedTouched = true;
+      }
+      this.toggleSharer(this.planForm.sharedByUserIds, userId);
+    },
+
     // ── plan form ───────────────────────────────────
     async openPlanForm() {
       this.planError = '';
@@ -405,6 +477,12 @@ export function checklistTab() {
         sharedByUserIds: this.sharersOfPlan(plan),
         paidByUserId: this.paidByOfPlan(plan),
         countryCodes: [...(plan.countryCodes || [])],
+        checklistItemId: plan.checklistItemId || null,
+        travellers: travellersFromRecord(plan),
+        travellersInitial: snapshotTravellers(travellersFromRecord(plan)),
+        // A cost that already has a budget row shows that row's sharers as
+        // they are; only a cost still to be created follows the default.
+        sharedTouched: !!this.budgetRowOfPlan(plan),
       };
       this.planOpen = true;
     },
@@ -447,11 +525,12 @@ export function checklistTab() {
             cost: cost == null ? 0 : cost,
             currency: this.planForm.currency || null,
             costCharged: this.planForm.costCharged,
-            costSharedByUserIds: this.planForm.sharedByUserIds,
+            costSharedByUserIds: this.planSharersShown(),
             // Always sent: absent would leave the payer alone, '' clears it.
             costPaidByUserId: this.planForm.paidByUserId || '',
             // An empty array clears every link server-side.
             countryCodes: this.planForm.countryCodes,
+            ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
           });
           toast.success('Plan updated');
         } else {
@@ -468,9 +547,10 @@ export function checklistTab() {
           allDay: !this.planForm.startTime,
           currency: cost == null ? null : (this.planForm.currency || null),
             costCharged: this.planForm.costCharged,
-            costSharedByUserIds: this.planForm.sharedByUserIds,
+            costSharedByUserIds: this.planSharersShown(),
             costPaidByUserId: this.planForm.paidByUserId || '',
             countryCodes: this.planForm.countryCodes,
+            ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
           });
           toast.success(cost == null
             ? 'Plan added'

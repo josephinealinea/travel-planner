@@ -66,6 +66,16 @@ public class ItineraryItem implements Audited {
     private Instant updatedAt;
     private String updatedByUserId;
 
+    /**
+     * Which travel buddies this is for. Three states, and the first two are
+     * not the same: null is "not set, same as the parent" (its checklist item,
+     * or the whole trip); an empty list is explicitly the whole trip;
+     * otherwise those member user ids, in the order picked. A later day of a
+     * stay ignores its own and follows its plan's. Resolved by
+     * trips.api.Travellers; never read directly to decide who sees what.
+     */
+    private List<String> travellerIds;
+
     public ItineraryItem() {}
 
     @JsonIgnore
@@ -160,4 +170,10 @@ public class ItineraryItem implements Audited {
 
     public String getUpdatedByUserId() { return updatedByUserId; }
     public void setUpdatedByUserId(String updatedByUserId) { this.updatedByUserId = updatedByUserId; }
+
+    public List<String> getTravellerIds() { return travellerIds; }
+    public void setTravellerIds(List<String> travellerIds) {
+        // Null stays null: it is a state ("follow the parent"), not an empty list.
+        this.travellerIds = travellerIds == null ? null : new ArrayList<>(travellerIds);
+    }
 }

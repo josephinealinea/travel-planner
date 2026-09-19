@@ -7,11 +7,11 @@ import { countdownLabel, daysUntil, money, category } from '../../format.js';
 export function overviewTab() {
   return {
     stats() {
-      const done = this.checklist.filter((item) => item.status === 'COMPLETED').length;
+      const done = this.scopedChecklist.filter((item) => item.status === 'COMPLETED').length;
       return [
-        { label: 'Destinations', value: this.destinations.length },
-        { label: 'Checklist done', value: `${done} / ${this.checklist.length}` },
-        { label: 'Itinerary entries', value: this.itinerary.length },
+        { label: 'Destinations', value: this.scopedDestinations.length },
+        { label: 'Checklist done', value: `${done} / ${this.scopedChecklist.length}` },
+        { label: 'Itinerary entries', value: this.scopedItinerary.length },
         // The signed-in member's own charged total, matching what the Budget
         // tab opens on. It moved into `charged` when the rollup was split in
         // two, and reading the old flat `budget.total` here left this stat
@@ -32,7 +32,7 @@ export function overviewTab() {
     /** The next few dated plans, so the tab opens on something useful. */
     upNext() {
       const today = new Date().toISOString().slice(0, 10);
-      return this.itinerary
+      return this.scopedItinerary
         .filter((item) => item.startAt && item.startAt.slice(0, 10) >= today)
         .slice(0, 5);
     },
@@ -44,8 +44,8 @@ export function overviewTab() {
      */
     needsPlanning() {
       const planned = new Set(
-        this.itinerary.map((item) => item.checklistItemId).filter(Boolean));
-      return this.checklist
+        this.scopedItinerary.map((item) => item.checklistItemId).filter(Boolean));
+      return this.scopedChecklist
         .filter((item) => item.status === 'TODO' && !planned.has(item.id))
         .slice(0, 8);
     },

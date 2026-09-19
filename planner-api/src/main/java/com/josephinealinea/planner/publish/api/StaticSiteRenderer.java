@@ -12,6 +12,7 @@ import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.publish.infra.PageStore;
 import com.josephinealinea.planner.publish.infra.PageStore.Area;
 import com.josephinealinea.planner.publish.infra.PageStore.PageFile;
+import com.josephinealinea.planner.trips.api.Travellers;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -248,9 +249,20 @@ public class StaticSiteRenderer {
     private PublishedTrip snapshot(Trip trip, PublishOptions options,
                                    com.josephinealinea.planner.identity.domain.User viewer) {
         String slug = trip.getSlug();
-        var allDestinations = destinations.findAllOrdered(slug);
-        var allChecklist = checklist.findAllOrdered(slug);
-        var allItinerary = itinerary.findAllOrdered(slug);
+        var tripDestinations = destinations.findAllOrdered(slug);
+        var tripChecklist = checklist.findAllOrdered(slug);
+        var tripItinerary = itinerary.findAllOrdered(slug);
+        // A personal page lists only its viewer's parts, and leaves the rest
+        // out of the file rather than hiding it: see Travellers, and the
+        // "not displayed means not shipped" rule this page already keeps.
+        Travellers travellers = Travellers.of(trip, tripDestinations, tripChecklist, tripItinerary);
+        String viewerId = viewer == null ? null : viewer.getId();
+        var allDestinations = viewerId == null ? tripDestinations : tripDestinations.stream()
+                .filter(d -> Travellers.includes(travellers.ofDestination(d), viewerId)).toList();
+        var allChecklist = viewerId == null ? tripChecklist : tripChecklist.stream()
+                .filter(c -> Travellers.includes(travellers.ofChecklistItem(c), viewerId)).toList();
+        var allItinerary = viewerId == null ? tripItinerary : tripItinerary.stream()
+                .filter(i -> Travellers.includes(travellers.ofItineraryItem(i), viewerId)).toList();
         // With a viewer, every figure below is their share; without one it is
         // what the trip cost. See BudgetService.summarise.
         BudgetService.Summary budget = budgets.summarise(trip, viewer);

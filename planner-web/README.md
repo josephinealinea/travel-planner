@@ -33,7 +33,7 @@ step, the base URL can also be set once from the address bar and is remembered
 after that:
 
 ```
-http://localhost:3000/login.html?api=http://localhost:8090
+http://localhost:3000/login.html?api=http://localhost:8080
 ```
 
 ## Pages
