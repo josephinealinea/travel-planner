@@ -10,3 +10,5 @@ build/
 *.iml
 Dockerfile
 .dockerignore
+# Local secrets — never in an image.
+.env.*

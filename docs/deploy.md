@@ -150,6 +150,24 @@ Without `--no-dry-run` the policy only reports what it would delete.
 
 ## 5. Build, push and deploy the API
 
+**`planner-api/deploy.sh` does all of this step after the tests.** It reads
+every setting from three private, gitignored files beside it: `.env.deploy`
+(project, region, domain, image tag, app behaviour), `.env.neon` and `.env.r2`.
+The service's environment is *replaced* on every deploy with exactly what the
+script sends, so those files are the one record of what is deployed. A setting
+changed only in the Cloud Run console is undone by the next run. To ship a new
+build, bump `IMAGE_TAG` in `.env.deploy` and rerun. To change a setting only,
+use `--no-build`. The commands below are what the script runs.
+
+#### Build, push and deploy
+```bash
+cd planner-api && ./deploy.sh
+```
+#### Redeploy the same image with changed settings
+```bash
+cd planner-api && ./deploy.sh --no-build
+```
+
 Run the tests first. The image build skips them, because they need Docker.
 Check the report shows the Postgres and MinIO tests as *run*, not skipped —
 see *Local development* below.

@@ -3,3 +3,5 @@ build/
 data/
 *.log
 .DS_Store
+# Local secrets (Neon credentials etc.) — never committed.
+.env.*
