@@ -144,7 +144,7 @@ export function countdownLabel(iso) {
  * the hand-written trips. Adding one means adding it there first.
  */
 export const CATEGORIES = [
-  { value: 'TRANSPORTATION', label: 'Transpo',        icon: '✈️', color: '#F76707' },
+  { value: 'TRANSPORTATION', label: 'Transportation', icon: '✈️', color: '#F76707' },
   { value: 'LODGING',        label: 'Lodging',        icon: '🏨', color: '#4C6EF5' },
   { value: 'ACTIVITIES',     label: 'Activities',     icon: '🎟️', color: '#E64980' },
   { value: 'SHOPPING',       label: 'Shopping',       icon: '🛍️', color: '#AE3EC9' },

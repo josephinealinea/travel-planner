@@ -44,7 +44,7 @@
           </h1>
           <div class="trip-head-meta">
             <span x-text="tripDates()"></span>
-            <span x-show="ownerName()"> · owned by <span x-text="ownerName()"></span></span>
+            <!--<span x-show="ownerName()"> · owned by <span x-text="ownerName()"></span>--></span>
             <span> · <span x-text="members.length"></span>
               travel <span x-text="members.length === 1 ? 'buddy' : 'buddies'"></span></span>
             <span class="scope-switch" role="group" aria-label="Show" x-show="canSeeWholeTrip">
@@ -140,14 +140,14 @@
       <section x-show="tab === 'members'" role="tabpanel" id="panel-members"
                aria-labelledby="tab-members" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">Travel Buddies</h2>
+          <h2 class="section-title">🦙 The Herd</h2>
         </div>
 
         <div class="card" style="margin-bottom:16px">
           <div class="alert alert-error" x-show="memberError" x-text="memberError" x-cloak></div>
           <form class="field-inline" @submit.prevent="addMember()">
             <div class="field grow">
-              <label for="member-email">Add a travel buddy by email</label>
+              <label for="member-email">Add a travel buddy 🦙 to the herd by email</label>
               <input id="member-email" type="email" x-model="memberEmail"
                      placeholder="name@example.com" required>
               <p class="field-hint">
@@ -206,7 +206,9 @@
       <section x-show="tab === 'destinations'" role="tabpanel" id="panel-destinations"
                aria-labelledby="tab-destinations" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">Destinations</h2>
+          <h2 class="section-title">🗺️ Grazing Grounds
+            <span class="small muted"> - where the herd is going?</span>
+          </h2>
           <div class="btn-row">
             <!-- Beside Add rather than in a row of its own: it stays put whether
                  or not anything is selected, so ticking the first row never
@@ -234,8 +236,8 @@
           <div class="empty-icon">📍</div>
           <h3 class="empty-title">No destinations yet</h3>
           <p class="empty-body">
-            Adding one creates three checklist items for it — transportation,
-            accommodation and activities.
+            Adding one auto-creates three checklist items — transportation,
+            lodging and activities.
           </p>
           <button type="button" class="btn btn-primary" @click="openAddDestination()">
             Add your first destination
@@ -293,9 +295,9 @@
                aria-labelledby="tab-checklist" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">
-            Travel Checklist
+            🎯 Travel Checklist
             <span class="small muted"
-                  x-text="`— ${checkProgress().done} of ${checkProgress().total} done`"></span>
+                  x-text="`— ${checkProgress().done} of ${checkProgress().total} ready for the herd`"></span>
           </h2>
           <div class="btn-row">
             <button type="button" class="btn btn-sm btn-danger"
@@ -326,16 +328,7 @@
             </template>
           </div>
 
-          <span class="toolbar-label" id="check-status-label">Status</span>
-          <div class="chip-group" role="group" aria-labelledby="check-status-label">
-            <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
-              <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
-                      @click="checkStatusFilter = option"
-                      x-text="option === 'ALL' ? 'All' : (option === 'TODO' ? 'To do' : 'Completed')"></button>
-            </template>
-          </div>
-
-          <span class="toolbar-label" id="check-group-by-label">Show by</span>
+          <span class="toolbar-label" id="check-group-by-label">Group By</span>
           <div class="chip-group" role="group" aria-labelledby="check-group-by-label">
             <template x-for="option in checkGroupByOptions" :key="option.value">
               <button type="button" class="chip"
@@ -344,7 +337,17 @@
                       x-text="option.label"></button>
             </template>
           </div>
+        </div>
 
+        <div class="toolbar">
+          <span class="toolbar-label" id="check-status-label">Status</span>
+          <div class="chip-group" role="group" aria-labelledby="check-status-label">
+            <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
+              <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
+                      @click="checkStatusFilter = option"
+                      x-text="option === 'ALL' ? 'All' : (option === 'TODO' ? 'To do' : 'Completed')"></button>
+            </template>
+          </div>
         </div>
 
         <div class="empty-state" x-show="!checklist.length">
@@ -420,7 +423,9 @@
       <section x-show="tab === 'itinerary'" role="tabpanel" id="panel-itinerary"
                aria-labelledby="tab-itinerary" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">Itinerary</h2>
+          <h2 class="section-title">✨ The Adventure Plan
+            <span class="small muted"> - herding</span>
+          </h2>
           <div class="btn-row">
             <button type="button" class="btn btn-sm btn-danger"
                     x-show="itinShow !== 'WEATHER'"
@@ -450,7 +455,8 @@
               </button>
             </template>
           </div>
-
+        </div>
+        <div class="toolbar">
           <span class="toolbar-label" id="itin-show-label">Show</span>
           <div class="chip-group" role="group" aria-labelledby="itin-show-label">
             <template x-for="option in ['ALL', 'WEATHER', 'ITINERARY']" :key="option">
@@ -460,7 +466,6 @@
                               : (option === 'WEATHER' ? 'Weather only' : 'Itinerary only')"></button>
             </template>
           </div>
-
         </div>
 
         <p class="tiny muted" x-show="weatherLoading">Looking up the weather…</p>
@@ -474,7 +479,7 @@
           <div class="empty-icon">🗓</div>
           <h3 class="empty-title">Nothing planned yet</h3>
           <p class="empty-body">
-            Open a checklist item and press Plan, or add an itinerary entry directly.
+            Open a checklist item and start planning, or add an itinerary entry directly.
           </p>
           <button type="button" class="btn btn-primary" @click="openAddEntry()">Add an entry</button>
         </div>
@@ -579,7 +584,9 @@
       <section x-show="tab === 'budget'" role="tabpanel" id="panel-budget"
                aria-labelledby="tab-budget" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">Budget</h2>
+          <h2 class="section-title">💰 The Herd Funds
+            <span class="small muted"> - keep track of what the herd spends</span>
+          </h2>
           <div class="btn-row">
             <button type="button" class="btn btn-sm btn-danger"
                     :disabled="!budgetSelected.length"
@@ -604,13 +611,14 @@
               </button>
             </template>
           </div>
-
+        </div>
+        <div class="toolbar">
           <!-- One at a time, unlike the Category filter beside it: these are
                four views of the same money, not four things to combine. The two
                Forecast ones count the expenses nobody has paid yet alongside
                the charges; the plain two count charges only. Every figure on
                the panel below follows this one control. -->
-          <span class="toolbar-label" id="budget-show-label">Show</span>
+          <span class="toolbar-label" id="budget-show-label">Group By</span>
           <div class="chip-group" role="group" aria-labelledby="budget-show-label">
             <template x-for="option in budgetShowOptions" :key="option.value">
               <button type="button" class="chip"
@@ -619,22 +627,21 @@
                       x-text="option.label"></button>
             </template>
           </div>
-
         </div>
 
         <!-- Follows what the table lists rather than what the trip holds: a
              member who shares none of its expenses has an empty budget, even
              on a trip full of other people's. -->
         <div class="empty-state" x-show="!myBudgetItems.length">
-          <div class="empty-icon">💰</div>
+          <div class="empty-icon">💳</div>
           <h3 class="empty-title" x-text="budget.items.length
-                ? 'None of these expenses are yours'
-                : 'No costs recorded yet'"></h3>
+                ? 'Hooray! No bills for you from the herd ..yet!'
+                : 'The herd has not spent any cent yet'"></h3>
           <p class="empty-body" x-show="!budget.items.length">
             Put a cost on a plan and it appears here automatically, or add an expense by hand.
           </p>
           <p class="empty-body" x-show="budget.items.length">
-            This trip has expenses, but none of them name you under “Shared by”.
+            This trip has expenses, but none of them is for you.
             Open one from the Itinerary tab, or add your own.
           </p>
           <button type="button" class="btn btn-primary" @click="openAddExpense()">Add an expense</button>
@@ -790,14 +797,14 @@
              nobody has spent. -->
         <div class="card settle">
           <div class="section-head">
-            <h3 class="section-title" id="settle-title">Settle Expenses</h3>
+            <h3 class="section-title" id="settle-title">💸 Settle the herd</h3>
           </div>
           <p class="settle-note">
-            Based on charged expenses only, in the currency each was paid in.
+            Based on charged expenses only, in the same currency each was paid in.
           </p>
 
           <p class="empty" x-show="!hasSettlements" x-cloak>
-            Nothing to settle — nobody has paid for anybody else's share yet.
+            All settled! The herd is square. <span aria-hidden="true">🦙</span>
           </p>
 
           <div class="table-wrap" x-show="hasSettlements" x-cloak>
@@ -844,7 +851,7 @@
       <section x-show="tab === 'publish'" role="tabpanel" id="panel-publish"
                aria-labelledby="tab-publish" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">Publish</h2>
+          <h2 class="section-title">🚀 Share the Journey</h2>
         </div>
 
         <!-- Published -->
@@ -853,56 +860,45 @@
             <h3 class="card-title">This trip is published</h3>
             <span class="badge badge-published">Live</span>
           </div>
+          <div class="publish-actions">
+            <button type="button" class="btn btn-sm" x-show="isOwner" :disabled="publishBusy"
+                    @click="doPublish()" x-text="publishBusy ? 'Working…' : 'Re-publish (update)'"></button>
+            <button type="button" class="btn btn-sm btn-danger" x-show="isOwner"
+                    @click="confirmingUnpublish = true">Unpublish</button>
+          </div>
+          <br />
           <p class="small muted">
             Anyone with this link can see the trip — no sign-in needed.
             Last published <span x-text="publishedAtLabel()"></span>.
           </p>
           <div class="publish-url">
             <span x-ref="publicUrl" class="grow" x-text="publish.publicUrl"></span>
-            <button type="button" class="btn btn-sm" @click="copyLink()"
-                    x-text="copied ? 'Copied ✓' : 'Copy link'"></button>
-          </div>
-
-          <!-- Only when this member asked for one in Account → Appearance, and
-               only once a publish has actually written it. A static page has no
-               sign-in, so whose budget it shows is decided when the file is
-               written — which is why it is a second page rather than a filter
-               on the first. -->
-          <p class="small muted publish-own-page" x-show="publish.myPublicUrl">
-            Your own page — the same trip, showing your share of each expense
-            instead of the total. Nobody else's figures are in it.
-          </p>
-          <!-- One row for every action on the live page, wrapping on a phone.
-               x-show rather than x-if for "Open my page", so the buttons stay
-               siblings in the same flex row. -->
-          <div class="publish-actions">
             <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener">
               Open public page
             </a>
+            <button type="button" class="btn btn-sm" @click="copyLink()"
+                    x-text="copied ? 'Copied ✓' : 'Copy link'"></button>
+          </div>
+          <p class="small muted publish-own-page" x-show="publish.myPublicUrl">
+            Your own page is the same trip, showing only your destination, checklist, itinerary, and shared expenses
+            instead of the whole trip.
+          </p>
+          <div class="publish-url">
+            <span x-ref="publicUrl" class="grow" x-text="publish.myPublicUrl"></span>
             <a class="btn btn-sm" x-show="publish.myPublicUrl" :href="publish.myPublicUrl"
                target="_blank" rel="noopener">
               Open my page
             </a>
-            <button type="button" class="btn btn-sm" x-show="isOwner" :disabled="publishBusy"
-                    @click="doPublish()" x-text="publishBusy ? 'Working…' : 'Re-publish (update)'"></button>
-            <button type="button" class="btn btn-sm btn-danger" x-show="isOwner"
-                    @click="confirmingUnpublish = true">Unpublish</button>
+            <button type="button" class="btn btn-sm" @click="copyLink()"
+                    x-text="copied ? 'Copied ✓' : 'Copy link'"></button>
           </div>
         </div>
 
         <!-- Draft, owner -->
         <div class="card" x-show="!isPublished && isOwner" style="margin-bottom:16px">
-          <div class="card-header"><h3 class="card-title">Ready to share?</h3></div>
+          <div class="card-header"><h3 class="card-title">ᯓ➤ Ready to share?</h3></div>
           <p class="small muted">
-            You can publish at any point, however unfinished the plan is — publishing again
-            later updates the page.
-          </p>
-          <!-- No theme picker: the page is published in whatever theme you are
-               looking at, so the choice is the selector in the header. -->
-          <p class="small muted">
-            The public page will use your current theme,
-            <strong x-text="themeToPublishLabel"></strong>. Switch theme and publish
-            again to restyle it.
+            You can publish at any point — publishing again later updates the page.
           </p>
           <button type="button" class="btn btn-primary" @click="confirmingPublish = true">
             Publish trip
@@ -911,13 +907,9 @@
 
         <!-- Draft, non-owner -->
         <div class="card" x-show="!isPublished && !isOwner" style="margin-bottom:16px">
-          <div class="card-header"><h3 class="card-title">Ask the owner to publish</h3></div>
+          <div class="card-header"><h3 class="card-title">ᯓ➤ Ready to share?</h3></div>
           <p class="small muted">
-            Only <span x-text="ownerName()"></span> can publish this trip. Send a request and
-            they can approve it. The page is built now, in your theme
-            (<strong x-text="themeToPublishLabel"></strong>) and your own
-            published-page settings — nothing is public, and there is no link,
-            until they approve.
+            Send a request to publish the trip. You can publish at any point — publishing again later updates the page.
           </p>
 
           <template x-if="myPendingRequest">
@@ -933,9 +925,9 @@
           <template x-if="!myPendingRequest">
             <form @submit.prevent="requestPublish()">
               <div class="field">
-                <label for="request-note">Note for the owner (optional)</label>
+                <label for="request-note">Note (optional)</label>
                 <input id="request-note" x-model="requestNote"
-                       placeholder="Ready to share with travel buddies">
+                       placeholder="Ready to share with the herd? ">
               </div>
               <button type="submit" class="btn btn-primary" :disabled="publishBusy"
                       x-text="publishBusy ? 'Sending…' : 'Request to Publish'"></button>
@@ -973,7 +965,7 @@
         </div>
 
         <div class="card" x-show="recentRequests.length" style="margin-top:16px">
-          <div class="card-header"><h3 class="card-title">Recent requests</h3></div>
+          <div class="card-header"><h3 class="card-title">📥 Recent requests</h3></div>
           <template x-for="request in recentRequests" :key="request.id">
             <div class="publish-request-row">
               <div class="grow small">
@@ -1056,7 +1048,7 @@
                   </div>
                 </div>
                 <div class="field">
-                  <label id="drawer-going-label">Who's coming along?</label>
+                  <label id="drawer-going-label">Who's carrying the load? <span aria-hidden="true">🦙</span></label>
                   <p class="field-hint" x-show="drawerForm.travellers.mode === 'inherit'">
                     Same as <span x-text="checklistParentLabel(openItem)"></span>:
                     <template x-for="name in nameList(checklistInherited(openItem))" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList(checklistInherited(openItem)).length">everyone</span>
@@ -1075,6 +1067,9 @@
                 x-text="'Back to ' + checklistParentLabel(openItem) + '\'s'"></button>
                   </div>
                 </div>
+
+              </div>
+              <div class="modal-footer">
                 <button type="button" class="btn" :disabled="drawerBusy"
                         @click="saveDrawer()" x-text="drawerBusy ? 'Saving…' : 'Save changes'"></button>
               </div>
@@ -1086,9 +1081,10 @@
                 </h3>
 
                 <p class="small muted" x-show="!openItemPlans.length && !planOpen">
-                  No plans yet. Press Plan to record a flight, booking or activity —
-                  add as many as this needs.
+                  <span aria-hidden="true">🦙</span> The Llama is ready to roam! -
+                  there are no plans yet, start to plan and record a flight, booking or activity.
                 </p>
+
 
                 <template x-for="plan in openItemPlans" :key="plan.id">
                   <div class="plan-card">
@@ -1155,7 +1151,7 @@
                   </div>
 
                   <div class="field">
-                    <label id="plan-going-label">Who's coming along?</label>
+                    <label id="plan-going-label">Who's taking this trail? <span aria-hidden="true">🦙</span></label>
                     <p class="field-hint" x-show="planForm.travellers.mode === 'inherit'">
                       Same as <span x-text="planParentLabel()"></span>:
                       <template x-for="name in nameList(planInherited())" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList(planInherited()).length">everyone</span>
@@ -1192,11 +1188,8 @@
                   <p class="field-hint" style="margin-top:-8px">
                     Adding a cost creates a matching budget entry.
                   </p>
-                  <!-- Unticked by default, the reverse of the budget's own
-                       form: a plan is something you intend to do, and its cost
-                       is usually money still to leave. -->
-                  <div class="field" x-show="planForm.cost">
 
+                  <div class="field" x-show="planForm.cost">
                     <label id="plan-paid-by-label">Paid by</label>
                     <div class="chip-group" role="group" aria-labelledby="plan-paid-by-label">
                       <template x-for="person in tripSharers" :key="person.userId">
@@ -1205,6 +1198,9 @@
                                 @click="choosePayer(planForm, person.userId)"
                                 x-text="person.label"></button>
                       </template>
+                      <!-- Unticked by default, the reverse of the budget's own
+                       form: a plan is something you intend to do, and its cost
+                       is usually money still to leave. -->
                       <label class="checkbox">
                         <input type="checkbox" x-model="planForm.costCharged"
                                @change="chargedToggled(planForm, currentUserId, $event.target.checked)">
@@ -1214,7 +1210,8 @@
                   </div>
 
                   <div class="field" x-show="planForm.cost">
-                    <label id="plan-shared-label">Shared by</label>
+                    <!-- <label id="plan-shared-label">Shared by</label> -->
+                    <label id="plan-shared-label">Who's chipping in? <span aria-hidden="true">🦙</span> </label>
                     <div class="chip-group" role="group" aria-labelledby="plan-shared-label">
                       <button type="button" class="chip"
                               :aria-pressed="sharedWithEveryone(planSharersShown())"
@@ -1236,20 +1233,21 @@
                 </div>
               </div>
 
-              <!-- completion and deletion -->
-              <div class="drawer-footer">
-                <button type="button" class="btn btn-primary"
-                        x-show="openItem?.status !== 'COMPLETED'"
-                        @click="askComplete(openItem)">Set this Checklist to Complete</button>
-                <button type="button" class="btn"
-                        x-show="openItem?.status === 'COMPLETED'"
-                        @click="setCheckStatus('TODO')">Reopen</button>
+              <!-- completion and deletion
+              <div class="drawer-footer"> -->
+              <div class="modal-footer">
                 <!-- Planning a completed item is not a thing: reopen it first. -->
                 <button type="button" class="btn"
                         x-show="!planOpen && openItem?.status !== 'COMPLETED'"
                         @click="openPlanForm()"
-                        x-text="openItemPlans.length ? 'Plan another' : 'Plan'"></button>
-                <button type="button" class="btn btn-danger" @click="deletingCheck = true">Delete</button>
+                        x-text="openItemPlans.length ? 'Plan another' : 'Start Planning'"></button>
+                <!-- <button type="button" class="btn btn-danger" @click="deletingCheck = true">Delete</button> -->
+                <button type="button" class="btn btn-primary"
+                        x-show="openItem?.status !== 'COMPLETED'"
+                        @click="askComplete(openItem)">Mark this Checklist to Complete</button>
+                <button type="button" class="btn"
+                        x-show="openItem?.status === 'COMPLETED'"
+                        @click="setCheckStatus('TODO')">Reopen</button>
               </div>
 
               <div class="alert alert-error" x-show="deletingCheck" x-cloak style="margin-top:12px">
@@ -1484,13 +1482,9 @@
                 <input id="dest-end" type="date" x-model="destForm.endDate" :min="trip.startDate" :max="trip.endDate">
               </div>
             </div>
-            <p class="field-hint" style="margin-top:-8px" x-show="destForm.id">
-              If these dates come to cover a night, an accommodation checklist item
-              is added now. Shortening the stay never removes one.
-            </p>
 
             <div class="field">
-              <label id="dest-going-label">Who's coming along?</label>
+              <label id="dest-going-label">Assemble the herd <span aria-hidden="true">🦙</span></label>
               <div class="chip-group" role="group" aria-labelledby="dest-going-label">
                 <button type="button" class="chip" :aria-pressed="destForm.travellers.mode !== 'named'"
                         @click="everyoneGoes(destForm.travellers)">Everyone</button>
@@ -1513,7 +1507,7 @@
             <div class="field">
               <label for="dest-notes">Note (optional)</label>
               <textarea id="dest-notes" x-model="destForm.notes"
-                        placeholder="Altitude, how to get around, anything worth knowing"></textarea>
+                        placeholder="Which season, altitude, or how to get around, anything worth knowing"></textarea>
             </div>
 
             <div class="modal-footer">
@@ -1573,7 +1567,7 @@
               <label for="new-check-description">Description</label>
               <input id="new-check-description" x-ref="newCheckDescription"
                      x-model="newCheck.description" maxlength="300"
-                     placeholder="Order eSIM" required>
+                     placeholder="Purchase a travel insurance" required>
             </div>
             <div class="field">
               <label for="new-check-category">Category</label>
@@ -1596,7 +1590,7 @@
               </div>
             </div>
             <div class="field">
-              <label id="new-check-going-label">Who's coming along?</label>
+              <label id="new-check-going-label">Who's carrying the load? <span aria-hidden="true">🦙</span></label>
               <p class="field-hint" x-show="newCheck.travellers.mode === 'inherit'">
                 Same as <span x-text="'the trip'"></span>:
                 <template x-for="name in nameList([])" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList([]).length">everyone</span>
@@ -1617,7 +1611,8 @@
             </div>
             <div class="field">
               <label for="new-check-note">Note (optional)</label>
-              <textarea id="new-check-note" x-model="newCheck.note"></textarea>
+              <textarea id="new-check-note" x-model="newCheck.note"
+                        placeholder="Are there any links or note worth remembering"></textarea>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn" @click="addCheckOpen = false">Cancel</button>
@@ -1688,7 +1683,7 @@
               </div>
             </div>
             <div class="field" x-show="!entryForm.planId">
-              <label id="entry-going-label">Who's coming along?</label>
+              <label id="entry-going-label">Who's taking this trail? <span aria-hidden="true">🦙</span></label>
               <p class="field-hint" x-show="entryForm.travellers.mode === 'inherit'">
                 Same as <span x-text="entryParentLabel()"></span>:
                 <template x-for="name in nameList(entryInherited())" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList(entryInherited()).length">everyone</span>
@@ -1742,7 +1737,8 @@
             </div>
 
             <div class="field" x-show="entryForm.cost">
-              <label id="entry-shared-label">Shared by</label>
+              <!-- <label id="entry-shared-label">Shared by</label> -->
+              <label id="entry-shared-label">Who's chipping in? <span aria-hidden="true">🦙</span> </label>
               <div class="chip-group" role="group" aria-labelledby="entry-shared-label">
                 <button type="button" class="chip"
                         :aria-pressed="sharedWithEveryone(entrySharersShown())"
@@ -1963,7 +1959,8 @@
               </div>
             </div>
             <div class="field">
-              <label id="expense-shared-label">Shared by</label>
+              <!-- <label id="expense-shared-label">Shared by</label> -->
+              <label id="expense-shared-label">Who's chipping in? <span aria-hidden="true">🦙</span> </label>
               <div class="chip-group" role="group" aria-labelledby="expense-shared-label">
                 <!-- Before the template, because x-for inserts its members as
                      siblings *after* the template node. "Everyone" is the empty

@@ -44,7 +44,7 @@
           <label for="screenName">Screen name</label>
           <input id="screenName" type="text" maxlength="60" autocomplete="nickname">
           <p class="field-hint">
-            What your travel buddies see. Without one they see your email address instead.
+            What the herd can call you 🦙. Without one they only see your email address.
           </p>
         </div>
         <button type="submit" class="btn btn-primary" id="save-profile">Save screen name</button>
@@ -95,16 +95,15 @@
       </div>
 
       <div class="field">
-        <label for="budget-page-size">Budget rows per page</label>
+        <label for="budget-page-size">Pagination - Expense records in Budget page</label>
         <select id="budget-page-size" class="control-narrow"></select>
-        <p class="field-hint">Remembered in this browser. Applies the next time a trip opens.</p>
+        <p class="field-hint">Applies the next time a trip opens.</p>
       </div>
 
       <div class="field">
         <span class="label">Published page</span>
         <p class="small muted" style="margin:0 0 8px">
-          Saved to your account. Applies the next time you publish a trip —
-          a published page is a file, so it keeps whatever it was written with.
+          These settings are saved to your account.
         </p>
         <div id="published-page-alert" class="alert" hidden></div>
         <div id="published-page-settings" class="stack-sm"></div>
@@ -116,11 +115,11 @@
       <div id="currency-alert" class="alert" hidden></div>
 
       <div class="field">
-        <label for="display-currency">Allowed currencies</label>
+        <label for="display-currency">Your allowed currencies</label>
         <div id="currency-chips" class="chip-group" style="margin-bottom:12px"></div>
         <form id="currency-form" class="field-inline">
           <div class="field grow field-narrow">
-            <label for="new-currency">Add a currency</label>
+            <label for="new-currency">Add a new currency</label>
             <select id="new-currency"></select>
           </div>
           <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
@@ -134,12 +133,10 @@
       </div>
 
       <div class="field">
-        <label for="display-currency">Show totals in</label>
+        <label for="display-currency">Show your Total Travel Cost in</label>
         <select id="display-currency" class="control-narrow"></select>
         <p class="field-hint">
-          Budget totals show in this currency on every trip you can see. A trip with
-          no exchange rate for it says so rather than guessing, and this has no bearing
-          on the currency a trip's own exchange rates are quoted against.
+          The amount presented is just a projection amount and is based on exchange rate.
         </p>
       </div>
 
