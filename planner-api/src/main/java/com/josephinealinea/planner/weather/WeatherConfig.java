@@ -1,8 +1,8 @@
 package com.josephinealinea.planner.weather;
 
 import com.josephinealinea.planner.config.AppProperties;
-import org.springframework.boot.web.client.ClientHttpRequestFactories;
-import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -39,12 +39,12 @@ public class WeatherConfig {
 
     private static RestClient build(String baseUrl, AppProperties props) {
         var timeout = props.weather().timeout();
-        var settings = ClientHttpRequestFactorySettings.DEFAULTS
+        var settings = ClientHttpRequestFactorySettings.defaults()
                 .withConnectTimeout(timeout)
                 .withReadTimeout(timeout);
         return RestClient.builder()
                 .baseUrl(baseUrl)
-                .requestFactory(ClientHttpRequestFactories.get(settings))
+                .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
                 .defaultHeader("Accept", "application/json")
                 .defaultHeader("User-Agent", USER_AGENT)
                 // No status handlers: WeatherClient reads the status itself,
