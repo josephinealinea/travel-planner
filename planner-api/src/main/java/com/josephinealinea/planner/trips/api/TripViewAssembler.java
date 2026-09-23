@@ -80,6 +80,7 @@ public class TripViewAssembler {
                 items.size(),
                 (int) completed,
                 publicUrl(trip),
+                personalUrl(trip, currentUserId),
                 trip.getPublishedAt());
     }
 

@@ -38,7 +38,7 @@ sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG='v2'/" "/Users/joeydevivre/Documents/GeekPO
 Site/travel-planner/planner-api/.env.deploy"
 ```
 
-### Step 2: build and deploy the API (5–10 minutes)
+### Step 2: (BE) build and deploy the API (5–10 minutes)
 
 This carries all the API-side changes.
 
@@ -58,7 +58,7 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 ```
 Look for Migrating schema "public" to version "2 - travellers" or Current version of schema "public": 2.
 
-### Step 3: build and deploy the website
+### Step 3: (FE) build and deploy the website
 
 #### Build the site
 ```bash

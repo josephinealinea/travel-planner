@@ -80,7 +80,9 @@
         <div class="trip-card-footer">
           <a class="btn btn-primary btn-sm" :href="`trip.html?id=${trip.id}`">Open</a>
           <a class="btn btn-sm" x-show="trip.publicUrl" :href="trip.publicUrl"
-             target="_blank" rel="noopener">View public page</a>
+             target="_blank" rel="noopener">Public page</a>
+          <a class="btn btn-sm" x-show="trip.myPublicUrl" :href="trip.myPublicUrl"
+             target="_blank" rel="noopener">My page</a>
           <button type="button" class="btn btn-sm btn-danger" x-show="trip.isOwner"
                   @click="askDelete(trip)">Delete</button>
         </div>

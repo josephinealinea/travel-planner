@@ -45,6 +45,7 @@ public final class TripViews {
                               int checklistTotal,
                               int checklistCompleted,
                               String publicUrl,
+                              String myPublicUrl,
                               Instant publishedAt) {}
 
     public record PublishRequestView(String id,
