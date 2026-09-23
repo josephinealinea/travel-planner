@@ -62,7 +62,7 @@ Look for Migrating schema "public" to version "2 - travellers" or Current versio
 
 #### Build the site
 ```bash
-cd "/Users/joeydevivre/Documents/GeekPOC/Personal Site/travel-planner/planner-web" && npm ci && npm run build                                                                                                    
+cd "/Users/joeydevivre/Documents/GeekPOC/Personal Site/travel-planner/planner-web" && npm ci && npm run build
 ```
 #### Upload it
 ```bash

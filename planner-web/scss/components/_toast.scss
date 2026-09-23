@@ -29,6 +29,7 @@
 // Coloured variants sit on the semantic fills, which pair with on-accent in
 // every theme regardless of what --tp-on-toast says.
 .toast-error { color: var(--tp-on-accent); background: var(--tp-danger); }
+.toast-warning { color: var(--tp-warning-ink); background: var(--tp-warning-bg); border: 1px solid var(--tp-warning); }
 .toast-success { color: var(--tp-on-accent); background: var(--tp-success); }
 
 // Not display:contents — Chrome has dropped the role of such elements from
@@ -37,7 +38,8 @@
 
 // The stack ignores the pointer so it never blocks the page; a dismissable
 // error has to take it back.
-.toast-error {
+.toast-error,
+.toast-warning {
   display: flex;
   gap: 12px;
   align-items: center;

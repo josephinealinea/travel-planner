@@ -79,8 +79,8 @@ class TravellersViewTest {
         trip.setTitle("LATAM Trip 2026");
         trip.setOwnerUserId(ALEX);
         trip.setDisplayCurrency("EUR");
-        trip.getMembers().add(new TripMember(ALEX, "alex@example.com", TripRole.OWNER, null));
-        trip.getMembers().add(new TripMember(SAM, "sam@example.com", TripRole.MEMBER, ALEX));
+        trip.getMembers().add(new TripMember(ALEX, TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(SAM, TripRole.MEMBER, ALEX));
         trips.save(trip);
 
         Destination uyuni = new Destination();

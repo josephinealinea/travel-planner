@@ -121,7 +121,7 @@ class BudgetServiceCurrencyAndCountryTest {
         // in particular is shared by the whole trip — so without it the rollup
         // would correctly report nothing at all as this user's money.
         trip.setOwnerUserId("user-1");
-        trip.getMembers().add(new TripMember("user-1", "you@example.com", TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember("user-1", TripRole.OWNER, null));
         return trip;
     }
 

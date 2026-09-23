@@ -90,7 +90,7 @@ class LodgingSeedingTest {
         trip.setOwnerUserId(USER_ID);
         trip.setStartDate(LocalDate.parse("2026-10-20"));
         trip.setEndDate(LocalDate.parse("2026-11-08"));
-        trip.getMembers().add(new TripMember(USER_ID, "member@example.com", TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(USER_ID, TripRole.OWNER, null));
         trips.save(trip);
 
         service = new DestinationService(destinations, checklist, itinerary, budget,

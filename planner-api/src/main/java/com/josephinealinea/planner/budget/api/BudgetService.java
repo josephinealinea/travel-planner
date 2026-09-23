@@ -17,7 +17,6 @@ import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.api.TripMembers;
-import com.josephinealinea.planner.trips.api.TripWindow;
 import com.josephinealinea.planner.trips.domain.Trip;
 import org.springframework.stereotype.Service;
 
@@ -623,7 +622,6 @@ public class BudgetService {
         Trip trip = access.requireMember(tripId, userId);
         requireDescription(input.description());
         requireAmount(input.amount());
-        TripWindow.of(trip).require(input.date(), "expense date");
 
         BudgetItem item = new BudgetItem();
         item.setId(Ids.newId());
@@ -672,7 +670,6 @@ public class BudgetService {
         if (input.date() != null) {
             // Only a date actually sent is checked, so an older row that
             // predates a change to the trip's own dates stays editable.
-            TripWindow.of(trip).require(input.date(), "expense date");
             item.setDate(input.date());
         }
         if (input.countryCodes() != null) {

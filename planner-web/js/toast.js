@@ -28,7 +28,7 @@ function show(message, variant) {
   const toast = document.createElement('div');
   toast.className = `toast${variant ? ` toast-${variant}` : ''}`;
 
-  if (variant !== 'error') {
+  if (variant !== 'error' && variant !== 'warning') {
     toast.textContent = message;
     regions().polite.appendChild(toast);
     setTimeout(() => toast.remove(), LIFETIME_MS);
@@ -46,6 +46,7 @@ function show(message, variant) {
   toast.append(text, dismiss);
 
   const { assertive } = regions();
+  // Both stay until dismissed; a warning is read the same way an error is.
   assertive.appendChild(toast);
   // A run of failures should not wallpaper the screen; the oldest go first.
   while (assertive.children.length > MAX_ERRORS) assertive.firstElementChild.remove();
@@ -55,4 +56,5 @@ export const toast = {
   show: (message) => show(message),
   success: (message) => show(message, 'success'),
   error: (message) => show(message, 'error'),
+  warning: (message) => show(message, 'warning'),
 };

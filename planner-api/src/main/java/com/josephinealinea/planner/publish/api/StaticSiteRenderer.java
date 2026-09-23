@@ -126,8 +126,8 @@ public class StaticSiteRenderer {
      *   window.TRIP is readable by anybody who opens the source, so "not
      *   displayed" has to mean "not shipped".
      */
-    public void render(Trip trip, PublishOptions options) {
-        render(trip, options, List.of());
+    public void render(Trip trip, PublishOptions options, String theme) {
+        render(trip, options, theme, List.of());
     }
 
     /**
@@ -142,8 +142,9 @@ public class StaticSiteRenderer {
      * They are written <i>inside</i> the trip's own directory, so a page can
      * never outlive the trip it belongs to. See YamlPaths.publishedMemberPage.
      */
-    public void render(Trip trip, PublishOptions options, List<PersonalPage> personal) {
-        var theme = safeTheme(trip.getPublishedTheme());
+    public void render(Trip trip, PublishOptions options, String requestedTheme,
+                       List<PersonalPage> personal) {
+        var theme = safeTheme(requestedTheme);
         write(trip, options, theme, Area.PUBLISHED, null, null);
         writePersonal(trip, theme, Area.PUBLISHED, personal);
         log.info("Published \"{}\"{}", trip.getTitle(),
@@ -304,7 +305,8 @@ public class StaticSiteRenderer {
                         .toList(),
                 String.join(" → ", route),
                 allDestinations.stream().map(d -> toView(d, options)).toList(),
-                days(allItinerary, allDestinations, options.itineraryCost()),
+                days(allItinerary, allDestinations, options.itineraryCost(),
+                        trip.getStartDate(), trip.getEndDate()),
                 allChecklist.stream()
                         .map(item -> toView(item, countryNames))
                         .toList(),
@@ -349,10 +351,11 @@ public class StaticSiteRenderer {
                 names);
     }
 
-    /** Groups itinerary entries by day; undated plans are left out of the timeline. */
+    /** Groups itinerary entries by day; undated plans and days outside the trip are left out of the timeline. */
     private List<PublishedTrip.Day> days(List<ItineraryItem> items,
                                         List<Destination> allDestinations,
-                                        boolean showItineraryCost) {
+                                        boolean showItineraryCost,
+                                        LocalDate tripStart, LocalDate tripEnd) {
         // Sorted by day rather than by insertion. The stream above already
         // walks items in start order and a stay only ever adds days forward
         // from its own first, so insertion order happens to come out
@@ -394,7 +397,12 @@ public class StaticSiteRenderer {
         }
 
         List<LocalDate> allDays = new ArrayList<>(new TreeSet<>(
-                Stream.concat(byDay.keySet().stream(), placesByDay.keySet().stream()).toList()));
+                Stream.concat(byDay.keySet().stream(), placesByDay.keySet().stream())
+                        // A day outside the trip's own dates is kept in the data
+                        // but never put on the page.
+                        .filter(day -> (tripStart == null || !day.isBefore(tripStart))
+                                && (tripEnd == null || !day.isAfter(tripEnd)))
+                        .toList()));
 
         return allDays.stream()
                 .map(day -> new PublishedTrip.Day(

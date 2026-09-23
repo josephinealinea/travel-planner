@@ -14,7 +14,6 @@ import com.josephinealinea.planner.shared.Audit;
 import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.Travellers;
 import com.josephinealinea.planner.trips.api.TripAccessService;
-import com.josephinealinea.planner.trips.api.TripWindow;
 import com.josephinealinea.planner.trips.domain.Trip;
 import org.springframework.stereotype.Service;
 
@@ -101,7 +100,6 @@ public class DestinationService {
         Trip trip = access.requireMember(tripId, userId);
         requireName(input.name());
         requireDateOrder(input.startDate(), input.endDate());
-        requireWithinTrip(trip, input);
 
         Destination destination = new Destination();
         destination.setId(Ids.newId());
@@ -148,7 +146,6 @@ public class DestinationService {
         LocalDate start = input.startDate() != null ? input.startDate() : destination.getStartDate();
         LocalDate end = input.endDate() != null ? input.endDate() : destination.getEndDate();
         requireDateOrder(start, end);
-        requireWithinTrip(trip, input);
 
         apply(destination, input);
         destination.setTravellerIds(Travellers.change(trip, destination.getTravellerIds(),
@@ -312,16 +309,6 @@ public class DestinationService {
         if (name.trim().length() > 120) {
             throw ApiException.badRequest("That destination name is too long.");
         }
-    }
-
-    /**
-     * Only the dates actually sent are checked, so an older destination that
-     * predates a change to the trip's own dates stays editable.
-     */
-    private static void requireWithinTrip(Trip trip, Input input) {
-        TripWindow window = TripWindow.of(trip);
-        window.require(input.startDate(), "start date");
-        window.require(input.endDate(), "end date");
     }
 
     private static void requireDateOrder(LocalDate start, LocalDate end) {

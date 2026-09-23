@@ -133,8 +133,8 @@ class AuditTrailTest {
         trip.setOwnerUserId(ALEX);
         trip.setStartDate(LocalDate.parse("2026-10-20"));
         trip.setEndDate(LocalDate.parse("2026-11-08"));
-        trip.getMembers().add(new TripMember(ALEX, "alex@example.com", TripRole.OWNER, null));
-        trip.getMembers().add(new TripMember(SAM, "sam@example.com", TripRole.MEMBER, ALEX));
+        trip.getMembers().add(new TripMember(ALEX, TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(SAM, TripRole.MEMBER, ALEX));
         trips.save(trip);
 
         TripAccessService access = new TripAccessService(trips);
@@ -388,7 +388,7 @@ class AuditTrailTest {
         assertThat(afterAdd.getUpdatedAt()).isNotNull();
 
         String rainer = afterAdd.getMembers().stream()
-                .filter(m -> m.getEmail().equals("rainer@example.com"))
+                .filter(m -> !m.getUserId().equals(ALEX) && !m.getUserId().equals(SAM))
                 .findFirst().orElseThrow().getUserId();
         tripService.removeMember(TRIP_ID, SAM, rainer);
 

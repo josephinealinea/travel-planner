@@ -17,6 +17,8 @@ public class User {
     private String id;
     private String email;
     private String screenName;
+    /** Country name as picked from the country list; blank until they set one. */
+    private String homeCountry;
     private String passwordHash;
     private boolean mustChangePassword;
     private List<String> currencies = new ArrayList<>();
@@ -47,6 +49,9 @@ public class User {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getHomeCountry() { return homeCountry; }
+    public void setHomeCountry(String homeCountry) { this.homeCountry = homeCountry; }
 
     public String getScreenName() { return screenName; }
     public void setScreenName(String screenName) { this.screenName = screenName; }

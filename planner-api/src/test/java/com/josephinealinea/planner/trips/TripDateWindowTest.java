@@ -111,7 +111,7 @@ class TripDateWindowTest {
         trip.setOwnerUserId(USER_ID);
         trip.setStartDate(TRIP_START);
         trip.setEndDate(TRIP_END);
-        trip.getMembers().add(new TripMember(USER_ID, "member@example.com", TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(USER_ID, TripRole.OWNER, null));
         trips.save(trip);
 
         TripAccessService access = new TripAccessService(trips);
@@ -139,18 +139,15 @@ class TripDateWindowTest {
     }
 
     @Test
-    void aStayStartingBeforeTheTripIsRejected() {
-        assertThatThrownBy(() -> destinationService.create(TRIP_ID, USER_ID, stay("2026-10-19", "2026-10-31")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("start date")
-                .hasMessageContaining("2026-10-20 to 2026-11-05");
+    void aStayStartingBeforeTheTripIsAccepted() {
+        assertThatCode(() -> destinationService.create(TRIP_ID, USER_ID, stay("2026-10-19", "2026-10-31")))
+                .doesNotThrowAnyException();
     }
 
     @Test
-    void aStayEndingAfterTheTripIsRejected() {
-        assertThatThrownBy(() -> destinationService.create(TRIP_ID, USER_ID, stay("2026-10-25", "2026-11-06")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("end date");
+    void aStayEndingAfterTheTripIsAccepted() {
+        assertThatCode(() -> destinationService.create(TRIP_ID, USER_ID, stay("2026-10-25", "2026-11-06")))
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -184,22 +181,18 @@ class TripDateWindowTest {
     }
 
     @Test
-    void aPlanRunningPastMidnightOnTheLastDayIsRejected() {
-        assertThatThrownBy(() -> itineraryService.create(TRIP_ID, USER_ID,
-                plan("2026-11-05T22:00", "2026-11-06T01:00")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("end date");
+    void aPlanRunningPastMidnightOnTheLastDayIsAccepted() {
+        assertThatCode(() -> itineraryService.create(TRIP_ID, USER_ID,
+                plan("2026-11-05T22:00", "2026-11-06T01:00"))).doesNotThrowAnyException();
     }
 
     @Test
-    void movingAPlanOutsideTheTripIsRejected() {
+    void movingAPlanOutsideTheTripIsAccepted() {
         ItineraryItem saved = itineraryService.create(TRIP_ID, USER_ID,
                 plan("2026-10-25T09:00", "2026-10-25T11:00"));
 
-        assertThatThrownBy(() -> itineraryService.update(TRIP_ID, USER_ID, saved.getId(),
-                plan("2026-09-25T09:00", "2026-09-25T11:00")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("start date");
+        assertThatCode(() -> itineraryService.update(TRIP_ID, USER_ID, saved.getId(),
+                plan("2026-09-25T09:00", "2026-09-25T11:00"))).doesNotThrowAnyException();
     }
 
     // ── budget ──────────────────────────────────────
@@ -211,10 +204,9 @@ class TripDateWindowTest {
     }
 
     @Test
-    void anExpenseDatedOutsideTheTripIsRejected() {
-        assertThatThrownBy(() -> budgetService.create(TRIP_ID, USER_ID, expense("2026-12-01")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("expense date");
+    void anExpenseDatedOutsideTheTripIsAccepted() {
+        assertThatCode(() -> budgetService.create(TRIP_ID, USER_ID, expense("2026-12-01")))
+                .doesNotThrowAnyException();
     }
 
     @Test

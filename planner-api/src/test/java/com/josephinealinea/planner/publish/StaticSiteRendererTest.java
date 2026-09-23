@@ -211,7 +211,6 @@ class StaticSiteRendererTest {
         trip.setEndDate(LocalDate.of(2026, 11, 8));
         trip.setStatus(TripStatus.PUBLISHED);
         trip.setPublishedAt(Instant.now());
-        trip.setPublishedTheme(theme);
         trip.setDisplayCurrency("EUR");
         return trip;
     }
@@ -226,7 +225,7 @@ class StaticSiteRendererTest {
     }
 
     private String render(String theme, PublishOptions options) throws Exception {
-        renderer.render(trip(theme), options);
+        renderer.render(trip(theme), options, theme);
         return Files.readString(publishDir.resolve(SLUG).resolve("index.html"));
     }
 
@@ -255,7 +254,7 @@ class StaticSiteRendererTest {
 
     @Test
     void writesThePageAndItsDataFile() {
-        renderer.render(trip("minima"), PublishOptions.hidden());
+        renderer.render(trip("minima"), PublishOptions.hidden(), "minima");
 
         assertThat(publishDir.resolve(SLUG).resolve("index.html")).exists();
         assertThat(publishDir.resolve(SLUG).resolve("trip.json")).exists();
@@ -450,7 +449,7 @@ class StaticSiteRendererTest {
     void escapesTheTitleSoItCannotBreakOutOfTheMarkup() throws Exception {
         Trip trip = trip("minima");
         trip.setTitle("Trip <script>alert(1)</script> & co");
-        renderer.render(trip, PublishOptions.hidden());
+        renderer.render(trip, PublishOptions.hidden(), "minima");
 
         String html = Files.readString(publishDir.resolve(SLUG).resolve("index.html"));
         assertThat(html).contains("&lt;script&gt;");
@@ -459,7 +458,7 @@ class StaticSiteRendererTest {
 
     @Test
     void removeDeletesThePublishedDirectory() {
-        renderer.render(trip("minima"), PublishOptions.hidden());
+        renderer.render(trip("minima"), PublishOptions.hidden(), "minima");
         assertThat(publishDir.resolve(SLUG)).exists();
 
         renderer.remove(SLUG);

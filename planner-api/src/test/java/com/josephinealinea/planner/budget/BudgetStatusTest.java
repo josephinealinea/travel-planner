@@ -128,7 +128,7 @@ class BudgetStatusTest {
         trip.setDisplayCurrency("EUR");
         trip.setStartDate(LocalDate.parse("2026-10-20"));
         trip.setEndDate(LocalDate.parse("2026-11-08"));
-        trip.getMembers().add(new TripMember(USER_ID, "you@example.com", TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(USER_ID, TripRole.OWNER, null));
         trips.save(trip);
 
         TripAccessService access = new TripAccessService(trips);

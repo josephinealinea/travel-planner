@@ -28,6 +28,7 @@ public final class TripViews {
                              String email,
                              String displayName,
                              String screenName,
+                             String homeCountry,
                              TripRole role,
                              boolean hasSignedIn,
                              Instant invitedAt) {}
@@ -58,7 +59,6 @@ public final class TripViews {
     public record PublishView(TripStatus status,
                               String publicUrl,
                               Instant publishedAt,
-                              String publishedTheme,
                               List<PublishRequestView> requests,
                               /**
                                * The signed-in member's own published page, or

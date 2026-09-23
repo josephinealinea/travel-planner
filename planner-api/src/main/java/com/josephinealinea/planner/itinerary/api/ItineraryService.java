@@ -15,7 +15,6 @@ import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.Travellers;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.api.TripMembers;
-import com.josephinealinea.planner.trips.api.TripWindow;
 import com.josephinealinea.planner.trips.domain.Trip;
 import org.springframework.stereotype.Service;
 
@@ -149,7 +148,6 @@ public class ItineraryService {
         Trip trip = access.requireMember(tripId, userId);
         requireDescription(input.description());
         requireTimeOrder(input.startAt(), input.endAt());
-        requireWithinTrip(trip, input);
 
         ItineraryItem plan = new ItineraryItem();
         plan.setId(Ids.newId());
@@ -281,7 +279,6 @@ public class ItineraryService {
         // Null leaves it alone; false is how adding a time clears it again.
         if (input.allDay() != null) plan.setAllDay(input.allDay() ? true : null);
         requireTimeOrder(plan.getStartAt(), plan.getEndAt());
-        requireWithinTrip(trip, input);
         // An empty list is how the client clears every link; null leaves it alone.
         if (input.countryCodes() != null) {
             plan.setCountryCodes(tripCountries.validate(trip, input.countryCodes()));
@@ -447,16 +444,6 @@ public class ItineraryService {
         if (description.trim().length() > 300) {
             throw ApiException.badRequest("That description is too long.");
         }
-    }
-
-    /**
-     * Only the times actually sent are checked, so an older plan that predates
-     * a change to the trip's own dates stays editable.
-     */
-    private static void requireWithinTrip(Trip trip, Input input) {
-        TripWindow window = TripWindow.of(trip);
-        window.require(input.startAt(), "start date");
-        window.require(input.endAt(), "end date");
     }
 
     private static void requireTimeOrder(LocalDateTime start, LocalDateTime end) {

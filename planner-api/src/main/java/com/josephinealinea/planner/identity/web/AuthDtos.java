@@ -19,6 +19,7 @@ public final class AuthDtos {
             String id,
             String email,
             String screenName,
+            String homeCountry,
             String displayName,
             boolean mustChangePassword,
             List<String> currencies,
@@ -31,6 +32,7 @@ public final class AuthDtos {
                     user.getId(),
                     user.getEmail(),
                     user.getScreenName(),
+                    user.getHomeCountry(),
                     user.displayName(),
                     user.isMustChangePassword(),
                     user.getCurrencies(),
@@ -65,7 +67,7 @@ public final class AuthDtos {
             @Size(min = 8, message = "Your new password needs at least 8 characters") String newPassword,
             String screenName) {}
 
-    public record ProfileRequest(String screenName) {}
+    public record ProfileRequest(String screenName, String homeCountry) {}
 
     public record UpdateCurrenciesRequest(List<String> currencies) {}
 

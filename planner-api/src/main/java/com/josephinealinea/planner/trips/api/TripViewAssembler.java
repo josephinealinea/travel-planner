@@ -131,9 +131,10 @@ public class TripViewAssembler {
             boolean hasSignedIn = user != null && !user.isMustChangePassword();
             return new TripViews.MemberView(
                     member.getUserId(),
-                    member.getEmail(),
-                    user == null ? member.getEmail() : user.displayName(),
+                    user == null ? null : user.getEmail(),
+                    user == null ? "Former member" : user.displayName(),
                     user == null ? null : user.getScreenName(),
+                    user == null ? null : user.getHomeCountry(),
                     member.getRole(),
                     hasSignedIn,
                     member.getInvitedAt());
@@ -155,7 +156,6 @@ public class TripViewAssembler {
                 trip.getStatus(),
                 publicUrl(trip),
                 trip.getPublishedAt(),
-                trip.getPublishedTheme(),
                 requests,
                 personalUrl(trip, currentUserId),
                 approval.requireOwnerApproval());

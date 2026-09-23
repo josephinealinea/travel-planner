@@ -82,10 +82,10 @@ public class JdbcTripRepository implements TripRepository {
 
     private static final String UPSERT_TRIP = """
             INSERT INTO trips (id, slug, title, start_date, end_date, owner_user_id, status,
-                               display_currency, published_theme, published_at,
+                               display_currency, published_at,
                                created_at, updated_at, created_by_user_id, updated_by_user_id)
             VALUES (:id, :slug, :title, :startDate, :endDate, :ownerUserId, :status,
-                    :displayCurrency, :publishedTheme, :publishedAt,
+                    :displayCurrency, :publishedAt,
                     :createdAt, :updatedAt, :createdByUserId, :updatedByUserId)
             ON CONFLICT (id) DO UPDATE SET
                 slug               = EXCLUDED.slug,
@@ -95,7 +95,6 @@ public class JdbcTripRepository implements TripRepository {
                 owner_user_id      = EXCLUDED.owner_user_id,
                 status             = EXCLUDED.status,
                 display_currency   = EXCLUDED.display_currency,
-                published_theme    = EXCLUDED.published_theme,
                 published_at       = EXCLUDED.published_at,
                 created_at         = EXCLUDED.created_at,
                 updated_at         = EXCLUDED.updated_at,
@@ -104,9 +103,9 @@ public class JdbcTripRepository implements TripRepository {
             """;
 
     private static final String INSERT_MEMBER = """
-            INSERT INTO trip_members (trip_id, user_id, position, email, role,
+            INSERT INTO trip_members (trip_id, user_id, position, role,
                                       invited_by_user_id, invited_at)
-            VALUES (:tripId, :userId, :position, :email, :role, :invitedByUserId, :invitedAt)
+            VALUES (:tripId, :userId, :position, :role, :invitedByUserId, :invitedAt)
             """;
 
     private static final String INSERT_REQUEST = """
@@ -173,7 +172,6 @@ public class JdbcTripRepository implements TripRepository {
                     // the default", so a null field is given the initialiser.
                     .param("status", orDefault(trip.getStatus(), TripStatus.DRAFT))
                     .param("displayCurrency", trip.getDisplayCurrency())
-                    .param("publishedTheme", trip.getPublishedTheme())
                     .param("publishedAt", JdbcValues.timestamptz(trip.getPublishedAt()))
                     .param("createdAt", JdbcValues.timestamptz(trip.getCreatedAt()))
                     .param("updatedAt", JdbcValues.timestamptz(trip.getUpdatedAt()))
@@ -193,7 +191,6 @@ public class JdbcTripRepository implements TripRepository {
                         .param("tripId", trip.getId())
                         .param("userId", member.getUserId())
                         .param("position", position)
-                        .param("email", member.getEmail())
                         .param("role", orDefault(member.getRole(), TripRole.MEMBER))
                         .param("invitedByUserId", member.getInvitedByUserId())
                         .param("invitedAt", JdbcValues.timestamptz(member.getInvitedAt()))
@@ -270,8 +267,6 @@ public class JdbcTripRepository implements TripRepository {
         trip.setStatus(JdbcValues.enumValue(rs, "status", TripStatus.class, trip.getStatus()));
         String displayCurrency = rs.getString("display_currency");
         if (displayCurrency != null) trip.setDisplayCurrency(displayCurrency);
-        String publishedTheme = rs.getString("published_theme");
-        if (publishedTheme != null) trip.setPublishedTheme(publishedTheme);
         trip.setPublishedAt(JdbcValues.instant(rs, "published_at"));
         trip.setCreatedAt(JdbcValues.instant(rs, "created_at"));
         trip.setUpdatedAt(JdbcValues.instant(rs, "updated_at"));
@@ -283,7 +278,6 @@ public class JdbcTripRepository implements TripRepository {
     private static TripMember mapMember(ResultSet rs) throws SQLException {
         TripMember member = new TripMember();
         member.setUserId(rs.getString("user_id"));
-        member.setEmail(rs.getString("email"));
         member.setRole(JdbcValues.enumValue(rs, "role", TripRole.class, member.getRole()));
         member.setInvitedByUserId(rs.getString("invited_by_user_id"));
         member.setInvitedAt(JdbcValues.instant(rs, "invited_at"));

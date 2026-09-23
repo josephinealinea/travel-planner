@@ -212,7 +212,11 @@ export function itineraryTab() {
         byDay.get(date).push(entryView(item));
       });
 
-      const dates = [...new Set([...byDay.keys(), ...weatherByDay.keys()])].sort();
+      // Only days inside the trip are shown; an entry dated beyond it stays
+      // saved but is left off the timeline.
+      const dates = [...new Set([...byDay.keys(), ...weatherByDay.keys()])]
+        .filter((date) => !this.isOutsideTrip(date))
+        .sort();
       const days = dates.map((date) => ({
         date,
         label: longDate(date),
@@ -330,6 +334,9 @@ export function itineraryTab() {
         this.entryError = 'The end time cannot be before the start time.';
         return;
       }
+
+      // Only this form holds a date to the trip; elsewhere a date beyond it
+      // saves with a warning instead.
       const outsideTrip = this.dateOutsideTrip(this.entryForm.startDate, 'start date')
                        || this.dateOutsideTrip(this.entryForm.endDate, 'end date');
       if (outsideTrip) {

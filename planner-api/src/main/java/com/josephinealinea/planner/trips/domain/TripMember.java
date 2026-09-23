@@ -5,23 +5,21 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.Instant;
 
 /**
- * The email is stored alongside the user id so the member list still reads
- * correctly without loading every user, and so the row survives if a user
- * record is ever missing.
+ * A membership: which user, in what role, invited by whom. The email and screen
+ * name belong to the user record and are read from there, so changing either
+ * takes effect on every trip at once.
  */
 public class TripMember {
 
     private String userId;
-    private String email;
     private TripRole role = TripRole.MEMBER;
     private String invitedByUserId;
     private Instant invitedAt;
 
     public TripMember() {}
 
-    public TripMember(String userId, String email, TripRole role, String invitedByUserId) {
+    public TripMember(String userId, TripRole role, String invitedByUserId) {
         this.userId = userId;
-        this.email = email;
         this.role = role;
         this.invitedByUserId = invitedByUserId;
         this.invitedAt = Instant.now();
@@ -34,9 +32,6 @@ public class TripMember {
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
 
     public TripRole getRole() { return role; }
     public void setRole(TripRole role) { this.role = role; }

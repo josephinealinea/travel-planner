@@ -306,12 +306,6 @@ export function destinationsTab() {
         this.destError = 'The end date cannot be before the start date.';
         return;
       }
-      const outsideTrip = this.dateOutsideTrip(this.destForm.startDate, 'start date')
-                       || this.dateOutsideTrip(this.destForm.endDate, 'end date');
-      if (outsideTrip) {
-        this.destError = outsideTrip;
-        return;
-      }
 
       const payload = {
         name,
@@ -350,6 +344,7 @@ export function destinationsTab() {
         toast.success(this.showingMine && savedId && this.isHiddenByScope('destinations', savedId)
           ? this.notOnListMessage(`${name} saved`)
           : message);
+        this.warnIfBeyondTrip(this.destForm.startDate, this.destForm.endDate);
       } catch (error) {
         this.destError = error.fullMessage;
       } finally {

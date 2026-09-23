@@ -355,7 +355,6 @@ class YamlImporterTest {
         latam.getMembers().add(member(RAY, TripRole.MEMBER, ALEX));
         latam.setStatus(TripStatus.PUBLISHED);
         latam.setPublishedAt(Instant.parse("2026-09-15T18:40:00Z"));
-        latam.setPublishedTheme("dark");
         PublishRequest request = new PublishRequest();
         request.setId("req-1");
         request.setRequestedByUserId(SAM);
@@ -468,7 +467,7 @@ class YamlImporterTest {
     }
 
     private static TripMember member(String userId, TripRole role, String invitedBy) {
-        TripMember member = new TripMember(userId, userId.substring(5) + "@example.com", role, invitedBy);
+        TripMember member = new TripMember(userId, role, invitedBy);
         member.setInvitedAt(Instant.parse("2026-09-05T12:00:00Z"));
         return member;
     }

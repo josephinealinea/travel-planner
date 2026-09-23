@@ -57,6 +57,7 @@ class WeatherServiceTest {
 
     private DestinationRepository destinations;
     private WeatherRepository stored;
+    private TripRepository trips;
     private CannedHttp forecast;
     private CannedHttp climate;
     private WeatherService service;
@@ -93,14 +94,17 @@ class WeatherServiceTest {
 
         destinations = new YamlDestinationRepository(store, paths, locks);
         stored = new YamlWeatherRepository(store, paths, locks);
-        TripRepository trips = new YamlTripRepository(store, paths, locks);
+        trips = new YamlTripRepository(store, paths, locks);
 
         Trip trip = new Trip();
         trip.setId(TRIP_ID);
         trip.setSlug(SLUG);
         trip.setTitle("LATAM Trip 2026");
         trip.setOwnerUserId(USER_ID);
-        trip.getMembers().add(new TripMember(USER_ID, "member@example.com", TripRole.OWNER, null));
+        // Under way on TODAY, which is when readings are stored.
+        trip.setStartDate(LocalDate.parse("2026-10-20"));
+        trip.setEndDate(LocalDate.parse("2026-11-10"));
+        trip.getMembers().add(new TripMember(USER_ID, TripRole.OWNER, null));
         trips.save(trip);
 
         forecast = new CannedHttp();
@@ -374,6 +378,89 @@ class WeatherServiceTest {
     }
 
     // ── storage ─────────────────────────────────────
+
+    private void tripRuns(String start, String end) {
+        Trip trip = trips.findById(TRIP_ID).orElseThrow();
+        trip.setStartDate(LocalDate.parse(start));
+        trip.setEndDate(LocalDate.parse(end));
+        trips.save(trip);
+    }
+
+    @Test
+    void nothingIsStoredBeforeTheTripHasStarted() {
+        tripRuns("2026-11-05", "2026-11-09");
+        cusco("2026-11-06", "2026-11-07");
+        forecast.ok(answerFor("2026-11-06", "2026-11-07"));
+
+        assertThat(days()).hasSize(2).allSatisfy(day ->
+                assertThat(day.temperatureMax()).isNotNull());
+        assertThat(stored.findAll(SLUG)).isEmpty();
+    }
+
+    @Test
+    void aTripNotYetUnderWayIsNotRefetchedOnEveryRequest() {
+        tripRuns("2026-11-05", "2026-11-09");
+        cusco("2026-11-06", "2026-11-07");
+        forecast.ok(answerFor("2026-11-06", "2026-11-07"));
+
+        days();
+        days();
+
+        assertThat(forecast.callCount()).isEqualTo(1);
+        assertThat(stored.findAll(SLUG)).isEmpty();
+    }
+
+    @Test
+    void readingsAreStoredWhileTheTripIsUnderWayIncludingItsLastDay() {
+        tripRuns("2026-10-20", "2026-10-27");        // TODAY is the last day
+        cusco("2026-10-27", "2026-10-28");
+        forecast.ok(answerFor("2026-10-27", "2026-10-28"));
+
+        days();
+
+        assertThat(stored.findAll(SLUG)).hasSize(2);
+    }
+
+    @Test
+    void nothingNewIsStoredOnceTheTripHasEnded() {
+        tripRuns("2026-10-01", "2026-10-10");
+        cusco("2026-10-05", "2026-10-06");
+        forecast.ok(answerFor("2026-10-05", "2026-10-06"));
+
+        assertThat(days()).hasSize(2).allSatisfy(day ->
+                assertThat(day.temperatureMax()).isNotNull());
+        assertThat(stored.findAll(SLUG)).isEmpty();
+        days();
+        assertThat(forecast.callCount()).isEqualTo(1);
+    }
+
+    @Test
+    void whatWasStoredDuringTheTripSurvivesItsEnd() {
+        cusco("2026-10-25", "2026-10-26");            // stored: TODAY is under way
+        forecast.ok(answerFor("2026-10-25", "2026-10-26"));
+        days();
+
+        tripRuns("2026-10-20", "2026-10-26");
+        clock.forward(Duration.ofDays(30));
+        var later = days();
+
+        assertThat(forecast.callCount()).isEqualTo(1);
+        assertThat(later).hasSize(2).allSatisfy(day ->
+                assertThat(day.temperatureMax()).isNotNull());
+    }
+
+    @Test
+    void aTripWithNoDatesOfItsOwnStoresNothing() {
+        Trip trip = trips.findById(TRIP_ID).orElseThrow();
+        trip.setStartDate(null);
+        trip.setEndDate(null);
+        trips.save(trip);
+        cusco("2026-10-28", "2026-10-29");
+        forecast.ok(answerFor("2026-10-28", "2026-10-29"));
+
+        assertThat(days()).hasSize(2);
+        assertThat(stored.findAll(SLUG)).isEmpty();
+    }
 
     @Test
     void readingsReachTheirOwnFileAndNotTheDestinations() throws Exception {

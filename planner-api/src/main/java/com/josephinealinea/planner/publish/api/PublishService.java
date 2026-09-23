@@ -199,7 +199,6 @@ public class PublishService {
      * depend on which path ran.
      */
     private Trip goLive(Trip trip, PublishRequest request, String approverId) {
-        trip.setPublishedTheme(StaticSiteRenderer.safeTheme(request.getTheme()));
         trip.setStatus(TripStatus.PUBLISHED);
         trip.setPublishedAt(Instant.now());
         Audit.touched(trip, approverId);
@@ -207,7 +206,7 @@ public class PublishService {
 
         if (!renderer.promotePending(saved.getSlug())) {
             var requester = users.require(request.getRequestedByUserId());
-            renderer.render(saved, optionsFor(requester), personalPagesFor(saved));
+            renderer.render(saved, optionsFor(requester), request.getTheme(), personalPagesFor(saved));
         }
         return saved;
     }
@@ -248,9 +247,6 @@ public class PublishService {
     }
 
     private Trip publishInternal(Trip trip, String userId, String theme) {
-        if (theme != null && !theme.isBlank()) {
-            trip.setPublishedTheme(StaticSiteRenderer.safeTheme(theme));
-        }
         trip.setStatus(TripStatus.PUBLISHED);
         trip.setPublishedAt(Instant.now());
         Audit.touched(trip, userId);
@@ -259,7 +255,7 @@ public class PublishService {
         // one choosing to put this page up. Read at publish time, so changing
         // the checkbox takes effect on the next publish rather than
         // retroactively — a published page is a rendered file.
-        renderer.render(saved, optionsFor(users.require(userId)), personalPagesFor(saved));
+        renderer.render(saved, optionsFor(users.require(userId)), theme, personalPagesFor(saved));
         // Publishing directly supersedes anything staged for an undecided
         // request, so it must not be left behind to go live later.
         renderer.removePending(saved.getSlug());

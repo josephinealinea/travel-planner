@@ -87,5 +87,24 @@ export function scopeTab() {
         .map((userId) => this.members.find((m) => m.userId === userId)?.displayName)
         .filter(Boolean);
     },
+
+    /**
+     * Pills for a table cell: everyone when there are one or two, otherwise
+     * the first name and a "+N" for the rest, so the row stays narrow.
+     */
+    travellerPills(kind, id) {
+      // The signed-in member leads, so their own name is the one that stays visible.
+      const ids = [...((this.namedTravellers[kind] || {})[id] || [])];
+      const mine = ids.indexOf(this.currentUserId);
+      if (mine > 0) ids.unshift(ids.splice(mine, 1)[0]);
+      const names = ids
+        .map((userId) => this.members.find((m) => m.userId === userId)?.displayName)
+        .filter(Boolean);
+      if (names.length <= 2) return names.map((name) => ({ text: '👥 ' + name, title: name }));
+      return [
+        { text: '👥 ' + names[0], title: names[0] },
+        { text: '+' + (names.length - 1), title: names.slice(1).join(', ') },
+      ];
+    },
   };
 }

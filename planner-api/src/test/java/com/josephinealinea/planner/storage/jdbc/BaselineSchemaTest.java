@@ -32,7 +32,7 @@ class BaselineSchemaTest extends PostgresTestBase {
 
         assertThat(result.success).isTrue();
         // Every migration applies to an empty database, in order, ending at the latest.
-        assertThat(result.targetSchemaVersion).isEqualTo("4");
+        assertThat(result.targetSchemaVersion).isEqualTo("6");
         assertThat(JdbcClient.create(fresh).sql("SELECT count(*) FROM trips").query(Long.class).single())
                 .as("schema only: a migration never writes a row").isZero();
     }

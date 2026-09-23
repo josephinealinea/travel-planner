@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Where the trip is on each of its days, with that day's weather.
@@ -62,6 +63,18 @@ import java.util.Map;
  *       genuinely changes.</li>
  * </ol>
  *
+ * <h2>When readings are written to the store</h2>
+ *
+ * Only while the trip is under way: from its start date to its end date, both
+ * inclusive. Before that a forecast is looked up (a trip is planned months
+ * ahead, and the page needs something to show) but only kept in memory, and
+ * after it nothing new is written either. What was stored during the trip
+ * stays, frozen, under rule 1. The in-memory copy is per process, so a
+ * restart — a Cloud Run cold start, say — asks again for a trip that is not
+ * under way; that is the price of not writing a row for a forecast that will
+ * be replaced a dozen times before anyone travels. A trip with no dates of its
+ * own is never "under way", so nothing of its weather is stored.
+ *
  * Only the points with a gap are asked about, so adding one destination costs a
  * lookup for that destination rather than a refetch of the other four. A trip
  * whose days are all settled costs no outbound call at all — which, once its
@@ -76,6 +89,8 @@ public class WeatherService {
     private final WeatherClient weather;
     private final Duration ttl;
     private final Clock clock;
+    /** Readings looked up outside the trip's own dates; never persisted. */
+    private final Map<String, Map<String, WeatherRecord>> unsaved = new ConcurrentHashMap<>();
 
     // @Autowired because there are two constructors. Without it Spring cannot
     // choose, falls back to looking for a no-arg one, and the app fails to
@@ -119,8 +134,9 @@ public class WeatherService {
 
         Map<String, WeatherRecord> held = new LinkedHashMap<>();
         stored.findAll(slug).forEach(record -> held.put(record.getId(), record));
+        unsaved.getOrDefault(slug, Map.of()).forEach(held::putIfAbsent);
 
-        Map<String, WeatherRecord> resolved = fill(slug, dated, held);
+        Map<String, WeatherRecord> resolved = fill(trip, dated, held);
 
         List<DayWeather> rows = new ArrayList<>();
         for (Destination destination : dated) {
@@ -142,9 +158,10 @@ public class WeatherService {
      * that point the lookup has already failed, and half-day-old numbers still
      * tell somebody what to pack.
      */
-    private Map<String, WeatherRecord> fill(String slug,
+    private Map<String, WeatherRecord> fill(Trip trip,
                                             List<Destination> dated,
                                             Map<String, WeatherRecord> held) {
+        String slug = trip.getSlug();
         LocalDate today = LocalDate.now(clock);
         Instant now = clock.instant();
 
@@ -205,8 +222,21 @@ public class WeatherService {
         // One write for the batch, or none at all when the lookup failed —
         // remembering an empty answer would blank the itinerary for the whole
         // TTL over a blip that had already passed.
-        if (!toSave.isEmpty()) stored.saveAll(slug, toSave);
+        if (toSave.isEmpty()) return held;
+        if (isUnderWay(trip, today)) {
+            stored.saveAll(slug, toSave);
+        } else {
+            Map<String, WeatherRecord> memory =
+                    unsaved.computeIfAbsent(slug, key -> new ConcurrentHashMap<>());
+            toSave.forEach(record -> memory.put(record.getId(), record));
+        }
         return held;
+    }
+
+    private static boolean isUnderWay(Trip trip, LocalDate today) {
+        LocalDate from = trip.getStartDate();
+        LocalDate to = trip.getEndDate();
+        return from != null && to != null && !today.isBefore(from) && !today.isAfter(to);
     }
 
     private static boolean hasUsableDates(Destination destination) {

@@ -501,12 +501,6 @@ export function checklistTab() {
         this.planError = 'The end time cannot be before the start time.';
         return;
       }
-      const outsideTrip = this.dateOutsideTrip(this.planForm.startDate, 'start date')
-                       || this.dateOutsideTrip(this.planForm.endDate, 'end date');
-      if (outsideTrip) {
-        this.planError = outsideTrip;
-        return;
-      }
 
       const cost = this.planForm.cost === '' ? null : Number(this.planForm.cost);
       if (cost != null && (!Number.isFinite(cost) || cost < 0)) {
@@ -562,6 +556,7 @@ export function checklistTab() {
         this.planOpen = false;
         await this.reload();
         this.refreshOpenItem();
+        this.warnIfBeyondTrip(this.planForm.startDate, this.planForm.endDate);
       } catch (error) {
         this.planError = error.fullMessage;
       } finally {

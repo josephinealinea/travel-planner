@@ -129,8 +129,8 @@ class PublishApprovalTest {
         trip.setTitle("LATAM Trip 2026");
         trip.setOwnerUserId(OWNER);
         trip.setDisplayCurrency("EUR");
-        trip.getMembers().add(new TripMember(OWNER, "owner@example.com", TripRole.OWNER, null));
-        trip.getMembers().add(new TripMember(MEMBER, "member@example.com", TripRole.MEMBER, OWNER));
+        trip.getMembers().add(new TripMember(OWNER, TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(MEMBER, TripRole.MEMBER, OWNER));
         trips.save(trip);
 
         Destination cusco = new Destination();
@@ -239,7 +239,6 @@ class PublishApprovalTest {
         String live = Files.readString(live());
         assertThat(live).contains("data-theme=\"y2k\"");
         assertThat(live).contains("240.00");
-        assertThat(trips.findById(TRIP_ID).orElseThrow().getPublishedTheme()).isEqualTo("y2k");
     }
 
     /** Changes made after the request are not picked up: the page is a snapshot. */

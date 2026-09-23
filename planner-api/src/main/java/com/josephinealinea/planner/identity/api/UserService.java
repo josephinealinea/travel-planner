@@ -73,13 +73,18 @@ public class UserService {
         return users.findById(userId).map(User::displayName).orElse(fallbackEmail);
     }
 
-    public User updateScreenName(String userId, String screenName) {
+    public User updateProfile(String userId, String screenName, String homeCountry) {
         User user = require(userId);
         String trimmed = screenName == null ? null : screenName.trim();
         if (trimmed != null && trimmed.length() > 60) {
             throw ApiException.badRequest("Screen name must be 60 characters or fewer.");
         }
         user.setScreenName(trimmed == null || trimmed.isBlank() ? null : trimmed);
+        String country = homeCountry == null ? null : homeCountry.trim();
+        if (country != null && country.length() > 80) {
+            throw ApiException.badRequest("Home country must be 80 characters or fewer.");
+        }
+        user.setHomeCountry(country == null || country.isBlank() ? null : country);
         return users.save(user);
     }
 

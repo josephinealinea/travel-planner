@@ -58,7 +58,7 @@ public class TripService {
         trip.setStartDate(startDate);
         trip.setEndDate(endDate);
         trip.setOwnerUserId(userId);
-        trip.getMembers().add(new TripMember(userId, owner.getEmail(), TripRole.OWNER, userId));
+        trip.getMembers().add(new TripMember(userId, TripRole.OWNER, userId));
         Audit.created(trip, userId);
         return trips.save(trip);
     }
@@ -126,7 +126,7 @@ public class TripService {
         }
 
         trip.getMembers().add(new TripMember(
-                invited.user().getId(), invited.user().getEmail(), TripRole.MEMBER, actingUserId));
+                invited.user().getId(), TripRole.MEMBER, actingUserId));
         Audit.touched(trip, actingUserId);
         Trip saved = trips.save(trip);
 
@@ -161,7 +161,7 @@ public class TripService {
 
         // Do not email somebody who just chose to leave.
         if (!memberUserId.equals(actingUserId)) {
-            email.send(templates.removedFromTrip(member.getEmail(), trip.getTitle()));
+            email.send(templates.removedFromTrip(users.require(memberUserId).getEmail(), trip.getTitle()));
         }
         return saved;
     }

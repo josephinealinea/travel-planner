@@ -63,15 +63,16 @@ import java.util.Optional;
 public class JdbcUserRepository implements UserRepository {
 
     private static final String UPSERT = """
-            INSERT INTO users (id, email, screen_name, password_hash, must_change_password,
+            INSERT INTO users (id, email, screen_name, home_country, password_hash, must_change_password,
                                currencies, display_currency, published_page,
                                created_at, updated_at)
-            VALUES (:id, :email, :screenName, :passwordHash, :mustChangePassword,
+            VALUES (:id, :email, :screenName, :homeCountry, :passwordHash, :mustChangePassword,
                     :currencies, :displayCurrency, :publishedPage::jsonb,
                     :createdAt, :updatedAt)
             ON CONFLICT (id) DO UPDATE SET
                 email                = EXCLUDED.email,
                 screen_name          = EXCLUDED.screen_name,
+                home_country         = EXCLUDED.home_country,
                 password_hash        = EXCLUDED.password_hash,
                 must_change_password = EXCLUDED.must_change_password,
                 currencies           = EXCLUDED.currencies,
@@ -136,6 +137,7 @@ public class JdbcUserRepository implements UserRepository {
                 .param("id", user.getId())
                 .param("email", user.getEmail())
                 .param("screenName", user.getScreenName())
+                .param("homeCountry", user.getHomeCountry())
                 .param("passwordHash", user.getPasswordHash())
                 .param("mustChangePassword", user.isMustChangePassword())
                 .param("currencies", JdbcValues.textArray(user.getCurrencies()))
@@ -157,6 +159,7 @@ public class JdbcUserRepository implements UserRepository {
         user.setId(rs.getString("id"));
         user.setEmail(rs.getString("email"));
         user.setScreenName(rs.getString("screen_name"));
+        user.setHomeCountry(rs.getString("home_country"));
         user.setPasswordHash(rs.getString("password_hash"));
         user.setMustChangePassword(rs.getBoolean("must_change_password"));
         user.setCurrencies(JdbcValues.textList(rs, "currencies"));

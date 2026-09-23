@@ -47,7 +47,14 @@
             What the herd can call you 🦙. Without one they only see your email.
           </p>
         </div>
-        <button type="submit" class="btn btn-primary" id="save-profile">Save screen name</button>
+        <div class="field autocomplete">
+          <label for="homeCountry">Home country</label>
+          <input id="homeCountry" type="text" autocomplete="off" placeholder="Start typing — Peru"
+                 role="combobox" aria-expanded="false" aria-controls="homeCountryList">
+          <ul class="autocomplete-list" id="homeCountryList" role="listbox" hidden></ul>
+          <p class="field-hint">Shown beside your name on the Travel Buddies tab.</p>
+        </div>
+        <button type="submit" class="btn btn-primary" id="save-profile">Save profile</button>
       </form>
     </section>
 
@@ -165,6 +172,69 @@
   document.querySelector('#email').value = user.email;
   document.querySelector('#screenName').value = user.screenName || '';
 
+  // A typeable picker like the destination form's Country field: only a real
+  // country name may come out of it, so text that matches nothing snaps back.
+  const homeCountry = document.querySelector('#homeCountry');
+  const homeList = document.querySelector('#homeCountryList');
+  let countries = [];
+  let chosenCountry = user.homeCountry || '';
+  try { countries = await api.countries(); } catch { /* typing still works against nothing */ }
+  homeCountry.value = chosenCountry;
+
+  function countryMatches() {
+    const query = homeCountry.value.trim().toLowerCase();
+    if (!query) return countries.slice(0, 8);
+    const starts = [];
+    const contains = [];
+    for (const c of countries) {
+      const name = c.name.toLowerCase();
+      if (name.startsWith(query) || c.code.toLowerCase() === query) starts.push(c);
+      else if (name.includes(query)) contains.push(c);
+    }
+    return [...starts, ...contains].slice(0, 8);
+  }
+  function closeCountryList() {
+    homeList.hidden = true;
+    homeCountry.setAttribute('aria-expanded', 'false');
+  }
+  function pickCountry(country) {
+    chosenCountry = country.name;
+    homeCountry.value = country.name;
+    closeCountryList();
+  }
+  function showCountryList() {
+    const matches = countryMatches();
+    homeList.replaceChildren(...matches.map((country) => {
+      const li = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'autocomplete-option';
+      button.tabIndex = -1;
+      button.innerHTML = '<span class="autocomplete-name"></span><span class="autocomplete-meta"></span>';
+      button.firstChild.textContent = `${country.flag || ''} ${country.name}`.trim();
+      button.lastChild.textContent = country.code;
+      button.addEventListener('mousedown', (e) => e.preventDefault());
+      button.addEventListener('click', () => pickCountry(country));
+      li.append(button);
+      return li;
+    }));
+    homeList.hidden = !matches.length;
+    homeCountry.setAttribute('aria-expanded', String(!!matches.length));
+  }
+  homeCountry.addEventListener('input', showCountryList);
+  homeCountry.addEventListener('focus', showCountryList);
+  homeCountry.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCountryList(); });
+  homeCountry.addEventListener('blur', () => {
+    closeCountryList();
+    const query = homeCountry.value.trim().toLowerCase();
+    if (!query) { chosenCountry = ''; homeCountry.value = ''; return; }
+    const exact = countries.find((c) => c.name.toLowerCase() === query || c.code.toLowerCase() === query);
+    const matches = countryMatches();
+    const found = exact || (matches.length === 1 ? matches[0] : null);
+    if (found) pickCountry(found);
+    else homeCountry.value = chosenCountry;
+  });
+
   function alertIn(selector, message, variant) {
     const box = document.querySelector(selector);
     box.className = `alert alert-${variant}`;
@@ -176,15 +246,17 @@
   const profileForm = document.querySelector('#profile-form');
   profileForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    homeCountry.dispatchEvent(new Event('blur')); // settle half-typed text
     const button = document.querySelector('#save-profile');
     button.disabled = true;
     try {
       const updated = await api.updateProfile({
         screenName: document.querySelector('#screenName').value.trim(),
+        homeCountry: chosenCountry,
       });
       clearCachedUser();
       alertIn('#profile-alert', 'Saved.', 'info');
-      toast.success('Screen name updated');
+      toast.success('Profile updated');
       renderChrome({ user: updated, active: 'account' });
     } catch (error) {
       alertIn('#profile-alert', error.fullMessage, 'error');

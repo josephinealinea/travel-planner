@@ -25,7 +25,7 @@ class TravellersTest {
         Trip trip = new Trip();
         trip.setId("trip-1");
         for (String id : memberIds) {
-            trip.getMembers().add(new TripMember(id, id + "@example.com", TripRole.MEMBER, null));
+            trip.getMembers().add(new TripMember(id, TripRole.MEMBER, null));
         }
         return trip;
     }

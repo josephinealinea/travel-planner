@@ -384,14 +384,16 @@ Rules that are easy to break by accident, all with tests:
   one set of rows shown above a breakdown of another is the single way this
   panel can lie. The headline says which it is — `Total:` or `Forecast
   total:` — rather than leaving a reader to infer it from the selector.
-- **The trip's dates bound every date recorded against it.** `TripWindow`
-  (`trips/api`) is the one check, applied in `DestinationService`,
-  `ItineraryService` — which is also what the checklist's Plan form writes
-  through — and `BudgetService`. Both ends are inclusive, and only a value the
-  caller actually *sends* is checked, so narrowing a trip's own dates never
-  makes an existing row uneditable. The frontend mirrors it with `min`/`max` on
-  every date input plus `dateOutsideTrip()` in `js/pages/trip.js`; nothing
-  retro-validates what is already stored.
+- **The trip's dates bound what is *shown*, not what can be entered.** A
+  destination, plan or itinerary entry may be dated outside the trip: the API
+  no longer rejects it (`TripWindow` is no longer used by any service). Instead the
+  form saves and then raises a sticky warning toast (`warnIfBeyondTrip` in
+  `js/pages/trip.js`) saying the date is beyond the trip and will not appear in
+  the itinerary. `itineraryDays` in `js/pages/trip/itinerary.js` and
+  `StaticSiteRenderer.days` leave out any day outside the trip's own dates; the
+  rows stay stored. Two forms differ: an expense date is unrestricted and gives no warning, and the
+  Itinerary tab's own entry form still holds dates to the trip (`min`/`max` plus
+  `dateOutsideTrip`, client-side only).
 - **Who's going is inherited; money is copied once.** Destinations,
   checklist items and plans carry an optional `travellerIds`, resolved in one
   place, `trips/api/Travellers`: a destination names buddies or is the whole
@@ -856,8 +858,11 @@ nothing compiles them and no stale CSS sits in `assets/css/`.
 Withdrawing a theme is safe without a migration because both sides already fall
 back: `savedTheme()` returns `DEFAULT_THEME` for a name not in the registry, so
 a member still holding `retro-game` in `localStorage` silently gets Minima on
-their next load, and `StaticSiteRenderer.safeTheme` does the same for a trip
-whose stored `publishedTheme` is no longer offered.
+their next load, and `StaticSiteRenderer.safeTheme` does the same for a publish
+request that names a theme no longer offered. A trip stores no theme of its own:
+the page's theme is baked into the rendered file and passed to `render` at every
+publish (the publisher's, or the requester's for an approved request), so
+nothing reads it back.
 
 **Detail views are popup or side panel, by setting.** `js/panel-mode.js` stores
 the choice and puts `panels-popup` or `panels-side` on the body;
@@ -1170,6 +1175,16 @@ and moving one to new coordinates correctly stops matching instead of silently
 describing somewhere else. An expired record that fails to refresh is served
 stale rather than blank; by then the lookup has already failed, and half-day-old
 numbers still tell somebody what to pack.
+
+**Readings are only written to the store while the trip is under way** — from
+the trip's own start date to its end date, inclusive (`WeatherService.isUnderWay`).
+Before that a lookup still happens, because a trip is planned months ahead and
+the page needs something to show, but the result is held in the process's
+memory only (`unsaved`), so a forecast that will be replaced a dozen times
+before anyone travels never costs a row. After the end nothing new is written
+and what was stored during the trip stays frozen under rule 1. A trip with no
+dates of its own is never under way. The price is that the in-memory copy dies
+with the process, so a cold start asks again for a trip not yet under way.
 
 The trigger is the frontend's `reload()`, so the lookup happens when a **trip**
 is opened rather than when the Itinerary tab is. `loadWeather()` compares a

@@ -33,7 +33,6 @@ public class Trip implements Audited {
     private Map<String, BigDecimal> exchangeRates = new LinkedHashMap<>();
 
     /** Which frontend theme the published page is rendered in. */
-    private String publishedTheme = "minima";
     private Instant publishedAt;
 
     private List<TripMember> members = new ArrayList<>();
@@ -95,8 +94,6 @@ public class Trip implements Audited {
         this.exchangeRates = exchangeRates == null ? new LinkedHashMap<>() : exchangeRates;
     }
 
-    public String getPublishedTheme() { return publishedTheme; }
-    public void setPublishedTheme(String publishedTheme) { this.publishedTheme = publishedTheme; }
 
     public Instant getPublishedAt() { return publishedAt; }
     public void setPublishedAt(Instant publishedAt) { this.publishedAt = publishedAt; }

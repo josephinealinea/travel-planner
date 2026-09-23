@@ -306,8 +306,7 @@ public class YamlImporter {
             Set<String> seen = new HashSet<>();
             for (TripMember member : trip.getMembers()) {
                 if (!userIds.contains(member.getUserId())) {
-                    throw new IllegalStateException(where + ": member " + member.getUserId() + " ("
-                            + member.getEmail() + ") is not in users.yml");
+                    throw new IllegalStateException(where + ": member " + member.getUserId() + " is not in users.yml");
                 }
                 if (!seen.add(member.getUserId())) {
                     throw new IllegalStateException(where + ": member " + member.getUserId() + " is listed twice");

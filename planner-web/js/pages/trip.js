@@ -168,6 +168,8 @@ export function tripPage() {
         const detail = await api.trip(this.tripId);
         this.trip = detail;
         this.members = detail.members || [];
+        // Only for the flags beside a member's home country; not awaited.
+        this.loadCountries();
         this.destinations = detail.destinations || [];
         this.checklist = detail.checklist || [];
         this.itinerary = detail.itinerary || [];
@@ -242,19 +244,38 @@ export function tripPage() {
       return countriesOfTrip(this.destinations);
     },
 
+    /** True when a date is set and falls outside the trip's own dates (inclusive). */
+    isOutsideTrip(date) {
+      if (!date || !this.trip.startDate || !this.trip.endDate) return false;
+      return date < this.trip.startDate || date > this.trip.endDate;
+    },
+
     /**
-     * Checks one date field against the trip's own dates, both ends inclusive.
-     * Returns '' when it is fine, and the message to show otherwise.
-     *
-     * Every date input in the four tabs also carries min/max, but that only
-     * constrains the picker — a typed or pasted date sails past it. The API
-     * rejects an out-of-range date either way (TripWindow); this is what puts
-     * the answer beside the field instead of behind a round trip.
+     * A date beyond the trip is allowed, but the itinerary only shows days
+     * inside it, so say so once the record is saved.
      */
+    warnIfBeyondTrip(...dates) {
+      if (!dates.some((date) => this.isOutsideTrip(date))) return;
+      toast.warning(`That date is beyond the trip dates (${this.tripDates()}), `
+        + 'so it will not be displayed in the itinerary.');
+    },
+
+    /** Checks a date against the trip's own dates; '' when fine (expenses only). */
     dateOutsideTrip(date, what) {
-      if (!date || !this.trip.startDate || !this.trip.endDate) return '';
-      if (date >= this.trip.startDate && date <= this.trip.endDate) return '';
+      if (!this.isOutsideTrip(date)) return '';
       return `The ${what} must be within the trip, ${this.tripDates()}.`;
+    },
+
+    /** The signed-in member leads the Travel Buddies list; the rest keep their order. */
+    get membersSignedInFirst() {
+      const me = this.members.filter((member) => member.userId === this.currentUserId);
+      return [...me, ...this.members.filter((member) => member.userId !== this.currentUserId)];
+    },
+
+    /** The flag for a member's home country, or '' until the list has loaded. */
+    homeFlag(member) {
+      const name = (member.homeCountry || '').toLowerCase();
+      return name ? (this.countryOptions.find((o) => o.name.toLowerCase() === name)?.flag || '') : '';
     },
 
     ownerName() {

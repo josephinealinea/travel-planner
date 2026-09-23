@@ -30,7 +30,7 @@ public class AccountController {
 
     @PatchMapping("/profile")
     AuthDtos.MeResponse updateProfile(@RequestBody AuthDtos.ProfileRequest request) {
-        return AuthDtos.MeResponse.from(users.updateScreenName(currentUser.userId(), request.screenName()));
+        return AuthDtos.MeResponse.from(users.updateProfile(currentUser.userId(), request.screenName(), request.homeCountry()));
     }
 
     /**

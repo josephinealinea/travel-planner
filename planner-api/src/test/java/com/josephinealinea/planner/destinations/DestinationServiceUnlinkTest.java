@@ -89,7 +89,7 @@ class DestinationServiceUnlinkTest {
         trip.setSlug(SLUG);
         trip.setTitle("LATAM Trip 2026");
         trip.setOwnerUserId(USER_ID);
-        trip.getMembers().add(new TripMember(USER_ID, "member@example.com", TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(USER_ID, TripRole.OWNER, null));
         trips.save(trip);
 
         service = new DestinationService(destinations, checklist, itinerary, budget, new ChecklistSeeder(),

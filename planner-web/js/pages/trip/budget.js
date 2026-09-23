@@ -70,6 +70,7 @@ export function budgetTab() {
 
     // filtering
     budgetCategoryFilters: [],
+    budgetStatusFilter: 'ALL',
 
     // paging — the size is read once, when the trip page loads
     budgetPage: 1,
@@ -119,9 +120,14 @@ export function budgetTab() {
       this.budgetPage = 1;
     },
 
+    setBudgetStatusFilter(value) {
+      this.budgetStatusFilter = value;
+      this.budgetPage = 1;
+    },
+
     /**
      * The rows the table lists: the signed-in member's own, then whatever the
-     * category filter leaves.
+     * category and status filters leave.
      *
      * `budget.items` is every row on the trip whoever is asking — the other
      * tabs need it whole — and `budget.shares` is what says which are mine. A
@@ -139,9 +145,15 @@ export function budgetTab() {
     },
 
     get filteredBudgetItems() {
-      const items = this.myBudgetItems;
-      if (!this.budgetCategoryFilters.length) return items;
-      return items.filter((item) => this.budgetCategoryFilters.includes(item.category));
+      // Pending is the only status that is not a charge; a row with none reads
+      // as charged, like everywhere else.
+      return this.myBudgetItems.filter((item) => {
+        if (this.budgetCategoryFilters.length
+            && !this.budgetCategoryFilters.includes(item.category)) return false;
+        if (this.budgetStatusFilter === 'CHARGED' && item.status === 'PENDING') return false;
+        if (this.budgetStatusFilter === 'PENDING' && item.status !== 'PENDING') return false;
+        return true;
+      });
     },
 
     /**
@@ -328,6 +340,12 @@ export function budgetTab() {
       return share == null ? null : Number(share);
     },
 
+    /** True when this member's part is less than the whole row. */
+    isSplit(item) {
+      const share = this.shareOf(item);
+      return share != null && Math.abs(share - Number(item.amount)) > 0.005;
+    },
+
     /** This member's part of a row, in budget.totalsCurrency. */
     convertedShareOf(item) {
       const share = this.shareOf(item);
@@ -415,11 +433,6 @@ export function budgetTab() {
       }
       if (!Number.isFinite(amount) || amount < 0) {
         this.expenseError = 'Enter an amount of zero or more.';
-        return;
-      }
-      const outsideTrip = this.dateOutsideTrip(this.expenseForm.date, 'date');
-      if (outsideTrip) {
-        this.expenseError = outsideTrip;
         return;
       }
 

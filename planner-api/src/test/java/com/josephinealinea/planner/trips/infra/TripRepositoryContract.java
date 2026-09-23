@@ -86,7 +86,6 @@ public abstract class TripRepositoryContract {
         Trip trip = trip("t-1", "latam", "owner");
         trip.setStatus(null);
         trip.setDisplayCurrency(null);
-        trip.setPublishedTheme(null);
         TripMember member = new TripMember();
         member.setUserId("owner");
         member.setRole(null);
@@ -101,7 +100,6 @@ public abstract class TripRepositoryContract {
         Trip read = repository().findById("t-1").orElseThrow();
         assertThat(read.getStatus()).isEqualTo(TripStatus.DRAFT);
         assertThat(read.getDisplayCurrency()).isEqualTo("EUR");
-        assertThat(read.getPublishedTheme()).isEqualTo("minima");
         assertThat(read.getMembers().get(0).getRole()).isEqualTo(TripRole.MEMBER);
         assertThat(read.getPublishRequests().get(0).getStatus()).isEqualTo(PublishRequest.Status.PENDING);
         assertThat(read.getTitle()).isNull();
@@ -355,7 +353,6 @@ public abstract class TripRepositoryContract {
     protected static TripMember member(String userId, TripRole role) {
         TripMember member = new TripMember();
         member.setUserId(userId);
-        member.setEmail(userId + "@example.com");
         member.setRole(role);
         member.setInvitedByUserId("owner");
         member.setInvitedAt(Instant.parse("2026-08-01T12:00:00Z"));
@@ -386,7 +383,6 @@ public abstract class TripRepositoryContract {
         Map<String, BigDecimal> rates = new LinkedHashMap<>();
         rates.put("PEN", new BigDecimal("3.891723"));
         trip.setExchangeRates(rates);
-        trip.setPublishedTheme("y2k");
         trip.setPublishedAt(Instant.parse("2026-09-10T11:12:13.456789Z"));
         trip.setCreatedAt(Instant.parse("2026-01-02T03:04:05.123456Z"));
         trip.setUpdatedAt(Instant.parse("2026-01-03T03:04:05.654321Z"));
@@ -395,7 +391,6 @@ public abstract class TripRepositoryContract {
 
         TripMember owner = new TripMember();
         owner.setUserId("owner");
-        owner.setEmail("owner@example.com");
         owner.setRole(TripRole.OWNER);
         owner.setInvitedByUserId("owner");
         owner.setInvitedAt(Instant.parse("2026-01-02T03:04:05.123456Z"));

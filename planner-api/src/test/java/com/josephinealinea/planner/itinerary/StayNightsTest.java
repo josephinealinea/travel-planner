@@ -92,7 +92,7 @@ class StayNightsTest {
         trip.setStartDate(LocalDate.parse("2026-10-24"));
         trip.setEndDate(LocalDate.parse("2026-11-08"));
         trip.setDisplayCurrency("USD");
-        trip.getMembers().add(new TripMember(USER_ID, "member@example.com", TripRole.OWNER, null));
+        trip.getMembers().add(new TripMember(USER_ID, TripRole.OWNER, null));
         trips.save(trip);
 
         TripAccessService access = new TripAccessService(trips);
