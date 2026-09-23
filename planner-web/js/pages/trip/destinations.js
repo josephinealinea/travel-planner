@@ -29,7 +29,7 @@ export function destinationsTab() {
     timezone: '',
     startDate: '',
     endDate: '',
-    notes: '',
+    note: '',
     // Ticked, nothing is seeded for this destination. Stored on the record
     // rather than acted on once, because the accommodation item is also seeded
     // on a later date edit — see DestinationService.
@@ -194,7 +194,7 @@ export function destinationsTab() {
         timezone: destination.timezone || '',
         startDate: destination.startDate || '',
         endDate: destination.endDate || '',
-        notes: destination.notes || '',
+        note: destination.note || '',
         suppressChecklist: !!destination.suppressChecklist,
         travellers: travellersFromRecord(destination, true),
         travellersInitial: snapshotTravellers(travellersFromRecord(destination, true)),
@@ -323,7 +323,7 @@ export function destinationsTab() {
         timezone: this.destForm.timezone || null,
         startDate: this.destForm.startDate || null,
         endDate: this.destForm.endDate || null,
-        notes: this.destForm.notes || null,
+        note: this.destForm.note || null,
         suppressChecklist: this.destForm.suppressChecklist,
         // Nothing when the picker was not touched: see travellersPayload.
         ...travellersPayload(this.destForm.travellers, this.destForm.travellersInitial),

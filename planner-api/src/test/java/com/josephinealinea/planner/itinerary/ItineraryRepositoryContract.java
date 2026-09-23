@@ -205,6 +205,7 @@ public abstract class ItineraryRepositoryContract extends TripScopedRepositoryCo
         item.setPlanId("itin-night-1");
         item.setCategory(ChecklistCategory.LODGING);
         item.setDescription("Casa San Blas, night 2");
+        item.setNote("Booking confirmation #12345");
         item.setStartAt(LocalDateTime.of(2026, 10, 26, 6, 0));
         item.setEndAt(LocalDateTime.of(2026, 10, 27, 11, 30, 15));
         item.setAllDay(true);

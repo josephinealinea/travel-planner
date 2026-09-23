@@ -20,8 +20,10 @@ import java.util.Optional;
 /**
  * A trip can be published at any point, however unfinished it is.
  *
- * Only the owner can publish. Another member's Publish button instead raises a
- * request, and the owner's approval is what actually publishes.
+ * By default only the owner can publish. Another member's Publish button
+ * instead raises a request, and the owner's approval is what actually publishes.
+ * With app.publish.require-owner-approval off, any member publishes directly.
+ * Unpublishing is always the owner's.
  */
 
 import java.util.ArrayList;
@@ -40,6 +42,7 @@ public class PublishService {
     private final UserService users;
     private final EmailSender email;
     private final MailTemplates templates;
+    private final PublishApprovalProperties approval;
 
     public PublishService(TripRepository trips,
                           TripAccessService access,
@@ -47,7 +50,8 @@ public class PublishService {
                           StaticSiteRenderer renderer,
                           UserService users,
                           EmailSender email,
-                          MailTemplates templates) {
+                          MailTemplates templates,
+                          PublishApprovalProperties approval) {
         this.trips = trips;
         this.access = access;
         this.views = views;
@@ -55,6 +59,7 @@ public class PublishService {
         this.users = users;
         this.email = email;
         this.templates = templates;
+        this.approval = approval;
     }
 
     /** Any member — the Publish tab reads the current state and request list. */
@@ -62,9 +67,14 @@ public class PublishService {
         return access.requireMember(tripId, userId);
     }
 
-    /** Owner only. Re-publishing an already published trip just re-renders it. */
+    /**
+     * The owner, or any member when owner approval is switched off.
+     * Re-publishing an already published trip just re-renders it.
+     */
     public Trip publish(String tripId, String userId, String theme) {
-        Trip trip = access.requireOwner(tripId, userId);
+        Trip trip = approval.requireOwnerApproval()
+                ? access.requireOwner(tripId, userId)
+                : access.requireMember(tripId, userId);
         return publishInternal(trip, userId, theme);
     }
 
@@ -89,6 +99,9 @@ public class PublishService {
      */
     public Trip requestPublish(String tripId, String userId, String note, String theme) {
         Trip trip = access.requireMember(tripId, userId);
+        if (!approval.requireOwnerApproval()) {
+            throw ApiException.badRequest("Publishing does not need the owner's approval — publish it directly.");
+        }
         if (trip.isOwner(userId)) {
             throw ApiException.badRequest("You own this trip — publish it directly.");
         }
@@ -200,12 +213,12 @@ public class PublishService {
     }
 
     /**
-     * The members who have asked for a page of their own, in trip-member order.
+     * A page for every member of the trip, in trip-member order.
      *
-     * Their settings, not the publishing member's: a personal page is theirs,
-     * so what it reveals is their choice. A member with the box unticked gets
-     * no file written anywhere, which is what "off" has to mean for something
-     * that ends up on a public URL.
+     * Each is rendered with <b>that member's</b> settings rather than the
+     * publishing member's: it is their page, so what it reveals is their
+     * choice — which is also why the same publish can put one member's costs
+     * on their page and leave them off another's.
      *
      * The directory name comes from the display name, so it changes if they
      * change their screen name — a personal page is a file, and renaming
@@ -222,9 +235,10 @@ public class PublishService {
 
     /** A member's own published-page settings. */
     private PublishOptions optionsFor(com.josephinealinea.planner.identity.domain.User user) {
-        return new PublishOptions(user.isPublishItineraryCost(),
-                user.isPublishDestinationDays(),
-                user.isPublishForecastExpenses());
+        var settings = user.getPublishedPage();
+        return new PublishOptions(settings.isItineraryCost(),
+                settings.isDestinationDays(),
+                settings.isForecastExpenses());
     }
 
     /** The staged page's HTML for a members-only preview, or null if none. */

@@ -47,7 +47,7 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
 
     public JdbcItineraryRepository(JdbcClient jdbc, PlatformTransactionManager transactionManager) {
         super(jdbc, transactionManager, "itinerary_items",
-                List.of("checklist_item_id", "plan_id", "category", "description",
+                List.of("checklist_item_id", "plan_id", "category", "description", "note",
                         "start_at", "end_at", "all_day", "cost", "currency", "budget_item_id",
                         "country_codes", "sort_order",
                         "created_at", "created_by_user_id", "updated_at", "updated_by_user_id", "traveller_ids"),
@@ -62,6 +62,7 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
         values.put("category", JdbcValues.enumName(
                 item.getCategory() == null ? ChecklistCategory.OTHERS : item.getCategory()));
         values.put("description", item.getDescription());
+        values.put("note", item.getNote());
         values.put("start_at", item.getStartAt());
         values.put("end_at", item.getEndAt());
         values.put("all_day", item.getAllDay());
@@ -87,6 +88,7 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
         item.setPlanId(rs.getString("plan_id"));
         item.setCategory(JdbcValues.enumValue(rs, "category", ChecklistCategory.class, ChecklistCategory.OTHERS));
         item.setDescription(rs.getString("description"));
+        item.setNote(rs.getString("note"));
         item.setStartAt(JdbcValues.localDateTime(rs, "start_at"));
         item.setEndAt(JdbcValues.localDateTime(rs, "end_at"));
         item.setAllDay(JdbcValues.nullableBoolean(rs, "all_day"));

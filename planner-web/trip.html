@@ -49,9 +49,9 @@
               travel <span x-text="members.length === 1 ? 'buddy' : 'buddies'"></span></span>
             <span class="scope-switch" role="group" aria-label="Show" x-show="canSeeWholeTrip">
               <button type="button" class="chip" :aria-pressed="scope === 'mine'"
-                      @click="setScope('mine')">Mine</button>
+                      @click="setScope('mine')">Show only my Activities</button>
               <button type="button" class="chip" :aria-pressed="scope === 'trip'"
-                      @click="setScope('trip')">Whole trip</button>
+                      @click="setScope('trip')">Show whole trip</button>
             </span>
           </div>
         </div>
@@ -147,12 +147,11 @@
           <div class="alert alert-error" x-show="memberError" x-text="memberError" x-cloak></div>
           <form class="field-inline" @submit.prevent="addMember()">
             <div class="field grow">
-              <label for="member-email">Add a travel buddy 🦙 to the herd by email</label>
+              <label for="member-email">Add a travel buddy 🦙 to the herd</label>
               <input id="member-email" type="email" x-model="memberEmail"
                      placeholder="name@example.com" required>
               <p class="field-hint">
-                They will get an email with a temporary password. Until they sign in and
-                choose a screen name, this list shows their email address.
+                They will get an email with a temporary password.
               </p>
             </div>
             <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
@@ -216,7 +215,7 @@
                  left of Add, so the primary action is the rightmost thing on
                  the row on every tab. -->
             <button type="button" class="btn btn-sm btn-danger"
-                    x-show="destinations.length"
+                    x-show="scopedDestinations.length"
                     :disabled="!destSelected.length"
                     @click="destBulkOpen = true">
               Delete selected<span x-show="destSelected.length"
@@ -227,12 +226,12 @@
             </button>
           </div>
         </div>
-        <p class="scope-hint" x-show="hiddenLabel('destinations')" x-cloak>
+        <!--<p class="scope-hint" x-show="hiddenLabel('destinations')" x-cloak>
           Showing your part · <strong x-text="hiddenLabel('destinations')"></strong> on the whole trip ·
           <button type="button" class="btn btn-ghost btn-sm" @click="setScope('trip')">Show whole trip</button>
-        </p>
+        </p>-->
 
-        <div class="empty-state" x-show="!destinations.length">
+        <div class="empty-state" x-show="!scopedDestinations.length">
           <div class="empty-icon">📍</div>
           <h3 class="empty-title">No destinations yet</h3>
           <p class="empty-body">
@@ -244,7 +243,7 @@
           </button>
         </div>
 
-        <div class="table-wrap" x-show="destinations.length">
+        <div class="table-wrap" x-show="scopedDestinations.length">
           <table class="table">
             <thead>
               <tr>
@@ -297,7 +296,7 @@
           <h2 class="section-title">
             🎯 Travel Checklist
             <span class="small muted"
-                  x-text="`— ${checkProgress().done} of ${checkProgress().total} ready for the herd`"></span>
+                  x-text="`— ${checkProgress().done} of ${checkProgress().total} ready for the adventure`"></span>
           </h2>
           <div class="btn-row">
             <button type="button" class="btn btn-sm btn-danger"
@@ -311,10 +310,10 @@
             </button>
           </div>
         </div>
-        <p class="scope-hint" x-show="hiddenLabel('checklist')" x-cloak>
+        <!--<p class="scope-hint" x-show="hiddenLabel('checklist')" x-cloak>
           Showing your part · <strong x-text="hiddenLabel('checklist')"></strong> on the whole trip ·
           <button type="button" class="btn btn-ghost btn-sm" @click="setScope('trip')">Show whole trip</button>
-        </p>
+        </p>-->
 
         <div class="toolbar">
           <span class="toolbar-label" id="check-category-label">Category</span>
@@ -350,7 +349,7 @@
           </div>
         </div>
 
-        <div class="empty-state" x-show="!checklist.length">
+        <div class="empty-state" x-show="!scopedChecklist.length">
           <div class="empty-icon">🧳</div>
           <h3 class="empty-title">Nothing on the checklist yet</h3>
           <p class="empty-body">
@@ -359,7 +358,7 @@
           <button type="button" class="btn btn-primary" @click="openAddCheck()">Add an item</button>
         </div>
 
-        <p class="small muted" x-show="checklist.length && !filteredChecklist.length">
+        <p class="small muted" x-show="scopedChecklist.length && !filteredChecklist.length">
           Nothing matches those filters.
         </p>
 
@@ -439,10 +438,10 @@
             </button>
           </div>
         </div>
-        <p class="scope-hint" x-show="hiddenLabel('itinerary')" x-cloak>
+        <!--<p class="scope-hint" x-show="hiddenLabel('itinerary')" x-cloak>
           Showing your part · <strong x-text="hiddenLabel('itinerary')"></strong> on the whole trip ·
           <button type="button" class="btn btn-ghost btn-sm" @click="setScope('trip')">Show whole trip</button>
-        </p>
+        </p>-->
 
         <div class="toolbar">
           <span class="toolbar-label" id="itin-category-label">Category</span>
@@ -475,7 +474,7 @@
 
         <!-- Only when both halves are empty. With weather rows on screen the
              itinerary is not empty even with nothing planned. -->
-        <div class="empty-state" x-show="!itinerary.length && !filteredWeather.length">
+        <div class="empty-state" x-show="!scopedItinerary.length && !filteredWeather.length">
           <div class="empty-icon">🗓</div>
           <h3 class="empty-title">Nothing planned yet</h3>
           <p class="empty-body">
@@ -800,7 +799,7 @@
             <h3 class="section-title" id="settle-title">💸 Settle the herd</h3>
           </div>
           <p class="settle-note">
-            Based on charged expenses only, in the same currency each was paid in.
+            Based on the charged expenses only, in the same currency each was paid in.
           </p>
 
           <p class="empty" x-show="!hasSettlements" x-cloak>
@@ -861,7 +860,7 @@
             <span class="badge badge-published">Live</span>
           </div>
           <div class="publish-actions">
-            <button type="button" class="btn btn-sm" x-show="isOwner" :disabled="publishBusy"
+            <button type="button" class="btn btn-sm" x-show="canPublish" :disabled="publishBusy"
                     @click="doPublish()" x-text="publishBusy ? 'Working…' : 'Re-publish (update)'"></button>
             <button type="button" class="btn btn-sm btn-danger" x-show="isOwner"
                     @click="confirmingUnpublish = true">Unpublish</button>
@@ -876,26 +875,26 @@
             <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener">
               Open public page
             </a>
-            <button type="button" class="btn btn-sm" @click="copyLink()"
-                    x-text="copied ? 'Copied ✓' : 'Copy link'"></button>
+            <button type="button" class="btn btn-sm" @click="copyLink('publicUrl')"
+                    x-text="copied === 'publicUrl' ? 'Copied ✓' : 'Copy link'"></button>
           </div>
           <p class="small muted publish-own-page" x-show="publish.myPublicUrl">
-            Your own page is the same trip, showing only your destination, checklist, itinerary, and shared expenses
-            instead of the whole trip.
+            Everyone on this trip also gets a page of their own. Yours is the same trip, showing only your
+            destinations, checklist, itinerary and share of the expenses instead of the whole trip.
           </p>
-          <div class="publish-url">
-            <span x-ref="publicUrl" class="grow" x-text="publish.myPublicUrl"></span>
-            <a class="btn btn-sm" x-show="publish.myPublicUrl" :href="publish.myPublicUrl"
+          <div class="publish-url" x-show="publish.myPublicUrl">
+            <span x-ref="myPublicUrl" class="grow" x-text="publish.myPublicUrl"></span>
+            <a class="btn btn-sm" :href="publish.myPublicUrl"
                target="_blank" rel="noopener">
               Open my page
             </a>
-            <button type="button" class="btn btn-sm" @click="copyLink()"
-                    x-text="copied ? 'Copied ✓' : 'Copy link'"></button>
+            <button type="button" class="btn btn-sm" @click="copyLink('myPublicUrl')"
+                    x-text="copied === 'myPublicUrl' ? 'Copied ✓' : 'Copy link'"></button>
           </div>
         </div>
 
         <!-- Draft, owner -->
-        <div class="card" x-show="!isPublished && isOwner" style="margin-bottom:16px">
+        <div class="card" x-show="!isPublished && canPublish" style="margin-bottom:16px">
           <div class="card-header"><h3 class="card-title">ᯓ➤ Ready to share?</h3></div>
           <p class="small muted">
             You can publish at any point — publishing again later updates the page.
@@ -906,7 +905,7 @@
         </div>
 
         <!-- Draft, non-owner -->
-        <div class="card" x-show="!isPublished && !isOwner" style="margin-bottom:16px">
+        <div class="card" x-show="!isPublished && !canPublish" style="margin-bottom:16px">
           <div class="card-header"><h3 class="card-title">ᯓ➤ Ready to share?</h3></div>
           <p class="small muted">
             Send a request to publish the trip. You can publish at any point — publishing again later updates the page.
@@ -964,7 +963,7 @@
           </template>
         </div>
 
-        <div class="card" x-show="recentRequests.length" style="margin-top:16px">
+        <div class="card" x-show="requireOwnerApproval && recentRequests.length" style="margin-top:16px">
           <div class="card-header"><h3 class="card-title">📥 Recent requests</h3></div>
           <template x-for="request in recentRequests" :key="request.id">
             <div class="publish-request-row">
@@ -1014,7 +1013,7 @@
 
               <!-- edit the item itself -->
               <div class="drawer-section">
-                <h3 class="drawer-section-title">Details</h3>
+                <h3 class="drawer-section-title"></h3>
                 <div class="field">
                   <label for="drawer-description">Description</label>
                   <textarea id="drawer-description" x-model="drawerForm.description"
@@ -1023,7 +1022,7 @@
                 <div class="field">
                   <label for="drawer-note">Note (optional)</label>
                   <textarea id="drawer-note" x-model="drawerForm.note"
-                            placeholder="Anything worth remembering — booking references, who is handling it"></textarea>
+                            placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
                 </div>
                 <div class="field-row">
                   <div class="field">
@@ -1049,23 +1048,21 @@
                 </div>
                 <div class="field">
                   <label id="drawer-going-label">Who's carrying the load? <span aria-hidden="true">🦙</span></label>
-                  <p class="field-hint" x-show="drawerForm.travellers.mode === 'inherit'">
-                    Same as <span x-text="checklistParentLabel(openItem)"></span>:
-                    <template x-for="name in nameList(checklistInherited(openItem))" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList(checklistInherited(openItem)).length">everyone</span>
-                    <button type="button" class="btn btn-ghost btn-sm"
-                            @click="chooseTravellers(drawerForm.travellers, checklistInherited(openItem))">Choose…</button>
-                  </p>
-                  <div class="chip-group" role="group" aria-labelledby="drawer-going-label"
-                       x-show="drawerForm.travellers.mode !== 'inherit'">
-                    <button type="button" class="chip" :aria-pressed="drawerForm.travellers.mode === 'everyone'"
+                  <div class="chip-group" role="group" aria-labelledby="drawer-going-label">
+                    <button type="button" class="chip"
+                            :aria-pressed="!effectiveTravellers(drawerForm.travellers, checklistInherited(openItem)).length"
                             @click="everyoneGoes(drawerForm.travellers)">Everyone</button>
                     <template x-for="person in tripSharers" :key="person.userId">
-                      <button type="button" class="chip" :aria-pressed="drawerForm.travellers.ids.includes(person.userId)"
-                              @click="toggleTraveller(drawerForm.travellers, person.userId)" x-text="person.label"></button>
+                      <button type="button" class="chip"
+                              :aria-pressed="effectiveTravellers(drawerForm.travellers, checklistInherited(openItem)).includes(person.userId)"
+                              @click="toggleTravellerFollowing(drawerForm.travellers, checklistInherited(openItem), person.userId)"
+                              x-text="person.label"></button>
                     </template>
+                  </div>
+                  <p class="field-hint" x-show="drawerForm.travellers.mode !== 'inherit'">
                     <button type="button" class="btn btn-ghost btn-sm" @click="followParent(drawerForm.travellers)"
                 x-text="'Back to ' + checklistParentLabel(openItem) + '\'s'"></button>
-                  </div>
+                  </p>
                 </div>
 
               </div>
@@ -1077,14 +1074,16 @@
               <!-- plans -->
               <div class="drawer-section">
                 <h3 class="drawer-section-title">
-                  Plans<span x-show="openItemPlans.length" x-text="` (${openItemPlans.length})`"></span>
+                  Tasks<span x-show="openItemPlans.length" x-text="` (${openItemPlans.length})`"></span>
                 </h3>
 
                 <p class="small muted" x-show="!openItemPlans.length && !planOpen">
                   <span aria-hidden="true">🦙</span> The Llama is ready to roam! -
-                  there are no plans yet, start to plan and record a flight, booking or activity.
+                  there are no tasks yet, add a flight, booking or activity to create an itinerary.
                 </p>
-
+                <p class="small muted" x-show="!openItemPlans.length && !planOpen">
+                  <span aria-hidden="true">⚠️</span> Directly Mark as Complete if there is no related itinerary.
+                </p>
 
                 <template x-for="plan in openItemPlans" :key="plan.id">
                   <div class="plan-card">
@@ -1113,7 +1112,7 @@
                     <label for="plan-description">Description</label>
                     <input id="plan-description" x-ref="planDescription"
                            x-model="planForm.description" maxlength="300">
-                    <p class="field-hint">Pre-filled as a starting point — edit it to match reality.</p>
+                    <p class="field-hint">Pre-filled as a starting point.</p>
                   </div>
 
                   <div class="field">
@@ -1152,42 +1151,38 @@
 
                   <div class="field">
                     <label id="plan-going-label">Who's taking this trail? <span aria-hidden="true">🦙</span></label>
-                    <p class="field-hint" x-show="planForm.travellers.mode === 'inherit'">
-                      Same as <span x-text="planParentLabel()"></span>:
-                      <template x-for="name in nameList(planInherited())" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList(planInherited()).length">everyone</span>
-                      <button type="button" class="btn btn-ghost btn-sm"
-                              @click="chooseTravellers(planForm.travellers, planInherited())">Choose…</button>
-                    </p>
-                    <div class="chip-group" role="group" aria-labelledby="plan-going-label"
-                         x-show="planForm.travellers.mode !== 'inherit'">
-                      <button type="button" class="chip" :aria-pressed="planForm.travellers.mode === 'everyone'"
+                    <div class="chip-group" role="group" aria-labelledby="plan-going-label">
+                      <button type="button" class="chip"
+                              :aria-pressed="!effectiveTravellers(planForm.travellers, planInherited()).length"
                               @click="everyoneGoes(planForm.travellers)">Everyone</button>
                       <template x-for="person in tripSharers" :key="person.userId">
-                        <button type="button" class="chip" :aria-pressed="planForm.travellers.ids.includes(person.userId)"
-                                @click="toggleTraveller(planForm.travellers, person.userId)" x-text="person.label"></button>
+                        <button type="button" class="chip"
+                                :aria-pressed="effectiveTravellers(planForm.travellers, planInherited()).includes(person.userId)"
+                                @click="toggleTravellerFollowing(planForm.travellers, planInherited(), person.userId)"
+                                x-text="person.label"></button>
                       </template>
-                      <button type="button" class="btn btn-ghost btn-sm" @click="followParent(planForm.travellers)"
-                              x-text="'Back to ' + planParentLabel() + '\'s'"></button>
                     </div>
                   </div>
 
-                  <div class="field-row">
-                    <div class="field">
-                      <label for="plan-cost">Total Cost (optional)</label>
-                      <input id="plan-cost" type="number" step="0.01" min="0" x-model="planForm.cost">
+                  <div class="field">
+                    <div class="field-row">
+                      <div class="field">
+                        <label for="plan-cost">Total Cost (optional)</label>
+                        <input id="plan-cost" type="number" step="0.01" min="0" x-model="planForm.cost">
+                      </div>
+                      <div class="field">
+                        <label for="plan-currency">Currency</label>
+                        <select id="plan-currency" x-model="planForm.currency">
+                          <template x-for="code in entryCurrencies" :key="code">
+                            <option :value="code" x-text="code"></option>
+                          </template>
+                        </select>
+                      </div>
                     </div>
-                    <div class="field">
-                      <label for="plan-currency">Currency</label>
-                      <select id="plan-currency" x-model="planForm.currency">
-                        <template x-for="code in entryCurrencies" :key="code">
-                          <option :value="code" x-text="code"></option>
-                        </template>
-                      </select>
-                    </div>
+                    <p class="field-hint" style="margin-top:-8px">
+                      Added cost creates a matching budget.
+                    </p>
                   </div>
-                  <p class="field-hint" style="margin-top:-8px">
-                    Adding a cost creates a matching budget entry.
-                  </p>
 
                   <div class="field" x-show="planForm.cost">
                     <label id="plan-paid-by-label">Paid by</label>
@@ -1225,6 +1220,12 @@
                     </div>
                   </div>
 
+                  <div class="field">
+                    <label for="plan-note">Note (optional)</label>
+                    <textarea id="plan-note" x-model="planForm.note"
+                              placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+                  </div>
+
                   <div class="row row-end" style="margin-top:12px">
                     <button type="button" class="btn" @click="planOpen = false">Cancel</button>
                     <button type="button" class="btn btn-primary" :disabled="planBusy"
@@ -1240,7 +1241,7 @@
                 <button type="button" class="btn"
                         x-show="!planOpen && openItem?.status !== 'COMPLETED'"
                         @click="openPlanForm()"
-                        x-text="openItemPlans.length ? 'Plan another' : 'Start Planning'"></button>
+                        x-text="openItemPlans.length ? 'Add another' : 'Start to add'"></button>
                 <!-- <button type="button" class="btn btn-danger" @click="deletingCheck = true">Delete</button> -->
                 <button type="button" class="btn btn-primary"
                         x-show="openItem?.status !== 'COMPLETED'"
@@ -1505,9 +1506,9 @@
             </div>
 
             <div class="field">
-              <label for="dest-notes">Note (optional)</label>
-              <textarea id="dest-notes" x-model="destForm.notes"
-                        placeholder="Which season, altitude, or how to get around, anything worth knowing"></textarea>
+              <label for="dest-note">Note (optional)</label>
+              <textarea id="dest-note" x-model="destForm.note"
+                        placeholder="Anything worth remembering — season, altitude, emergency numbers, how to get around, etc."></textarea>
             </div>
 
             <div class="modal-footer">
@@ -1591,28 +1592,22 @@
             </div>
             <div class="field">
               <label id="new-check-going-label">Who's carrying the load? <span aria-hidden="true">🦙</span></label>
-              <p class="field-hint" x-show="newCheck.travellers.mode === 'inherit'">
-                Same as <span x-text="'the trip'"></span>:
-                <template x-for="name in nameList([])" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList([]).length">everyone</span>
-                <button type="button" class="btn btn-ghost btn-sm"
-                        @click="chooseTravellers(newCheck.travellers, [])">Choose…</button>
-              </p>
-              <div class="chip-group" role="group" aria-labelledby="new-check-going-label"
-                   x-show="newCheck.travellers.mode !== 'inherit'">
-                <button type="button" class="chip" :aria-pressed="newCheck.travellers.mode === 'everyone'"
+              <div class="chip-group" role="group" aria-labelledby="new-check-going-label">
+                <button type="button" class="chip"
+                        :aria-pressed="!effectiveTravellers(newCheck.travellers, []).length"
                         @click="everyoneGoes(newCheck.travellers)">Everyone</button>
                 <template x-for="person in tripSharers" :key="person.userId">
-                  <button type="button" class="chip" :aria-pressed="newCheck.travellers.ids.includes(person.userId)"
-                          @click="toggleTraveller(newCheck.travellers, person.userId)" x-text="person.label"></button>
+                  <button type="button" class="chip"
+                          :aria-pressed="effectiveTravellers(newCheck.travellers, []).includes(person.userId)"
+                          @click="toggleTravellerFollowing(newCheck.travellers, [], person.userId)"
+                          x-text="person.label"></button>
                 </template>
-                <button type="button" class="btn btn-ghost btn-sm" @click="followParent(newCheck.travellers)"
-                x-text="'Back to ' + 'the trip' + '\'s'"></button>
               </div>
             </div>
             <div class="field">
               <label for="new-check-note">Note (optional)</label>
               <textarea id="new-check-note" x-model="newCheck.note"
-                        placeholder="Are there any links or note worth remembering"></textarea>
+                        placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn" @click="addCheckOpen = false">Cancel</button>
@@ -1682,43 +1677,41 @@
                 <input id="entry-end-time" type="time" x-model="entryForm.endTime">
               </div>
             </div>
-            <div class="field" x-show="!entryForm.planId">
+            <div class="field">
               <label id="entry-going-label">Who's taking this trail? <span aria-hidden="true">🦙</span></label>
-              <p class="field-hint" x-show="entryForm.travellers.mode === 'inherit'">
-                Same as <span x-text="entryParentLabel()"></span>:
-                <template x-for="name in nameList(entryInherited())" :key="name"><span class="badge badge-traveller" x-text="name"></span></template><span x-show="!nameList(entryInherited()).length">everyone</span>
-                <button type="button" class="btn btn-ghost btn-sm"
-                        @click="chooseTravellers(entryForm.travellers, entryInherited())">Choose…</button>
-              </p>
-              <div class="chip-group" role="group" aria-labelledby="entry-going-label"
-                   x-show="entryForm.travellers.mode !== 'inherit'">
-                <button type="button" class="chip" :aria-pressed="entryForm.travellers.mode === 'everyone'"
+              <div class="chip-group" role="group" aria-labelledby="entry-going-label">
+                <button type="button" class="chip"
+                        :aria-pressed="!effectiveTravellers(entryForm.travellers, entryInherited()).length"
+                        :disabled="!!entryForm.planId"
                         @click="everyoneGoes(entryForm.travellers)">Everyone</button>
                 <template x-for="person in tripSharers" :key="person.userId">
-                  <button type="button" class="chip" :aria-pressed="entryForm.travellers.ids.includes(person.userId)"
-                          @click="toggleTraveller(entryForm.travellers, person.userId)" x-text="person.label"></button>
+                  <button type="button" class="chip"
+                          :aria-pressed="effectiveTravellers(entryForm.travellers, entryInherited()).includes(person.userId)"
+                          :disabled="!!entryForm.planId"
+                          @click="toggleTravellerFollowing(entryForm.travellers, entryInherited(), person.userId)"
+                          x-text="person.label"></button>
                 </template>
-                <button type="button" class="btn btn-ghost btn-sm" @click="followParent(entryForm.travellers)"
-                        x-text="'Back to ' + entryParentLabel() + '\'s'"></button>
               </div>
             </div>
-            <div class="field-row">
-              <div class="field">
-                <label for="entry-cost">Total Cost (optional)</label>
-                <input id="entry-cost" type="number" step="0.01" min="0" x-model="entryForm.cost">
+            <div class="field">
+              <div class="field-row">
+                <div class="field">
+                  <label for="entry-cost">Total Cost (optional)</label>
+                  <input id="entry-cost" type="number" step="0.01" min="0" x-model="entryForm.cost">
+                </div>
+                <div class="field">
+                  <label for="entry-currency">Currency</label>
+                  <select id="entry-currency" x-model="entryForm.currency">
+                    <template x-for="code in entryCurrencies" :key="code">
+                      <option :value="code" x-text="code"></option>
+                    </template>
+                  </select>
+                </div>
               </div>
-              <div class="field">
-                <label for="entry-currency">Currency</label>
-                <select id="entry-currency" x-model="entryForm.currency">
-                  <template x-for="code in entryCurrencies" :key="code">
-                    <option :value="code" x-text="code"></option>
-                  </template>
-                </select>
-              </div>
+              <p class="field-hint" style="margin-top:-8px">
+                Added cost creates a matching budget.
+              </p>
             </div>
-            <p class="field-hint" style="margin-top:-8px">
-              Adding a cost creates a matching budget entry.
-            </p>
             <div class="field" x-show="entryForm.cost">
               <label id="entry-paid-by-label">Paid by</label>
               <div class="chip-group" role="group" aria-labelledby="entry-paid-by-label">
@@ -1751,6 +1744,13 @@
                 </template>
               </div>
             </div>
+
+            <div class="field">
+              <label for="entry-note">Note (optional)</label>
+              <textarea id="entry-note" x-model="entryForm.note"
+                        placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+            </div>
+
             <div class="modal-footer">
               <button type="button" class="btn" @click="entryOpen = false">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="entryBusy"
@@ -1809,7 +1809,7 @@
             You can reopen it at any time.
           </p>
           <p class="small muted" x-show="!completingItemPlans.length">
-            Nothing has been planned against it yet — completing it anyway is fine.
+            No tasks created — marking as Complete is fine if this is Done.
           </p>
           <div class="modal-footer">
             <button type="button" class="btn" @click="completingItem = null">Cancel</button>
@@ -1893,7 +1893,7 @@
               <label for="expense-description">Description</label>
               <input id="expense-description" x-ref="expenseDescription"
                      x-model="expenseForm.description"
-                     placeholder="Yellow fever vaccine" required>
+                     placeholder="Worldwide Travel Insurance" required>
             </div>
             <div class="field">
               <label for="expense-category">Category</label>
@@ -1977,6 +1977,13 @@
                 </template>
               </div>
             </div>
+
+            <div class="field">
+              <label for="expense-note">Note (optional)</label>
+              <textarea id="expense-note" x-model="expenseForm.note"
+                        placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+            </div>
+
             <div class="modal-footer">
               <button type="button" class="btn" @click="expenseOpen = false">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="expenseBusy"
@@ -2057,7 +2064,8 @@
             Anyone with the link will be able to see this trip — its destinations,
             itinerary, checklist and budget. No sign-in required.
           </p>
-          <p class="small muted">You can unpublish at any time.</p>
+          <p class="small muted" x-show="isOwner">You can unpublish at any time.</p>
+          <p class="small muted" x-show="!isOwner">Only the trip owner can unpublish it.</p>
           <div class="modal-footer">
             <button type="button" class="btn" @click="confirmingPublish = false">Cancel</button>
             <button type="button" class="btn btn-primary" :disabled="publishBusy"

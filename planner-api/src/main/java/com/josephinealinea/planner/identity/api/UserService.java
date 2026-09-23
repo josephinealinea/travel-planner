@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.identity.api;
 
 import com.josephinealinea.planner.config.AppProperties;
+import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
@@ -124,13 +125,12 @@ public class UserService {
      */
     public User updatePublishedPageSettings(String userId, Boolean itineraryCost,
                                            Boolean destinationDays,
-                                           Boolean forecastExpenses,
-                                           Boolean personalBudget) {
+                                           Boolean forecastExpenses) {
         User user = require(userId);
-        if (itineraryCost != null) user.setPublishItineraryCost(itineraryCost);
-        if (destinationDays != null) user.setPublishDestinationDays(destinationDays);
-        if (forecastExpenses != null) user.setPublishForecastExpenses(forecastExpenses);
-        if (personalBudget != null) user.setPublishPersonalBudget(personalBudget);
+        PublishedPageSettings settings = user.getPublishedPage();
+        if (itineraryCost != null) settings.setItineraryCost(itineraryCost);
+        if (destinationDays != null) settings.setDestinationDays(destinationDays);
+        if (forecastExpenses != null) settings.setForecastExpenses(forecastExpenses);
         return users.save(user);
     }
 

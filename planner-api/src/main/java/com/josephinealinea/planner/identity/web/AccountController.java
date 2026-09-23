@@ -71,7 +71,7 @@ public class AccountController {
         return AuthDtos.MeResponse.from(
                 users.updatePublishedPageSettings(currentUser.userId(),
                         request.itineraryCost(), request.destinationDays(),
-                        request.forecastExpenses(), request.personalBudget()));
+                        request.forecastExpenses()));
     }
 
     /**

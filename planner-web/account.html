@@ -44,7 +44,7 @@
           <label for="screenName">Screen name</label>
           <input id="screenName" type="text" maxlength="60" autocomplete="nickname">
           <p class="field-hint">
-            What the herd can call you 🦙. Without one they only see your email address.
+            What the herd can call you 🦙. Without one they only see your email.
           </p>
         </div>
         <button type="submit" class="btn btn-primary" id="save-profile">Save screen name</button>
@@ -103,7 +103,7 @@
       <div class="field">
         <span class="label">Published page</span>
         <p class="small muted" style="margin:0 0 8px">
-          These settings are saved to your account.
+          Saved to your account, and applied to your own page the next time a trip is published.
         </p>
         <div id="published-page-alert" class="alert" hidden></div>
         <div id="published-page-settings" class="stack-sm"></div>
@@ -136,7 +136,7 @@
         <label for="display-currency">Show your Total Travel Cost in</label>
         <select id="display-currency" class="control-narrow"></select>
         <p class="field-hint">
-          The amount presented is just a projection amount and is based on exchange rate.
+          The amount presented is just a projection amount and is based on the exchange rate.
         </p>
       </div>
 
@@ -269,9 +269,6 @@
     { key: 'itineraryCost', label: 'Display expense cost per itinerary' },
     { key: 'destinationDays', label: "Display destination's total number of days (instead of nights)" },
     { key: 'forecastExpenses', label: 'Display forecasted expenses' },
-    // Unlike the three above, this one is read from every member rather than
-    // from whoever publishes: it is their page, so it is their decision.
-    { key: 'personalBudget', label: 'Publish my own page, showing only my share of the budget' },
   ];
 
   const publishedPageBox = document.querySelector('#published-page-settings');

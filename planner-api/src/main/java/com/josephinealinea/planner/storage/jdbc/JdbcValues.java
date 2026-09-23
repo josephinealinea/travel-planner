@@ -1,5 +1,8 @@
 package com.josephinealinea.planner.storage.jdbc;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.jdbc.core.SqlTypeValue;
 import org.springframework.jdbc.core.support.AbstractSqlTypeValue;
@@ -42,6 +45,14 @@ import java.util.List;
  */
 public final class JdbcValues {
 
+    /**
+     * Its own mapper rather than the application's: what a {@code jsonb}
+     * column holds is a storage format, and it must not start reading
+     * differently because a controller's serialisation was reconfigured.
+     */
+    private static final ObjectMapper JSON = new ObjectMapper()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
     private JdbcValues() {}
 
     // ---- parameters: Java -> SQL -------------------------------------------
@@ -77,6 +88,22 @@ public final class JdbcValues {
     /** An enum as the {@code text} it is stored as: its name, or null. */
     public static String enumName(Enum<?> value) {
         return value == null ? null : value.name();
+    }
+
+    /**
+     * An object as the JSON a {@code jsonb} column holds.
+     *
+     * Bound as text and cast in the statement ({@code :param::jsonb}) rather
+     * than through a driver-specific type, so nothing here depends on PgJDBC
+     * being on the compile classpath.
+     */
+    public static String json(Object value) {
+        if (value == null) return null;
+        try {
+            return JSON.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not write " + value.getClass().getSimpleName() + " as JSON", e);
+        }
     }
 
     // ---- columns: SQL -> Java ----------------------------------------------
@@ -121,6 +148,21 @@ public final class JdbcValues {
     public static Double nullableDouble(ResultSet rs, String column) throws SQLException {
         double value = rs.getDouble(column);
         return rs.wasNull() ? null : value;
+    }
+
+    /**
+     * A {@code jsonb} column back into its object. SQL NULL and an empty
+     * document both read as null, so the field keeps whatever initialiser its
+     * class gave it — the same as a key absent from a YAML file.
+     */
+    public static <T> T json(ResultSet rs, String column, Class<T> type) throws SQLException {
+        String value = rs.getString(column);
+        if (value == null || value.isBlank()) return null;
+        try {
+            return JSON.readValue(value, type);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not read " + column + " as " + type.getSimpleName(), e);
+        }
     }
 
     public static Instant instant(ResultSet rs, String column) throws SQLException {

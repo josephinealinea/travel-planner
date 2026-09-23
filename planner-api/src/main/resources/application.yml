@@ -59,6 +59,7 @@ app:
     # filesystem | r2 — where published pages are written. Independent of the
     # database flag, so local development keeps writing files.
     store: ${PUBLISH_STORE:filesystem}
+    require-owner-approval: ${REQUIRE_OWNER_APPROVAL:false}
   # Cloudflare R2, only read when app.publish.store=r2.
   r2:
     account-id: ${R2_ACCOUNT_ID:}

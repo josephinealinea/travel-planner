@@ -55,10 +55,11 @@ public class PlanTemplates {
                 yield new Template(description, at(start, LocalTime.MIDNIGHT), null, currency);
             }
             case LODGING -> {
-                String description = (start != null && end != null)
-                        ? "Hotel in %s — check-in %s, check-out %s"
-                                .formatted(name, DAY_MONTH.format(start), DAY_MONTH.format(end))
-                        : "Hotel in %s".formatted(name);
+                //String description = (start != null && end != null)
+                //        ? "Hotel in %s — check-in %s, check-out %s"
+                //                .formatted(name, DAY_MONTH.format(start), DAY_MONTH.format(end))
+                //        : "Hotel in %s".formatted(name);
+                String description = "Hotel accommodation in %s".formatted(name);
                 yield new Template(description,
                         at(start, LocalTime.of(15, 0)),
                         at(end, LocalTime.of(11, 0)),
@@ -70,9 +71,9 @@ public class PlanTemplates {
             // so these pre-fill the place and leave the time to the member,
             // the way OTHERS does.
             case SHOPPING -> new Template("Shopping in %s".formatted(name),
-                    at(start, LocalTime.MIDNIGHT), null, currency);
-            case FOOD -> new Template("Meal in %s".formatted(name),
-                    at(start, LocalTime.MIDNIGHT), null, currency);
+                    at(start, LocalTime.of(9, 0)), null, currency);
+            case FOOD -> new Template("Dinner at %s".formatted(name),
+                    at(start, LocalTime.of(18, 0)), null, currency);
             case OTHERS -> new Template(item.getDescription(), at(start, LocalTime.MIDNIGHT), null, currency);
         };
     }

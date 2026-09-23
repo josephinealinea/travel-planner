@@ -330,7 +330,7 @@ public class StaticSiteRenderer {
                 // one of them — see PublishedTrip.Destination.
                 options.destinationDays() ? null : destination.nights(),
                 options.destinationDays() ? destination.days() : null,
-                destination.getNotes(),
+                destination.getNote(),
                 mapUrl);
     }
 

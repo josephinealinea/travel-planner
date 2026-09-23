@@ -46,6 +46,7 @@ public class ItineraryItem implements Audited {
     private String planId;
     private ChecklistCategory category = ChecklistCategory.OTHERS;
     private String description;
+    private String note;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     // A night in the middle of a stay: it belongs to a day but not to a time.
@@ -118,6 +119,9 @@ public class ItineraryItem implements Audited {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
 
     public LocalDateTime getStartAt() { return startAt; }
     public void setStartAt(LocalDateTime startAt) { this.startAt = startAt; }

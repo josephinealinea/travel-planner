@@ -4,7 +4,7 @@ import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
 import {
   newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
-  toggleTraveller, everyoneGoes, chooseTravellers, followParent, effectiveTravellers,
+  toggleTravellerFollowing, everyoneGoes, followParent, effectiveTravellers,
   defaultCostSharers,
 } from '../../traveller-picker.js';
 
@@ -23,6 +23,7 @@ export function checklistTab() {
   const blankPlan = () => ({
     id: null,
     description: '',
+    note: '',
     startDate: '',
     startTime: '',
     endDate: '',
@@ -49,9 +50,8 @@ export function checklistTab() {
   });
 
   return {
-    toggleTraveller,
+    toggleTravellerFollowing,
     everyoneGoes,
-    chooseTravellers,
     followParent,
     effectiveTravellers,
 
@@ -466,6 +466,7 @@ export function checklistTab() {
       this.planForm = {
         id: plan.id,
         description: plan.description || '',
+        note: plan.note || '',
         startDate: dateOf(plan.startAt),
         // All-day midnight is a placeholder, not a time — see openEditEntry.
         startTime: plan.allDay ? '' : timeOf(plan.startAt),
@@ -519,6 +520,7 @@ export function checklistTab() {
         if (this.planForm.id) {
           await this.api.updatePlan(this.trip.id, this.planForm.id, {
             description,
+            note: this.planForm.note.trim() || null,
             startAt,
             endAt,
             // Zero is how the API is told to clear a cost and drop its budget row.
@@ -538,6 +540,7 @@ export function checklistTab() {
             checklistItemId: this.openItem.id,
             category: this.openItem.category,
             description,
+            note: this.planForm.note.trim() || null,
             startAt,
             endAt,
             cost,

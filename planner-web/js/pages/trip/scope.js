@@ -81,13 +81,6 @@ export function scopeTab() {
       return this.namesOf((this.namedTravellers[kind] || {})[id]);
     },
 
-    /** Display names for a list of user ids, one pill each. */
-    nameList(ids) {
-      return (ids || [])
-        .map((id) => this.members.find((m) => m.userId === id)?.displayName)
-        .filter(Boolean);
-    },
-
     /** The same names as a list, one pill each; empty for the whole trip. */
     travellerNameList(kind, id) {
       return ((this.namedTravellers[kind] || {})[id] || [])

@@ -110,7 +110,7 @@ class DatabaseModeApplicationTest {
     void startsOnPostgresWithFlywayApplied() {
         assertThat(context.getBean(FeatureFlags.class).databaseEnabled()).isTrue();
         assertThat(jdbc.sql("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank")
-                .query(String.class).list()).containsExactly("1", "2");
+                .query(String.class).list()).containsExactly("1", "2", "3", "4");
     }
 
     @Test

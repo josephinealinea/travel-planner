@@ -46,6 +46,18 @@ export function toggleTraveller(state, userId) {
   state.mode = state.ids.length ? 'named' : 'everyone';
 }
 
+/**
+ * Toggles one person straight from the picker, no separate "Choose…" step:
+ * while still following its parent, it first adopts that parent's resolved
+ * list — the same "start from what it was inheriting" rule as
+ * chooseTravellers — so the one click that opts out never also discards who
+ * was already implied.
+ */
+export function toggleTravellerFollowing(state, inheritedIds, userId) {
+  if (state.mode === 'inherit') chooseTravellers(state, inheritedIds);
+  toggleTraveller(state, userId);
+}
+
 export function everyoneGoes(state) {
   state.ids.splice(0);
   state.mode = 'everyone';

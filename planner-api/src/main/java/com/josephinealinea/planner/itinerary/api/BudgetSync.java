@@ -16,7 +16,7 @@ import java.time.Instant;
  * and narrow, so the numbers stay predictable:
  *
  *  - a cost on a plan with no budget row yet creates one, copying category,
- *    amount, currency, description, date and countryCodes;
+ *    amount, currency, description, note, date and countryCodes;
  *  - a later cost or currency change updates only the amount and currency —
  *    plus `status`, `sharedByUserIds` and `paidByUserId`, and only when the
  *    form actually sends them — so a description, category or set of
@@ -68,6 +68,7 @@ public class BudgetSync {
             created.setItineraryItemId(plan.getId());
             created.setCategory(plan.getCategory());
             created.setDescription(plan.getDescription());
+            created.setNote(plan.getNote());
             created.setAmount(plan.getCost());
             created.setCurrency(plan.getCurrency());
             created.setDate(plan.getStartAt() == null ? null : plan.getStartAt().toLocalDate());

@@ -29,7 +29,7 @@ public class DestinationController {
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
-            String notes,
+            String note,
             Boolean suppressChecklist,
             /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
             List<String> travellerIds,
@@ -38,7 +38,7 @@ public class DestinationController {
 
         DestinationService.Input toInput() {
             return new DestinationService.Input(name, countryCode, countryName, latitude,
-                    longitude, geonameId, timezone, startDate, endDate, notes,
+                    longitude, geonameId, timezone, startDate, endDate, note,
                     suppressChecklist, travellerIds, inheritTravellers);
         }
     }
@@ -54,7 +54,7 @@ public class DestinationController {
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
-            String notes,
+            String note,
             Boolean suppressChecklist,
             /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
             List<String> travellerIds,
@@ -63,7 +63,7 @@ public class DestinationController {
 
         DestinationService.Input toInput() {
             return new DestinationService.Input(name, countryCode, countryName, latitude,
-                    longitude, geonameId, timezone, startDate, endDate, notes,
+                    longitude, geonameId, timezone, startDate, endDate, note,
                     suppressChecklist, travellerIds, inheritTravellers);
         }
     }

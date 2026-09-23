@@ -59,6 +59,7 @@ export function itineraryTab() {
     id: null,
     category: 'OTHERS',
     description: '',
+    note: '',
     startDate: '',
     startTime: '',
     endDate: '',
@@ -265,6 +266,7 @@ export function itineraryTab() {
         id: item.id,
         category: item.category,
         description: item.description || '',
+        note: item.note || '',
         startDate: dateOf(item.startAt),
         // An all-day entry is stored at T00:00, but that midnight is a
         // placeholder, not a time. Prefilling it made Save send allDay: false
@@ -347,6 +349,7 @@ export function itineraryTab() {
         const payload = {
           category: this.entryForm.category,
           description,
+          note: this.entryForm.note.trim() || null,
           startAt,
           endAt,
           // A date with no time belongs to a day, not an hour — the API

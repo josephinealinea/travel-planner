@@ -41,6 +41,7 @@ export function budgetTab() {
   const blankExpense = () => ({
     id: null,
     description: '',
+    note: '',
     category: 'OTHERS',
     amount: '',
     currency: '',
@@ -390,6 +391,7 @@ export function budgetTab() {
       this.expenseForm = {
         id: item.id,
         description: item.description || '',
+        note: item.note || '',
         category: item.category,
         amount: item.amount ?? '',
         currency: item.currency || this.budget.displayCurrency || '',
@@ -426,6 +428,7 @@ export function budgetTab() {
       try {
         const payload = {
           description,
+          note: this.expenseForm.note.trim() || null,
           category: this.expenseForm.category,
           amount,
           currency: this.expenseForm.currency || null,

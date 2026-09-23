@@ -37,6 +37,7 @@ public class BudgetItem implements Audited {
     private String itineraryItemId;
     private ChecklistCategory category = ChecklistCategory.OTHERS;
     private String description;
+    private String note;
     private BigDecimal amount;
     private String currency;
     private LocalDate date;
@@ -145,6 +146,9 @@ public class BudgetItem implements Audited {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
 
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }

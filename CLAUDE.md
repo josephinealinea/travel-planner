@@ -100,6 +100,28 @@ cd planner-web && npm run pages:dev
 docker build -t planner-api planner-api
 ```
 
+## API Port and localStorage
+
+**Always use port 8080 for local development** — this is the default and what the frontend expects.
+
+The frontend (`planner-web/js/config.js`) stores the API base URL in browser localStorage. This means if you ever open the frontend with `?api=http://localhost:NONSTANDARD_PORT`, that port will be **remembered in localStorage indefinitely**. Future page loads will try to reach the API on that port even if you didn't intend it.
+
+**If you use a non-standard port** (e.g., `PORT=8081`), always ensure you:
+
+#### Clear browser storage before switching back
+Open your browser's DevTools (F12) and run:
+```javascript
+localStorage.removeItem('plannerApiBase');
+```
+
+Or clear all storage:
+```javascript
+localStorage.clear();
+location.reload();
+```
+
+**For agents:** If you must start the API on a non-standard port, include a step that clears the stored API base afterward to prevent confusion.
+
 There is no linter and no frontend test suite. Failures land in
 `planner-api/build/reports/tests/test/index.html`, and the machine-readable
 detail is in `build/test-results/test/*.xml`.
@@ -614,6 +636,19 @@ both. Four things are easy to break:
   nothing to a cold start that doesn't publish. Settings are the `app.r2.*`
   record `R2Properties`, bound only when the R2 store is selected.
 
+**Owner approval is a switch.** `app.publish.require-owner-approval`
+(`REQUIRE_OWNER_APPROVAL`, default `true`), bound by its own record
+`PublishApprovalProperties` — not `AppProperties`. On, everything below holds.
+Off, `PublishService.publish` accepts any member (the page uses *that*
+member's theme and settings, as the owner's direct publish does), so
+re-publishing is open to all, and `requestPublish` refuses with a 400 because
+there is nothing to ask. Unpublishing stays owner-only in both modes. The flag
+reaches the page as `PublishView.requireOwnerApproval`, and `publish.js`
+derives `canPublish` from it, so the request card, the Recent requests panel
+and the Publish/Re-publish buttons follow the server rather than assuming.
+Requests already pending when it is flipped off can still be approved or
+rejected by the owner.
+
 **A publish request builds the page; approving it only reveals it.** A member
 who is not the owner cannot publish, and their request now renders the page
 immediately — in **their** theme and **their** published-page settings — into
@@ -648,19 +683,28 @@ record of what the live page looks like.
 **What a published page shows is an account setting, and every one of them
 defaults to off.** `Account → Appearance → Published page`, stored on the
 `User` (so `users.yml`, not `localStorage` like the theme beside it) and read
-from the *publishing* member at publish time — so ticking a box applies to the
-next publish, not retroactively, because a published page is a rendered file.
-`AuthDtos.PublishedPage` groups them and `PATCH /account/published-page` takes
-only the flags being changed, so the next checkbox is one field in three
-places rather than a new endpoint. There are three:
-`publishItineraryCost`, `publishDestinationDays` and
-`publishForecastExpenses` — the last gating whether a published page offers
-its two Forecast options under Group by at all. **The planner's own Budget tab
-always offers all four**; the setting is about what a public page reveals, and
-what a trip is still going to cost is a more private number than what it has
-cost so far. `PublishOptions` carries them into
-`StaticSiteRenderer`, so `render` does not grow a boolean parameter per
-feature — `render(trip, false, true)` says nothing about which is which.
+from the member whose page is being written at publish time — so ticking a box
+applies to the next publish, not retroactively, because a published page is a
+rendered file. `AuthDtos.PublishedPage` groups them and `PATCH
+/account/published-page` takes only the flags being changed, so the next
+checkbox is one field rather than a new endpoint. There are three:
+`itineraryCost`, `destinationDays` and `forecastExpenses` — the last gating
+whether a published page offers its two Forecast options under Group by at
+all. **The planner's own Budget tab always offers all four**; the setting is
+about what a public page reveals, and what a trip is still going to cost is a
+more private number than what it has cost so far. `PublishOptions` carries
+them into `StaticSiteRenderer`, so `render` does not grow a boolean parameter
+per feature — `render(trip, false, true)` says nothing about which is which.
+
+**They are one stored document, not a field each.**
+`PublishedPageSettings` on the `User` — `published_page jsonb` in Postgres, a
+nested `publishedPage:` mapping in `users.yml`, the same shape either way — so
+the next setting is a key inside it rather than a column, a migration, an
+upsert list and a row mapper. The wire format stays flat (`{itineraryCost:
+true}`), because the page posts one checkbox at a time and nesting the request
+would only make it deeper without making it say more. `JdbcValues.json` binds
+it as text and the statement casts it (`:publishedPage::jsonb`), so nothing
+depends on PgJDBC being on the compile classpath.
 
 The rule that matters: **"not displayed" has to mean "not shipped".** A
 published page is public, so a value left in `window.TRIP` is readable by
@@ -671,29 +715,34 @@ rather than just nowhere in the markup. The payload's mapper is not
 `NON_NULL`, so what a reader sees is the key with a `null` — the figure itself
 is absent, which is what matters; `page.js` gates on the falsy value
 (`budget.forecast`, `destination.nights`) exactly as it would on a missing
-key. `publishItineraryCost` is a
+key. Each flag is a
 primitive `boolean` for the same kind of reason: `YamlStore` serialises
 NON_NULL, so a `Boolean` would be absent from `users.yml` until first set, and
 a setting you cannot see in the file is one nobody knows is there.
 
-**A member can publish a page of their own, showing their share of the budget
-rather than the trip's.** `Account → Appearance → Published page → Publish my
-own page`, written to `<published>/<slug>/m/<member>/` and served at
-`/p/<slug>/m/<member>`. This is the only answer a static page can give to "show
-me only my budget": there is no sign-in and no API behind the file, so **whose
-money it shows is decided when the file is written, not when it is read**.
-Five things hold it together:
+**Publishing a trip publishes it for everybody on it.** Alongside the trip's
+own page, every current member gets one of their own — the same trip narrowed
+to their destinations, their checklist, their itinerary and their share of
+each expense — written to `<published>/<slug>/m/<member>/` and served at
+`/p/<slug>/m/<member>`. There is nothing to opt into: publishing a trip is
+publishing it *for the people on it*. This is also the only answer a static
+page can give to "show me only my own", because there is no sign-in and no API
+behind the file, so **whose trip it shows is decided when the file is written,
+not when it is read**. Five things hold it together:
 
-- **Another member's figures are not in the file at all.** Filtering in
+- **Another member's rows are not in the file at all.** Filtering in
   `page.js` would be theatre — anyone can open the source and read
-  `window.TRIP` — so the renderer takes a `viewer` and summarises for them.
-  `PersonalPageTest` searches the whole rendered file for the other member's
-  number rather than checking the markup.
-- **It is the one published-page setting read from every member rather than
-  from whoever publishes.** It is their page, so it is their decision, and a
-  member with the box unticked has no file written anywhere. Their own
-  `PublishOptions` apply to it too, which is why two personal pages of the same
-  trip can differ in what they show.
+  `window.TRIP` — so the renderer takes a `viewer` and narrows the snapshot to
+  them: `Travellers.includes` for destinations, checklist and itinerary, and
+  `BudgetService.summarise(trip, viewer)` for the money. It is the same
+  resolution the planner's own Mine/Whole-trip switch uses, so a member's page
+  and their live view of the trip cannot disagree. `PersonalPageTest` searches
+  the whole rendered file for the other member's number rather than checking
+  the markup.
+- **Each page is rendered with its own member's settings**, not the publishing
+  member's: it is their page, so what it reveals is their choice — which is
+  why one publish can put costs on one member's page and leave them off
+  another's.
 - **The pages nest inside the trip's directory rather than sitting beside it.**
   A sibling `<slug>-<member>` would be prettier and is a trap: slugs come from
   trip titles, so "LATAM" and "LATAM 2026" give `latam` and `latam-2026`, and
@@ -701,9 +750,9 @@ Five things hold it together:
   Nesting means unpublishing or deleting the trip takes every personal page
   with it for free.
 - **Every publish clears `m/` before writing it.** Publishing again rewrites
-  `index.html` in place, so without that a member who since unticked their box
-  would keep serving their spending at a URL they believe they turned off.
-  Pinned by `untickingTheBoxAndPublishingAgainTakesThePageDown`.
+  `index.html` in place, so without that somebody who has since left the trip
+  would keep serving their own copy of it at a URL nobody is watching any
+  more. Pinned by `leavingTheTripAndPublishingAgainTakesThatPageDown`.
 - **The budget's `displayCurrency` on a published page is `totalsCurrency`, not
   the trip's anchor.** Those coincided for as long as only the trip was ever
   summarised; a member's totals convert into whatever display currency they
@@ -712,8 +761,8 @@ Five things hold it together:
   SGD.
 
 The link is offered from the Publish tab and checked **against the file**, not
-against the flag: like every setting in that group it takes effect on the next
-publish, and a link offered in between would be a 404 to share.
+against the membership: the page is written on publish, and a link offered in
+between would be a 404 to share.
 `PersonalPages.slugsFor` is the single source of the directory name, used both
 by `PublishService` (to write) and by `TripViewAssembler` (to link) — two copies
 of "slugify the display name, then de-duplicate" would agree until two members

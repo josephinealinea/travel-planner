@@ -24,6 +24,7 @@ import com.josephinealinea.planner.notification.LoggingEmailSender;
 import com.josephinealinea.planner.notification.MailTemplates;
 import com.josephinealinea.planner.publish.api.PublishService;
 import com.josephinealinea.planner.publish.api.StaticSiteRenderer;
+import com.josephinealinea.planner.publish.api.PublishApprovalProperties;
 import com.josephinealinea.planner.rates.TestRates;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlPaths;
@@ -62,11 +63,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       Filtering in page.js would be theatre: anyone can open the source and
  *       read window.TRIP. The assertions below therefore search the whole
  *       rendered file for the other person's number, not the markup;</li>
- *   <li><b>a member who did not ask for a page must not have one.</b> Off has
- *       to mean no file anywhere, because the URL is public;</li>
- *   <li><b>un-ticking the box must actually take the page down.</b> Publishing
- *       again rewrites index.html in place, so a stale personal page would
- *       quietly keep serving at a URL its owner believes they turned off;</li>
+ *   <li><b>every member of the trip gets one, without asking.</b> Publishing a
+ *       trip publishes it for the people on it;</li>
+ *   <li><b>a page must not outlive the membership it was written for.</b>
+ *       Publishing again rewrites index.html in place, so somebody who has
+ *       since left the trip would quietly keep serving their own copy of it;</li>
  *   <li><b>a personal page must not outlive its trip.</b> The same cascade the
  *       trip page has, and the reason these are nested inside the trip's own
  *       directory rather than sitting beside it.</li>
@@ -144,10 +145,12 @@ class PersonalPageTest {
         var renderer = new StaticSiteRenderer(destinations, checklist, itinerary, budgets,
                 new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
         views = new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
-                TestRates.empty(store, paths, props), new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
+                TestRates.empty(store, paths, props), new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props,
+                PublishApprovalProperties.required());
         publish = new PublishService(trips, access, views, renderer,
                 new UserService(users, new BCryptPasswordEncoder(), props),
-                new LoggingEmailSender(), new MailTemplates(props));
+                new LoggingEmailSender(), new MailTemplates(props),
+                PublishApprovalProperties.required());
     }
 
     // ── helpers ─────────────────────────────────────────────────────────
@@ -173,13 +176,6 @@ class PersonalPageTest {
         return item;
     }
 
-    /** Turns a member's personal page on and saves it. */
-    private void wantsOwnPage(String userId) {
-        User user = users.findById(userId).orElseThrow();
-        user.setPublishPersonalBudget(true);
-        users.save(user);
-    }
-
     private Path personal(String memberSlug) {
         return publishDir.resolve(SLUG).resolve("m").resolve(memberSlug).resolve("index.html");
     }
@@ -199,7 +195,6 @@ class PersonalPageTest {
 
     @Test
     void aPersonalPageShowsThatMembersShareRatherThanTheTripsSpend() throws Exception {
-        wantsOwnPage(ALEX);
         publish.publish(TRIP_ID, ALEX, "minima");
 
         JsonNode trip = payload(read(publishDir.resolve(SLUG).resolve("index.html")));
@@ -220,7 +215,6 @@ class PersonalPageTest {
      */
     @Test
     void anotherMembersSpendingIsNowhereInThePersonalPageFile() throws Exception {
-        wantsOwnPage(ALEX);
         publish.publish(TRIP_ID, ALEX, "minima");
 
         String alexPage = read(personal("alex"));
@@ -247,8 +241,6 @@ class PersonalPageTest {
         uyuni.setCountryName("Bolivia");
         uyuni.setTravellerIds(List.of(SAM));
         destinationsRepo.save(SLUG, uyuni);
-        wantsOwnPage(ALEX);
-        wantsOwnPage(SAM);
 
         publish.publish(TRIP_ID, ALEX, "minima");
 
@@ -265,7 +257,6 @@ class PersonalPageTest {
         uyuni.setName("Salar de Uyuni");
         uyuni.setTravellerIds(List.of(SAM));
         destinationsRepo.save(SLUG, uyuni);
-        wantsOwnPage(SAM);
 
         publish.publish(TRIP_ID, ALEX, "minima");
 
@@ -287,7 +278,6 @@ class PersonalPageTest {
      */
     @Test
     void noSettlementReachesAPublishedFile() throws Exception {
-        wantsOwnPage(ALEX);
         publish.publish(TRIP_ID, ALEX, "minima");
 
         String alexPage = read(personal("alex"));
@@ -304,8 +294,6 @@ class PersonalPageTest {
 
     @Test
     void eachMemberGetsTheirOwnPageAtTheirOwnName() throws Exception {
-        wantsOwnPage(ALEX);
-        wantsOwnPage(SAM);
         publish.publish(TRIP_ID, ALEX, "minima");
 
         assertThat(personal("alex")).exists();
@@ -318,49 +306,43 @@ class PersonalPageTest {
                 .decimalValue()).isEqualByComparingTo("1684.56");
     }
 
-    // ── off has to mean no file ─────────────────────────────────────────
+    // ── everybody on the trip, nobody else ──────────────────────────────
 
+    /**
+     * Nobody asked for anything here: publishing a trip publishes it for the
+     * people on it, each of them seeing their own share of it.
+     */
     @Test
-    void aMemberWhoDidNotAskForAPageDoesNotGetOne() {
-        wantsOwnPage(ALEX);
+    void everyMemberGetsAPageWithoutAnyoneOptingIn() {
         publish.publish(TRIP_ID, ALEX, "minima");
 
         assertThat(personal("alex")).exists();
-        assertThat(Files.exists(personal("sam"))).isFalse();
-    }
-
-    @Test
-    void publishingWithNobodyOptedInWritesNoPersonalDirectoryAtAll() {
-        publish.publish(TRIP_ID, ALEX, "minima");
-
-        assertThat(publishDir.resolve(SLUG).resolve("index.html")).exists();
-        assertThat(Files.exists(publishDir.resolve(SLUG).resolve("m"))).isFalse();
+        assertThat(personal("sam")).exists();
     }
 
     /**
      * Publishing again rewrites index.html in place, so without an explicit
-     * clear-out a page somebody has since turned off would keep serving.
+     * clear-out somebody who has since left the trip would keep serving their
+     * own copy of it at a URL nobody is watching any more.
      */
     @Test
-    void untickingTheBoxAndPublishingAgainTakesThePageDown() {
-        wantsOwnPage(ALEX);
+    void leavingTheTripAndPublishingAgainTakesThatPageDown() {
         publish.publish(TRIP_ID, ALEX, "minima");
+        assertThat(personal("sam")).exists();
+
+        Trip trip = trips.findById(TRIP_ID).orElseThrow();
+        trip.getMembers().removeIf(member -> SAM.equals(member.getUserId()));
+        trips.save(trip);
+        publish.publish(TRIP_ID, ALEX, "minima");
+
+        assertThat(Files.exists(personal("sam"))).isFalse();
+        // The owner's page, and the trip's own, are untouched by any of that.
         assertThat(personal("alex")).exists();
-
-        User alex = users.findById(ALEX).orElseThrow();
-        alex.setPublishPersonalBudget(false);
-        users.save(alex);
-        publish.publish(TRIP_ID, ALEX, "minima");
-
-        assertThat(Files.exists(personal("alex"))).isFalse();
-        // The trip's own page is untouched by any of that.
         assertThat(publishDir.resolve(SLUG).resolve("index.html")).exists();
     }
 
     @Test
     void unpublishingTheTripTakesEveryPersonalPageWithIt() {
-        wantsOwnPage(ALEX);
-        wantsOwnPage(SAM);
         publish.publish(TRIP_ID, ALEX, "minima");
 
         publish.unpublish(TRIP_ID, ALEX);
@@ -373,30 +355,27 @@ class PersonalPageTest {
     // ── the link a member is offered ────────────────────────────────────
 
     @Test
-    void aMemberIsGivenTheUrlOfTheirOwnPageAndNobodyElses() {
-        wantsOwnPage(ALEX);
+    void eachMemberIsGivenTheUrlOfTheirOwnPageAndNobodyElses() {
         publish.publish(TRIP_ID, ALEX, "minima");
         Trip trip = trips.findById(TRIP_ID).orElseThrow();
 
         assertThat(views.publish(trip, ALEX).myPublicUrl())
                 .isEqualTo("http://localhost:8080/p/" + SLUG + "/m/alex");
-        // Sam did not ask for one, so there is nothing to offer him.
-        assertThat(views.publish(trip, SAM).myPublicUrl()).isNull();
+        assertThat(views.publish(trip, SAM).myPublicUrl())
+                .isEqualTo("http://localhost:8080/p/" + SLUG + "/m/sam");
     }
 
     /**
-     * The setting takes effect on the next publish, like every other
-     * published-page setting. Offering the link in between would hand somebody
-     * a 404 to share, so it is checked against the file rather than the flag.
+     * Checked against the file rather than against the membership: offering a
+     * link to a page that has not been written yet hands somebody a 404 to
+     * share.
      */
     @Test
-    void noLinkIsOfferedUntilTheTripHasActuallyBeenPublishedWithTheBoxOn() {
-        publish.publish(TRIP_ID, ALEX, "minima");
-        wantsOwnPage(ALEX);
-        Trip trip = trips.findById(TRIP_ID).orElseThrow();
+    void noLinkIsOfferedUntilTheTripHasActuallyBeenPublished() {
+        Trip draft = trips.findById(TRIP_ID).orElseThrow();
 
         assertThat(Files.exists(personal("alex"))).isFalse();
-        assertThat(views.publish(trip, ALEX).myPublicUrl()).isNull();
+        assertThat(views.publish(draft, ALEX).myPublicUrl()).isNull();
 
         publish.publish(TRIP_ID, ALEX, "minima");
         assertThat(views.publish(trips.findById(TRIP_ID).orElseThrow(), ALEX).myPublicUrl())
@@ -414,8 +393,6 @@ class PersonalPageTest {
         User sam = users.findById(SAM).orElseThrow();
         sam.setScreenName("alex");
         users.save(sam);
-        wantsOwnPage(ALEX);
-        wantsOwnPage(SAM);
         publish.publish(TRIP_ID, ALEX, "minima");
 
         assertThat(personal("alex")).exists();
@@ -438,7 +415,6 @@ class PersonalPageTest {
         User sam = users.findById(SAM).orElseThrow();
         sam.setDisplayCurrency("SGD");
         users.save(sam);
-        wantsOwnPage(SAM);
         publish.publish(TRIP_ID, ALEX, "minima");
 
         assertThat(payload(read(publishDir.resolve(SLUG).resolve("index.html")))
@@ -451,7 +427,6 @@ class PersonalPageTest {
 
     @Test
     void aRequestStagesThePersonalPagesAndApprovingMovesThemIntoPlace() {
-        wantsOwnPage(SAM);
         publish.requestPublish(TRIP_ID, SAM, "ready?", "minima");
 
         assertThat(Files.exists(personal("sam"))).isFalse();
@@ -467,8 +442,6 @@ class PersonalPageTest {
 
     @Test
     void theSlugsAMemberIsGivenAreTheOnesTheFilesAreWrittenUnder() {
-        wantsOwnPage(ALEX);
-        wantsOwnPage(SAM);
         Trip trip = trips.findById(TRIP_ID).orElseThrow();
 
         Map<String, String> slugs = com.josephinealinea.planner.publish.api.PersonalPages

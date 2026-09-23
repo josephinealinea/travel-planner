@@ -13,6 +13,7 @@ import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
 import com.josephinealinea.planner.itinerary.infra.YamlItineraryRepository;
 import com.josephinealinea.planner.publish.infra.FileSystemPageStore;
+import com.josephinealinea.planner.publish.api.PublishApprovalProperties;
 import com.josephinealinea.planner.rates.TestRates;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlPaths;
@@ -104,7 +105,8 @@ class TravellersViewTest {
         var budgets = new BudgetService(budget, itinerary, destinations, users, access,
                 new TripCountries(destinations), TestRates.empty(store, paths, props));
         views = new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
-                TestRates.empty(store, paths, props), new FileSystemPageStore(store, paths), props);
+                TestRates.empty(store, paths, props), new FileSystemPageStore(store, paths), props,
+                PublishApprovalProperties.required());
     }
 
     @Test

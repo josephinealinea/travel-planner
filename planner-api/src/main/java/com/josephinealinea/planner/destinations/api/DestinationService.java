@@ -37,7 +37,7 @@ public class DestinationService {
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
-            String notes,
+            String note,
             /** Null on a patch means "leave it as it is". */
             Boolean suppressChecklist,
             /** Who's going. Null leaves it alone; [] is the whole trip. See Travellers. */
@@ -48,9 +48,9 @@ public class DestinationService {
         /** The shape from before travellers existed: says nothing about them. */
         public Input(String name, String countryCode, String countryName, Double latitude,
                      Double longitude, Long geonameId, String timezone, LocalDate startDate,
-                     LocalDate endDate, String notes, Boolean suppressChecklist) {
+                     LocalDate endDate, String note, Boolean suppressChecklist) {
             this(name, countryCode, countryName, latitude, longitude, geonameId, timezone,
-                    startDate, endDate, notes, suppressChecklist, null, null);
+                    startDate, endDate, note, suppressChecklist, null, null);
         }
     }
 
@@ -283,7 +283,7 @@ public class DestinationService {
         }
         if (input.startDate() != null) destination.setStartDate(input.startDate());
         if (input.endDate() != null) destination.setEndDate(input.endDate());
-        if (input.notes() != null) destination.setNotes(blankToNull(input.notes()));
+        if (input.note() != null) destination.setNote(blankToNull(input.note()));
         if (input.geonameId() != null) destination.setGeonameId(input.geonameId());
         if (input.timezone() != null) destination.setTimezone(blankToNull(input.timezone()));
 

@@ -64,7 +64,17 @@ public class BudgetService {
                          * charged, which is what adding an expense by hand
                          * nearly always records.
                          */
-                        Boolean charged) {}
+                        Boolean charged,
+                        String note) {
+
+        /** The shape from before note existed: says nothing about it. */
+        public Input(String description, ChecklistCategory category, BigDecimal amount,
+                     String currency, LocalDate date, List<String> countryCodes,
+                     List<String> sharedByUserIds, String paidByUserId, Boolean charged) {
+            this(description, category, amount, currency, date, countryCodes,
+                    sharedByUserIds, paidByUserId, charged, null);
+        }
+    }
 
     /**
      * One rollup over one set of rows. Currencies with no configured rate are
@@ -620,6 +630,7 @@ public class BudgetService {
         item.setTripId(tripId);
         item.setCategory(input.category() == null ? ChecklistCategory.OTHERS : input.category());
         item.setDescription(input.description().trim());
+        item.setNote(blankToNull(input.note()));
         item.setAmount(input.amount());
         item.setCurrency(input.currency() == null || input.currency().isBlank()
                 ? trip.getDisplayCurrency()
@@ -649,6 +660,7 @@ public class BudgetService {
             requireDescription(input.description());
             item.setDescription(input.description().trim());
         }
+        if (input.note() != null) item.setNote(blankToNull(input.note()));
         if (input.category() != null) item.setCategory(input.category());
         if (input.amount() != null) {
             requireAmount(input.amount());
@@ -732,6 +744,10 @@ public class BudgetService {
         if (description == null || description.isBlank()) {
             throw ApiException.badRequest("An expense needs a description.");
         }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private static void requireAmount(BigDecimal amount) {

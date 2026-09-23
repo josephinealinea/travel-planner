@@ -1,5 +1,6 @@
 package com.josephinealinea.planner.identity.infra;
 
+import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.storage.EveryField;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ public abstract class UserRepositoryContract {
 
         User read = repository().findById("u-1").orElseThrow();
         assertThat(read.isMustChangePassword()).isFalse();
-        assertThat(read.isPublishItineraryCost()).isFalse();
+        assertThat(read.getPublishedPage().isItineraryCost()).isFalse();
         assertThat(read.getCurrencies()).isEmpty();
         assertThat(read.getScreenName()).isNull();
     }
@@ -196,10 +197,7 @@ public abstract class UserRepositoryContract {
         user.setMustChangePassword(true);
         user.setCurrencies(new ArrayList<>(List.of("SGD", "EUR", "PEN")));
         user.setDisplayCurrency("SGD");
-        user.setPublishItineraryCost(true);
-        user.setPublishDestinationDays(true);
-        user.setPublishForecastExpenses(true);
-        user.setPublishPersonalBudget(true);
+        user.setPublishedPage(new PublishedPageSettings(true, true, true));
         user.setCreatedAt(Instant.parse("2026-01-02T03:04:05.123456Z"));
         user.setUpdatedAt(Instant.parse("2026-01-03T03:04:05.654321Z"));
         return user;

@@ -35,7 +35,7 @@ public class Destination implements Audited {
     private String timezone;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String notes;
+    private String note;
     private int sortOrder;
     private Instant createdAt;
     // Who made this and who changed it last, for the question that only ever
@@ -157,8 +157,8 @@ public class Destination implements Audited {
     public LocalDate getEndDate() { return endDate; }
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
 
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }

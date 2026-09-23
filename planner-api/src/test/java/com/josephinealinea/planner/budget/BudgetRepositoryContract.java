@@ -218,6 +218,7 @@ public abstract class BudgetRepositoryContract extends TripScopedRepositoryContr
         item.setItineraryItemId("itin-night-1");
         item.setCategory(ChecklistCategory.LODGING);
         item.setDescription("Casa San Blas, 6 nights");
+        item.setNote("Breakfast included, ask for a room away from the street.");
         item.setAmount(new BigDecimal("246.22"));
         item.setCurrency("PEN");
         item.setDate(LocalDate.of(2026, 10, 25));

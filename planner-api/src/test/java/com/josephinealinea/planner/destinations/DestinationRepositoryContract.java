@@ -158,7 +158,7 @@ public abstract class DestinationRepositoryContract extends TripScopedRepository
         d.setTimezone("America/Lima");
         d.setStartDate(LocalDate.of(2026, 10, 25));
         d.setEndDate(LocalDate.of(2026, 10, 31));
-        d.setNotes("Altitude: take it slow on day one.");
+        d.setNote("Altitude: take it slow on day one.");
         d.setSortOrder(3);
         d.setLodgingSeeded(true);
         d.setSuppressChecklist(true);

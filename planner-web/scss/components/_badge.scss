@@ -49,11 +49,18 @@
 // primary action" colour. The fallback means a theme that has no opinion
 // keeps the accent, so only the themes that care define --tp-selected.
 button.chip { cursor: pointer; font-family: inherit; }
-button.chip:hover { border-color: var(--tp-selected, var(--tp-accent)); }
+button.chip:hover:not(:disabled) { border-color: var(--tp-selected, var(--tp-accent)); }
 button.chip[aria-pressed="true"] {
   color: var(--tp-on-selected, var(--tp-on-accent));
   background: var(--tp-selected, var(--tp-accent));
   border-color: var(--tp-selected, var(--tp-accent));
+}
+
+// Read-only, e.g. a stay's later night showing who the booking is for without
+// offering to change it — the API refuses a traveller list of its own there.
+button.chip:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .chip-group { display: flex; gap: t.$space-1; flex-wrap: wrap; }

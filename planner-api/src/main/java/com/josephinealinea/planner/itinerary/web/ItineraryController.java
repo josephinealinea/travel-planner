@@ -47,13 +47,14 @@ public class ItineraryController {
             /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
             List<String> travellerIds,
             /** True puts it back to following its checklist item. */
-            Boolean inheritTravellers) {
+            Boolean inheritTravellers,
+            String note) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
-                    travellerIds, inheritTravellers);
+                    travellerIds, inheritTravellers, note);
         }
     }
 
@@ -73,13 +74,14 @@ public class ItineraryController {
             /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
             List<String> travellerIds,
             /** True puts it back to following its checklist item. */
-            Boolean inheritTravellers) {
+            Boolean inheritTravellers,
+            String note) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     null, category, description, startAt, endAt, allDay, cost, currency,
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
-                    travellerIds, inheritTravellers);
+                    travellerIds, inheritTravellers, note);
         }
     }
 

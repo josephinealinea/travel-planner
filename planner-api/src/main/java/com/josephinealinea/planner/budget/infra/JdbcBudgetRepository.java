@@ -52,7 +52,7 @@ public class JdbcBudgetRepository extends TripScopedJdbcRepository<BudgetItem> i
 
     public JdbcBudgetRepository(JdbcClient jdbc, PlatformTransactionManager transactionManager) {
         super(jdbc, transactionManager, "budget_items",
-                List.of("itinerary_item_id", "category", "description", "amount", "currency", "date",
+                List.of("itinerary_item_id", "category", "description", "note", "amount", "currency", "date",
                         "country_codes", "shared_by_user_ids", "paid_by_user_id", "status", "confirmed_at",
                         "created_at", "created_by_user_id", "updated_at", "updated_by_user_id"),
                 BudgetItem::getId);
@@ -65,6 +65,7 @@ public class JdbcBudgetRepository extends TripScopedJdbcRepository<BudgetItem> i
         values.put("category", JdbcValues.enumName(
                 item.getCategory() == null ? ChecklistCategory.OTHERS : item.getCategory()));
         values.put("description", item.getDescription());
+        values.put("note", item.getNote());
         values.put("amount", item.getAmount());
         values.put("currency", item.getCurrency());
         values.put("date", item.getDate());
@@ -89,6 +90,7 @@ public class JdbcBudgetRepository extends TripScopedJdbcRepository<BudgetItem> i
         item.setItineraryItemId(rs.getString("itinerary_item_id"));
         item.setCategory(JdbcValues.enumValue(rs, "category", ChecklistCategory.class, ChecklistCategory.OTHERS));
         item.setDescription(rs.getString("description"));
+        item.setNote(rs.getString("note"));
         item.setAmount(rs.getBigDecimal("amount"));
         item.setCurrency(rs.getString("currency"));
         item.setDate(JdbcValues.localDate(rs, "date"));

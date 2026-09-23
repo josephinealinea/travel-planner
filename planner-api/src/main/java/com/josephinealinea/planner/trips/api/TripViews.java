@@ -71,7 +71,14 @@ public final class TripViews {
                                * published-page setting, and a link offered
                                * before then would simply 404.
                                */
-                              String myPublicUrl) {}
+                              String myPublicUrl,
+                              /**
+                               * Whether a non-owner's Publish is a request the
+                               * owner approves (true) or a publish (false).
+                               * Server configuration, so the page follows it
+                               * rather than assuming.
+                               */
+                              boolean requireOwnerApproval) {}
 
     /**
      * displayCurrency is the trip's own anchor (what its exchange-rate table

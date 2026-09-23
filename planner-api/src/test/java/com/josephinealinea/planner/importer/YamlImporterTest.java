@@ -14,6 +14,7 @@ import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.JdbcDestinationRepository;
 import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
+import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.JdbcUserRepository;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
@@ -342,7 +343,7 @@ class YamlImporterTest {
         alex.setDisplayCurrency("EUR");
         User sam = user(SAM, "sam@example.com", "$2a$10$samhash", "2026-09-02T09:00:00Z", null);
         sam.setDisplayCurrency("SGD");
-        sam.setPublishPersonalBudget(true);
+        sam.setPublishedPage(new PublishedPageSettings(true, false, true));
         User ray = user(RAY, "ray@example.com", "$2a$10$rayhash", "2026-09-03T09:00:00Z", "2026-09-04T12:00:00Z");
         ray.setMustChangePassword(true);
         store.write(paths.users(), List.of(alex, sam, ray));

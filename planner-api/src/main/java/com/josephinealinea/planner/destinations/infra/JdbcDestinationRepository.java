@@ -42,7 +42,7 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
         super(jdbc, transactionManager, "destinations",
                 List.of("name", "country_code", "country_name", "country_flag",
                         "latitude", "longitude", "geoname_id", "timezone",
-                        "start_date", "end_date", "notes", "sort_order",
+                        "start_date", "end_date", "note", "sort_order",
                         "lodging_seeded", "suppress_checklist", "traveller_ids",
                         "created_at", "created_by_user_id", "updated_at", "updated_by_user_id"),
                 Destination::getId);
@@ -61,7 +61,7 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
         values.put("timezone", d.getTimezone());
         values.put("start_date", d.getStartDate());
         values.put("end_date", d.getEndDate());
-        values.put("notes", d.getNotes());
+        values.put("note", d.getNote());
         values.put("sort_order", d.getSortOrder());
         values.put("lodging_seeded", d.getLodgingSeeded());
         values.put("suppress_checklist", d.getSuppressChecklist());
@@ -88,7 +88,7 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
         d.setTimezone(rs.getString("timezone"));
         d.setStartDate(JdbcValues.localDate(rs, "start_date"));
         d.setEndDate(JdbcValues.localDate(rs, "end_date"));
-        d.setNotes(rs.getString("notes"));
+        d.setNote(rs.getString("note"));
         d.setSortOrder(rs.getInt("sort_order"));
         d.setLodgingSeeded(JdbcValues.nullableBoolean(rs, "lodging_seeded"));
         d.setSuppressChecklist(JdbcValues.nullableBoolean(rs, "suppress_checklist"));

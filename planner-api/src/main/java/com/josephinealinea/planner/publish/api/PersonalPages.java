@@ -29,18 +29,20 @@ public final class PersonalPages {
     private PersonalPages() {}
 
     /**
-     * Member user id to directory name, in trip-member order, for the members
-     * who have asked for a personal page.
+     * Member user id to directory name, in trip-member order — every current
+     * member of the trip, with no opting in.
      *
-     * A member with the box unticked is simply absent — no entry, and no file
-     * written anywhere. That is what "off" has to mean for something that ends
-     * up on a public URL.
+     * Publishing a trip publishes it for the people on it: each of them gets
+     * the same trip narrowed to their own destinations, checklist, itinerary
+     * and share of the budget. The only members missing are ones with no
+     * account row to take a name from, which cannot happen for a member added
+     * through the app.
      */
     public static Map<String, String> slugsFor(Trip trip, Map<String, User> accounts) {
         Map<String, String> slugs = new LinkedHashMap<>();
         for (String memberId : memberIds(trip)) {
             User member = accounts.get(memberId);
-            if (member == null || !member.isPublishPersonalBudget()) continue;
+            if (member == null) continue;
             // Two members called "sam" would otherwise write to one directory,
             // and the second would silently overwrite the first's page.
             slugs.put(memberId, Slugs.unique(member.displayName(), slugs::containsValue));

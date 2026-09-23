@@ -50,14 +50,11 @@ cd planner-api && BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD
 ```bash
 cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
 ```
-#### Build the stylesheets
+#### Build the stylesheets & serve the FE
 ```bash
-cd planner-web && npm install && npm run css
+cd planner-web && npm install && npm run css && ./serve.sh
 ```
-#### Serve the frontend
-```bash
-cd planner-web && ./serve.sh
-```
+
 #### Open it
 ```bash
 open http://localhost:3000/login.html
@@ -98,7 +95,8 @@ trip.
    Editing the cost updates the amount; clearing it removes the record. Expenses
    can also be added by hand.
 7. **Publish.** The owner can publish at any point, however unfinished. Any other
-   member gets **Request to Publish**, and the owner's approval publishes.
+   member gets **Request to Publish**, and the owner's approval publishes. Set `REQUIRE_OWNER_APPROVAL=false` to let any member publish and
+   re-publish directly (only the owner can unpublish).
 
 ## What publishing produces
 

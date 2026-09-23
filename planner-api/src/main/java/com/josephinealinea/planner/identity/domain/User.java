@@ -23,45 +23,15 @@ public class User {
     private String displayCurrency;
 
     /**
-     * Published-page settings. Account-level rather than per trip: they are a
-     * preference about how this member shares their plans, not a property of
-     * any one trip.
+     * Published-page settings, one document rather than a field per checkbox.
+     * Account-level rather than per trip: they are a preference about how this
+     * member shares their plans, not a property of any one trip.
      *
-     * Primitive `boolean`, not `Boolean`, so it is written to users.yml as an
-     * explicit `false` rather than omitted — YamlStore serialises NON_NULL, and
-     * a setting you cannot see in the file is a setting nobody knows is there.
+     * Never null — a missing key in users.yml, or a row written before this
+     * existed, reads as every flag off, which is what every one of them
+     * defaults to anyway.
      */
-    private boolean publishItineraryCost;
-
-    /**
-     * Whether a published destination card counts days rather than nights.
-     *
-     * Both are derived from the same two dates and neither is stored — see the
-     * "Nights versus days" note in CLAUDE.md. This only chooses which one a
-     * reader is shown.
-     */
-    private boolean publishDestinationDays;
-
-    /**
-     * Whether a published page offers its budget's forecast breakdowns — the
-     * ones that count expenses still to be paid alongside the charges.
-     *
-     * Off by default, and when it is off the page carries no forecast figure at
-     * all rather than one it renders and hides: a published page is public, and
-     * what a trip is still going to cost is a more private number than what it
-     * has cost so far.
-     */
-    private boolean publishForecastExpenses;
-
-    /**
-     * Whether publishing this trip also writes this member a page of their own,
-     * showing their share of each expense instead of the trip's whole spend.
-     *
-     * The only one of these settings read from every member rather than from
-     * whoever is publishing: it is their page, so it is their decision, and a
-     * member who has not asked for one has no file written anywhere.
-     */
-    private boolean publishPersonalBudget;
+    private PublishedPageSettings publishedPage = new PublishedPageSettings();
 
     private Instant createdAt;
     private Instant updatedAt;
@@ -92,6 +62,11 @@ public class User {
         this.currencies = currencies == null ? new ArrayList<>() : currencies;
     }
 
+    public PublishedPageSettings getPublishedPage() { return publishedPage; }
+    public void setPublishedPage(PublishedPageSettings publishedPage) {
+        this.publishedPage = publishedPage == null ? new PublishedPageSettings() : publishedPage;
+    }
+
     /**
      * The currency this user's budget totals are shown in — independent of
      * currencies above (what "record a cost" forms offer) and of any trip's
@@ -100,26 +75,6 @@ public class User {
      * account created before this field existed, which callers treat as
      * "fall back to the trip's own currency".
      */
-    public boolean isPublishItineraryCost() { return publishItineraryCost; }
-    public void setPublishItineraryCost(boolean publishItineraryCost) {
-        this.publishItineraryCost = publishItineraryCost;
-    }
-
-    public boolean isPublishDestinationDays() { return publishDestinationDays; }
-    public void setPublishDestinationDays(boolean publishDestinationDays) {
-        this.publishDestinationDays = publishDestinationDays;
-    }
-
-    public boolean isPublishForecastExpenses() { return publishForecastExpenses; }
-    public void setPublishForecastExpenses(boolean publishForecastExpenses) {
-        this.publishForecastExpenses = publishForecastExpenses;
-    }
-
-    public boolean isPublishPersonalBudget() { return publishPersonalBudget; }
-    public void setPublishPersonalBudget(boolean publishPersonalBudget) {
-        this.publishPersonalBudget = publishPersonalBudget;
-    }
-
     public String getDisplayCurrency() { return displayCurrency; }
     public void setDisplayCurrency(String displayCurrency) { this.displayCurrency = displayCurrency; }
 

@@ -42,7 +42,7 @@ public record PublishedTrip(
                                */
                               Long nights,
                               Long days,
-                              String notes,
+                              String note,
                               String mapUrl) {}
 
     /**

@@ -11,6 +11,7 @@ import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
 import com.josephinealinea.planner.identity.api.UserService;
+import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
@@ -20,6 +21,7 @@ import com.josephinealinea.planner.notification.LoggingEmailSender;
 import com.josephinealinea.planner.notification.MailTemplates;
 import com.josephinealinea.planner.publish.api.PublishService;
 import com.josephinealinea.planner.publish.api.StaticSiteRenderer;
+import com.josephinealinea.planner.publish.api.PublishApprovalProperties;
 import com.josephinealinea.planner.rates.TestRates;
 import com.josephinealinea.planner.storage.TripLocks;
 import com.josephinealinea.planner.storage.YamlPaths;
@@ -45,6 +47,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.josephinealinea.planner.shared.ApiException;
 
 /**
  * Requesting a publish, and what the owner's decision does with it.
@@ -80,6 +84,11 @@ class PublishApprovalTest {
     private TripViewAssembler views;
     private Path publishDir;
     private Path pendingDir;
+    private TripAccessService access;
+    private StaticSiteRenderer renderer;
+    private UserService userService;
+    private MailTemplates mailTemplates;
+    private java.util.function.Function<Boolean, TripViewAssembler> assemblerWith;
 
     @BeforeEach
     void setUp(@TempDir Path dir) {
@@ -143,23 +152,26 @@ class PublishApprovalTest {
         hotel.setCurrency("EUR");
         itinerary.save(SLUG, hotel);
 
-        var access = new TripAccessService(trips);
+        access = new TripAccessService(trips);
         var budgets = new BudgetService(budget, itinerary, destinations, users, access,
                 new TripCountries(destinations), TestRates.empty(store, paths, props));
-        var renderer = new StaticSiteRenderer(destinations, checklist, itinerary, budgets,
+        renderer = new StaticSiteRenderer(destinations, checklist, itinerary, budgets,
                 new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
-        views = new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
-                TestRates.empty(store, paths, props), new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
-        publish = new PublishService(trips, access, views, renderer,
-                new UserService(users, new BCryptPasswordEncoder(), props),
-                new LoggingEmailSender(), new MailTemplates(props));
+        assemblerWith = flag -> new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
+                TestRates.empty(store, paths, props),
+                new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props,
+                new PublishApprovalProperties(flag));
+        views = assemblerWith.apply(true);
+        userService = new UserService(users, new BCryptPasswordEncoder(), props);
+        mailTemplates = new MailTemplates(props);
+        publish = serviceWith(true);
     }
 
     private static User account(String id, String email, boolean showCosts) {
         User user = new User();
         user.setId(id);
         user.setEmail(email);
-        user.setPublishItineraryCost(showCosts);
+        user.setPublishedPage(new PublishedPageSettings(showCosts, false, false));
         return user;
     }
 
@@ -298,6 +310,67 @@ class PublishApprovalTest {
     @Test
     void thereIsNothingToPreviewWithNoPendingRequest() {
         assertThat(publish.previewPending(TRIP_ID, OWNER)).isNull();
+    }
+
+    private PublishService serviceWith(boolean requireOwnerApproval) {
+        return new PublishService(trips, access, views, renderer, userService,
+                new LoggingEmailSender(), mailTemplates,
+                new PublishApprovalProperties(requireOwnerApproval));
+    }
+
+    // ── require-owner-approval switched off ─────────
+
+    @Test
+    void approvalIsRequiredWhenTheFlagIsUnset() {
+        assertThat(new PublishApprovalProperties(null).requireOwnerApproval()).isTrue();
+        assertThatThrownBy(() -> publish.publish(TRIP_ID, MEMBER, "minima"))
+                .isInstanceOf(ApiException.class);
+        assertThat(Files.exists(live())).isFalse();
+    }
+
+    @Test
+    void withApprovalOffAnyMemberPublishesDirectlyWithTheirOwnSettings() throws Exception {
+        Trip trip = serviceWith(false).publish(TRIP_ID, MEMBER, "y2k");
+
+        assertThat(trip.getStatus()).isEqualTo(TripStatus.PUBLISHED);
+        String live = Files.readString(live());
+        assertThat(live).contains("data-theme=\"y2k\"");
+        assertThat(live).contains("240.00");
+        assertThat(assemblerWith.apply(false).publish(trip, MEMBER).requireOwnerApproval()).isFalse();
+    }
+
+    @Test
+    void withApprovalOffAMemberCanRepublish() throws Exception {
+        var open = serviceWith(false);
+        open.publish(TRIP_ID, MEMBER, "y2k");
+        open.publish(TRIP_ID, MEMBER, "minima");
+
+        assertThat(Files.readString(live())).contains("data-theme=\"minima\"");
+    }
+
+    @Test
+    void withApprovalOffNoRequestIsRaised() {
+        assertThatThrownBy(() -> serviceWith(false).requestPublish(TRIP_ID, MEMBER, null, "y2k"))
+                .isInstanceOf(ApiException.class);
+        assertThat(trips.findById(TRIP_ID).orElseThrow().getPublishRequests()).isEmpty();
+    }
+
+    @Test
+    void unpublishingIsTheOwnersEvenWithApprovalOff() {
+        var open = serviceWith(false);
+        open.publish(TRIP_ID, MEMBER, "y2k");
+
+        assertThatThrownBy(() -> open.unpublish(TRIP_ID, MEMBER)).isInstanceOf(ApiException.class);
+        assertThat(Files.exists(live())).isTrue();
+
+        open.unpublish(TRIP_ID, OWNER);
+        assertThat(Files.exists(live())).isFalse();
+    }
+
+    @Test
+    void theViewReportsTheFlagTheServerIsRunningWith() {
+        Trip trip = trips.findById(TRIP_ID).orElseThrow();
+        assertThat(views.publish(trip, MEMBER).requireOwnerApproval()).isTrue();
     }
 
     private String pendingRequestId() {

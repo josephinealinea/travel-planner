@@ -1,5 +1,6 @@
 package com.josephinealinea.planner.identity.infra;
 
+import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.storage.jdbc.JdbcValues;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -30,6 +31,9 @@ import java.util.Optional;
  *       {@code createdAt} once</b>, then inserts or replaces by id.</li>
  *   <li><b>{@code currencies} is an ordered {@code text[]}</b>: the order a
  *       member arranged their currencies in is the order the forms offer.</li>
+ *   <li><b>{@code published_page} is one {@code jsonb} document</b>, the same
+ *       shape the YAML store writes as a nested mapping, so the next
+ *       published-page setting is a key rather than a column.</li>
  *   <li><b>A null column leaves the field at its initialiser</b>, which is
  *       what Jackson does with a key absent from {@code users.yml} — so
  *       nothing reads differently depending on the store.</li>
@@ -60,26 +64,21 @@ public class JdbcUserRepository implements UserRepository {
 
     private static final String UPSERT = """
             INSERT INTO users (id, email, screen_name, password_hash, must_change_password,
-                               currencies, display_currency, publish_itinerary_cost,
-                               publish_destination_days, publish_forecast_expenses,
-                               publish_personal_budget, created_at, updated_at)
+                               currencies, display_currency, published_page,
+                               created_at, updated_at)
             VALUES (:id, :email, :screenName, :passwordHash, :mustChangePassword,
-                    :currencies, :displayCurrency, :publishItineraryCost,
-                    :publishDestinationDays, :publishForecastExpenses,
-                    :publishPersonalBudget, :createdAt, :updatedAt)
+                    :currencies, :displayCurrency, :publishedPage::jsonb,
+                    :createdAt, :updatedAt)
             ON CONFLICT (id) DO UPDATE SET
-                email                     = EXCLUDED.email,
-                screen_name               = EXCLUDED.screen_name,
-                password_hash             = EXCLUDED.password_hash,
-                must_change_password      = EXCLUDED.must_change_password,
-                currencies                = EXCLUDED.currencies,
-                display_currency          = EXCLUDED.display_currency,
-                publish_itinerary_cost    = EXCLUDED.publish_itinerary_cost,
-                publish_destination_days  = EXCLUDED.publish_destination_days,
-                publish_forecast_expenses = EXCLUDED.publish_forecast_expenses,
-                publish_personal_budget   = EXCLUDED.publish_personal_budget,
-                created_at                = EXCLUDED.created_at,
-                updated_at                = EXCLUDED.updated_at
+                email                = EXCLUDED.email,
+                screen_name          = EXCLUDED.screen_name,
+                password_hash        = EXCLUDED.password_hash,
+                must_change_password = EXCLUDED.must_change_password,
+                currencies           = EXCLUDED.currencies,
+                display_currency     = EXCLUDED.display_currency,
+                published_page       = EXCLUDED.published_page,
+                created_at           = EXCLUDED.created_at,
+                updated_at           = EXCLUDED.updated_at
             """;
 
     private static final String ORDER = " ORDER BY created_at, id";
@@ -141,10 +140,7 @@ public class JdbcUserRepository implements UserRepository {
                 .param("mustChangePassword", user.isMustChangePassword())
                 .param("currencies", JdbcValues.textArray(user.getCurrencies()))
                 .param("displayCurrency", user.getDisplayCurrency())
-                .param("publishItineraryCost", user.isPublishItineraryCost())
-                .param("publishDestinationDays", user.isPublishDestinationDays())
-                .param("publishForecastExpenses", user.isPublishForecastExpenses())
-                .param("publishPersonalBudget", user.isPublishPersonalBudget())
+                .param("publishedPage", JdbcValues.json(user.getPublishedPage()))
                 .param("createdAt", JdbcValues.timestamptz(user.getCreatedAt()))
                 .param("updatedAt", JdbcValues.timestamptz(user.getUpdatedAt()))
                 .update());
@@ -165,10 +161,7 @@ public class JdbcUserRepository implements UserRepository {
         user.setMustChangePassword(rs.getBoolean("must_change_password"));
         user.setCurrencies(JdbcValues.textList(rs, "currencies"));
         user.setDisplayCurrency(rs.getString("display_currency"));
-        user.setPublishItineraryCost(rs.getBoolean("publish_itinerary_cost"));
-        user.setPublishDestinationDays(rs.getBoolean("publish_destination_days"));
-        user.setPublishForecastExpenses(rs.getBoolean("publish_forecast_expenses"));
-        user.setPublishPersonalBudget(rs.getBoolean("publish_personal_budget"));
+        user.setPublishedPage(JdbcValues.json(rs, "published_page", PublishedPageSettings.class));
         user.setCreatedAt(JdbcValues.instant(rs, "created_at"));
         user.setUpdatedAt(JdbcValues.instant(rs, "updated_at"));
         return user;

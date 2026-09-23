@@ -5,9 +5,12 @@ import { dateTimeLabel } from '../../format.js';
 /**
  * The Publish tab.
  *
- * Only the owner can publish. Another member gets "Request to Publish"
- * instead, and the owner's approval is what actually publishes — so the
- * button a member sees depends on who they are, not on the trip's state.
+ * By default only the owner can publish. Another member gets "Request to
+ * Publish" instead, and the owner's approval is what actually publishes — so
+ * the button a member sees depends on who they are, not on the trip's state.
+ * The server's require-owner-approval setting (`publish.requireOwnerApproval`)
+ * turns that off: any member publishes and re-publishes, and there are no
+ * requests to show. Unpublishing stays the owner's either way.
  */
 export function publishTab() {
   return {
@@ -45,6 +48,16 @@ export function publishTab() {
     /** "Minima Theme", for the line that says what publishing will use. */
     get themeToPublishLabel() {
       return THEME_REGISTRY[this.themeToPublish]?.labelFull || this.themeToPublish;
+    },
+
+    /** True unless the server runs with REQUIRE_OWNER_APPROVAL=false. */
+    get requireOwnerApproval() {
+      return this.publish?.requireOwnerApproval !== false;
+    },
+
+    /** The owner always; any member when approval is not required. */
+    get canPublish() {
+      return !!this.isOwner || !this.requireOwnerApproval;
     },
 
     get publishState() {
@@ -177,18 +190,25 @@ export function publishTab() {
       }
     },
 
-    async copyLink() {
-      const url = this.publish?.publicUrl;
+    /**
+     * `which` names both the link and the element showing it, because the
+     * panel offers two — the trip's own page and the member's — and a copy
+     * button that always reached for publicUrl silently handed out the wrong
+     * one from beside "Open my page".
+     */
+    async copyLink(which = 'publicUrl') {
+      const url = this.publish?.[which];
       if (!url) return;
       try {
         await navigator.clipboard.writeText(url);
-        this.copied = true;
+        this.copied = which;
         setTimeout(() => { this.copied = false; }, 2000);
       } catch {
         // Clipboard access needs a secure context and permission; select the
         // text so it can still be copied by hand.
-        this.$refs.publicUrl?.focus();
-        document.getSelection()?.selectAllChildren(this.$refs.publicUrl);
+        const shown = this.$refs[which];
+        shown?.focus();
+        if (shown) document.getSelection()?.selectAllChildren(shown);
       }
     },
 

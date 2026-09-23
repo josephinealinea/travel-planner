@@ -10,6 +10,7 @@ import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.publish.api.PersonalPages;
+import com.josephinealinea.planner.publish.api.PublishApprovalProperties;
 import com.josephinealinea.planner.publish.infra.PageStore;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.trips.domain.TripMember;
@@ -33,6 +34,7 @@ public class TripViewAssembler {
     private final RatesService rates;
     private final PageStore pages;
     private final String publicBaseUrl;
+    private final PublishApprovalProperties approval;
 
     public TripViewAssembler(UserRepository users,
                              DestinationRepository destinations,
@@ -41,7 +43,9 @@ public class TripViewAssembler {
                              BudgetService budgets,
                              RatesService rates,
                              PageStore pages,
-                             AppProperties props) {
+                             AppProperties props,
+                             PublishApprovalProperties approval) {
+        this.approval = approval;
         this.users = users;
         this.destinations = destinations;
         this.checklist = checklist;
@@ -153,7 +157,8 @@ public class TripViewAssembler {
                 trip.getPublishedAt(),
                 trip.getPublishedTheme(),
                 requests,
-                personalUrl(trip, currentUserId));
+                personalUrl(trip, currentUserId),
+                approval.requireOwnerApproval());
     }
 
     /**

@@ -35,10 +35,9 @@ public final class AuthDtos {
                     user.isMustChangePassword(),
                     user.getCurrencies(),
                     user.getDisplayCurrency(),
-                    new PublishedPage(user.isPublishItineraryCost(),
-                            user.isPublishDestinationDays(),
-                            user.isPublishForecastExpenses(),
-                            user.isPublishPersonalBudget()));
+                    new PublishedPage(user.getPublishedPage().isItineraryCost(),
+                            user.getPublishedPage().isDestinationDays(),
+                            user.getPublishedPage().isForecastExpenses()));
         }
     }
 
@@ -46,17 +45,19 @@ public final class AuthDtos {
      * What a published page shows. All flags, all defaulting to off: a
      * published page is public, so anything extra it reveals should be asked
      * for rather than assumed.
+     *
+     * Flat on the wire though it is one document in storage — the page posts a
+     * checkbox at a time, and nesting it would only make the request deeper
+     * without making it say more.
      */
     public record PublishedPage(boolean itineraryCost,
                                 boolean destinationDays,
-                                boolean forecastExpenses,
-                                boolean personalBudget) {}
+                                boolean forecastExpenses) {}
 
     /** Absent fields are left as they are, so one checkbox can post alone. */
     public record UpdatePublishedPageRequest(Boolean itineraryCost,
                                             Boolean destinationDays,
-                                            Boolean forecastExpenses,
-                                            Boolean personalBudget) {}
+                                            Boolean forecastExpenses) {}
 
     public record ChangePasswordRequest(
             @NotBlank(message = "Enter your current password") String currentPassword,

@@ -30,11 +30,12 @@ public class BudgetController {
             /** "Paid by" — one member user id. Absent or empty means nobody. */
             String paidByUserId,
             /** "Expense already charged". Absent means charged — see BudgetService.Input. */
-            Boolean charged) {
+            Boolean charged,
+            String note) {
 
         BudgetService.Input toInput() {
             return new BudgetService.Input(description, category, amount, currency, date,
-                    countryCodes, sharedByUserIds, paidByUserId, charged);
+                    countryCodes, sharedByUserIds, paidByUserId, charged, note);
         }
     }
 
@@ -49,11 +50,12 @@ public class BudgetController {
             /** Absent leaves the payer as it is; an empty string clears it. */
             String paidByUserId,
             /** Absent leaves the status as it is, like every other field here. */
-            Boolean charged) {
+            Boolean charged,
+            String note) {
 
         BudgetService.Input toInput() {
             return new BudgetService.Input(description, category, amount, currency, date,
-                    countryCodes, sharedByUserIds, paidByUserId, charged);
+                    countryCodes, sharedByUserIds, paidByUserId, charged, note);
         }
     }
 

@@ -61,7 +61,8 @@ public class ItineraryService {
                         /** Who's going. Null leaves it alone; [] is the whole trip. See Travellers. */
                         List<String> travellerIds,
                         /** True clears it back to "not set", i.e. following its checklist item. */
-                        Boolean inheritTravellers) {
+                        Boolean inheritTravellers,
+                        String note) {
 
         /** The shape from before travellers existed: says nothing about them. */
         public Input(String checklistItemId, ChecklistCategory category, String description,
@@ -69,7 +70,18 @@ public class ItineraryService {
                      String currency, Boolean costCharged, List<String> costSharedByUserIds,
                      String costPaidByUserId, List<String> countryCodes) {
             this(checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
-                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes, null, null);
+                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes, null, null, null);
+        }
+
+        /** The shape from before note existed: says nothing about it. */
+        public Input(String checklistItemId, ChecklistCategory category, String description,
+                     LocalDateTime startAt, LocalDateTime endAt, Boolean allDay, BigDecimal cost,
+                     String currency, Boolean costCharged, List<String> costSharedByUserIds,
+                     String costPaidByUserId, List<String> countryCodes,
+                     List<String> travellerIds, Boolean inheritTravellers) {
+            this(checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
+                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
+                    travellerIds, inheritTravellers, null);
         }
     }
 
@@ -156,6 +168,7 @@ public class ItineraryService {
         }
 
         plan.setDescription(input.description().trim());
+        plan.setNote(blankToNull(input.note()));
         plan.setStartAt(input.startAt());
         plan.setEndAt(input.endAt());
         // A date with no time belongs to a day rather than an hour, which is
@@ -234,6 +247,7 @@ public class ItineraryService {
             night.setPlanId(checkIn.getId());
             night.setCategory(checkIn.getCategory());
             night.setDescription(checkIn.getDescription());
+            night.setNote(checkIn.getNote());
             night.setCountryCodes(new ArrayList<>(checkIn.getCountryCodes()));
             night.setStartAt(isCheckout ? checkoutAt : day.atStartOfDay());
             night.setAllDay(isCheckout ? null : Boolean.TRUE);
@@ -260,6 +274,7 @@ public class ItineraryService {
             requireDescription(input.description());
             plan.setDescription(input.description().trim());
         }
+        if (input.note() != null) plan.setNote(blankToNull(input.note()));
         if (input.category() != null) plan.setCategory(input.category());
         if (input.startAt() != null) plan.setStartAt(input.startAt());
         if (input.endAt() != null) plan.setEndAt(input.endAt());
@@ -448,5 +463,9 @@ public class ItineraryService {
         if (start != null && end != null && end.isBefore(start)) {
             throw ApiException.badRequest("The end time cannot be before the start time.");
         }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }
