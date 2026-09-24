@@ -629,7 +629,8 @@ export function checklistTab() {
 
     planWhen(plan) {
       if (!plan.startAt) return 'No date set';
-      const time = timeRange(plan.startAt, plan.endAt);
+      // An all-day entry stores a placeholder T00:00 — not a departure time.
+      const time = plan.allDay ? '' : timeRange(plan.startAt, plan.endAt);
       const day = longDate(plan.startAt.slice(0, 10));
       return time ? `${day} · ${time}` : day;
     },

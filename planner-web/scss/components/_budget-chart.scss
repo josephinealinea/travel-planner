@@ -25,7 +25,9 @@
 }
 
 .budget-rates-note {
-  flex: none;
+  // May shrink and wrap: at large text the date line is wider than a phone.
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 0.8rem;
   line-height: 1.4;
   color: var(--tp-muted);

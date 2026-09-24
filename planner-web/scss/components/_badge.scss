@@ -15,7 +15,7 @@
   vertical-align: middle;
 }
 
-.badge-owner   { color: var(--tp-accent); border-color: var(--tp-accent); }
+.badge-owner   { color: var(--tp-accent-strong, var(--tp-accent)); border-color: var(--tp-accent); }
 .badge-draft   { color: var(--tp-muted); }
 .badge-published { color: var(--tp-success); border-color: var(--tp-success); }
 .badge-todo    { color: var(--tp-muted); }
@@ -48,7 +48,15 @@
 // can want its "this filter is on" colour to differ from its "this is the
 // primary action" colour. The fallback means a theme that has no opinion
 // keeps the accent, so only the themes that care define --tp-selected.
-button.chip { cursor: pointer; font-family: inherit; }
+button.chip { cursor: pointer; font-family: inherit; min-height: 28px; }
+@include m.mobile {
+  // Filter pills may wrap their label at large text, like the buttons do.
+  button.chip { max-width: 100%; white-space: normal; text-align: left; }
+  // Every pill and badge, for the same reason: a fixed one-line pill wider than
+  // its column pushes the page sideways at 200% text.
+  .chip, .badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .chip > span { min-width: 0; }
+}
 button.chip:hover:not(:disabled) { border-color: var(--tp-selected, var(--tp-accent)); }
 button.chip[aria-pressed="true"] {
   color: var(--tp-on-selected, var(--tp-on-accent));
@@ -74,9 +82,21 @@ button.chip:disabled {
   background: none;
   border: 0;
   cursor: pointer;
+  min-width: 20px;
+  min-height: 20px;
 }
 
 .chip-remove:hover { color: var(--tp-danger); }
+
+// Phones: the ✕ is a glyph, but its target is a fingertip. Negative margin
+// keeps the chip the size it was.
+@include m.mobile {
+  .chip-remove {
+    min-width: 44px;
+    min-height: 44px;
+    margin: -14px -12px -14px -10px;
+  }
+}
 
 .cat-dot {
   display: inline-block;

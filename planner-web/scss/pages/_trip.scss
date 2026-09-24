@@ -54,7 +54,7 @@
 
 .needs-planning-row:last-child { border-bottom: 0; }
 
-.member-name { display: flex; gap: t.$space-2; align-items: center; }
+.member-name { display: flex; flex-wrap: wrap; gap: t.$space-2; align-items: center; }
 .member-email-only { font-style: italic; color: var(--tp-muted); }
 
 .coord-inputs {
@@ -91,6 +91,10 @@
 .publish-request-row:last-child { border-bottom: 0; }
 
 @include m.mobile {
+  // The URL gets the full width and the buttons drop beneath it. Side by side
+  // they left the URL a ~30px column, breaking every few characters.
+  .publish-url { flex-wrap: wrap; }
+  .publish-url .grow { flex: 1 1 100%; min-width: 0; }
   .trip-head { flex-direction: column; }
   .coord-inputs { grid-template-columns: 1fr; }
 }
@@ -123,6 +127,7 @@
 // Mine / Whole trip, in the trip header.
 .scope-switch {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: t.$space-1;
   margin-left: t.$space-2;
   vertical-align: middle;

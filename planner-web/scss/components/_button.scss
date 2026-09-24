@@ -61,7 +61,7 @@
 .btn-sm { padding: 5px 10px; font-size: 0.82rem; }
 
 // A row of small per-row actions in a table.
-.btn-row { display: inline-flex; gap: t.$space-1; }
+.btn-row { display: inline-flex; flex-wrap: wrap; gap: t.$space-1; }
 
 .btn-link {
   padding: 0;
@@ -79,6 +79,8 @@
 
 // Phones: 44px for every button, small per-row ones included.
 @include m.mobile {
-  .btn { min-height: 44px; }
+  // A long label ("Deactivate and remove my data") wraps at large text rather
+  // than running off the screen.
+  .btn { min-height: 44px; max-width: 100%; white-space: normal; }
   .btn-sm { min-height: 44px; }
 }

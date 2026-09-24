@@ -92,8 +92,20 @@ export function tripPage() {
       // the lookup — not switching to the Itinerary tab. See reload().
       await this.reload();
       this.loading = false;
+      this.syncTitle();
       // The tabs only render once loading is false.
       this.$nextTick(() => this.revealTab(this.tab));
+    },
+
+    /**
+     * The page title names the trip and the tab, so a screen reader announcing
+     * it (and a browser's tab strip) tells one trip's tabs apart from another's
+     * instead of every one reading "Trip — Travelling Llama".
+     */
+    syncTitle() {
+      const label = TABS.find((tab) => tab.id === this.tab)?.label;
+      const trip = this.trip?.title;
+      document.title = [trip, label, 'Travelling Llama'].filter(Boolean).join(' — ');
     },
 
     tabFromHash() {
@@ -113,6 +125,7 @@ export function tripPage() {
     showTab(id) {
       if (id !== this.tab) this.closeDrawer();
       this.tab = id;
+      this.syncTitle();
       this.$nextTick(() => this.revealTab(id));
       // Normally already warm from init(); this only does anything if that
       // first attempt failed, since loadWeather() is a no-op while the
@@ -180,6 +193,7 @@ export function tripPage() {
         this.currentUserId = detail.currentUserId;
         this.isOwner = detail.isOwner;
         this.error = '';
+        this.syncTitle();
 
         // Destinations may have just changed, which is the only thing that
         // moves the weather rows — adding one is exactly when a fresh lookup is

@@ -70,8 +70,8 @@ export function publishTab() {
 
     get publishedPageCount() {
       if (!this.isPublished) return 0;
-      const urls = this.publish?.personalPageUrls || [];
-      return 1 + (urls.length || (this.publish?.myPublicUrl ? 1 : 0));
+      const others = (this.publish?.personalPageUrls || []).length;
+      return 1 + (this.publish?.myPublicUrl ? 1 : 0) + others;
     },
 
     get pendingRequests() {

@@ -49,6 +49,7 @@
 }
 
 .select-box input { cursor: pointer; }
+.select-box { min-width: 28px; min-height: 28px; }
 
 // A real button (it was a span, which no keyboard could reach), sitting
 // between the select box and the row. Its top padding matches the row's, so
@@ -126,4 +127,18 @@
 @include m.mobile {
   .select-box { min-width: 44px; min-height: 44px; padding-right: t.$space-2; }
   .check-status { width: 44px; }
+
+  // The text column is only ~180px beside the two 44px targets and Edit, so
+  // its pills stacked one to a line. The row becomes a grid: text and Edit on
+  // top, the pills across the full row width beneath.
+  .check-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: t.$space-2;
+  }
+  .check-main { display: contents; }
+  .check-text, .check-note, .check-row .badge-traveller { grid-column: 1; }
+  .check-row .badge-traveller { justify-self: start; }
+  .check-tags { grid-column: 1 / -1; }
+  .check-side { grid-column: 2; grid-row: 1; }
 }

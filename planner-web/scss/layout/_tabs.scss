@@ -51,4 +51,5 @@
     mask-image: linear-gradient(to right, #000 calc(100% - #{t.$space-6}), transparent);
   }
   .tabs::-webkit-scrollbar { display: none; }
+  .tab { min-height: 44px; }
 }

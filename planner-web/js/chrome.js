@@ -11,6 +11,25 @@ import { signOut } from './session.js';
  * there is nowhere else to go until a password is chosen.
  */
 export function renderChrome({ user = null, active = '', minimal = false } = {}) {
+  // First thing a keyboard user reaches: skips the header on every page.
+  const main = document.querySelector('main');
+  if (main && !document.querySelector('.skip-link')) {
+    if (!main.id) main.id = 'main-content';
+    main.tabIndex = -1;
+    const skip = document.createElement('a');
+    skip.className = 'skip-link';
+    skip.href = `#${main.id}`;
+    skip.textContent = 'Skip to main content';
+    // Move focus instead of following the link: the trip page routes its tabs
+    // by location.hash, so navigating to #main-content would switch tab.
+    skip.addEventListener('click', (event) => {
+      event.preventDefault();
+      main.focus();
+      main.scrollIntoView();
+    });
+    document.body.prepend(skip);
+  }
+
   const header = document.querySelector('#site-header');
   if (header) {
     const links = (user && !minimal) ? `

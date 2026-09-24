@@ -70,4 +70,14 @@
 @include m.mobile {
   .label-full { display: none; }
   .label-short { display: inline; }
+  .theme-toggle { min-height: 44px; }
+}
+
+// Very small phones (360px and 320px): brand, three links and a labelled toggle need ~370px, so
+// the toggle keeps only its icon. The label stays for screen readers — the
+// button would otherwise have no name.
+@media (max-width: 380px) {
+  .nav-link { padding-left: 5px; padding-right: 5px; }
+  .theme-toggle { min-width: 44px; justify-content: center; }
+  .theme-toggle #current-theme { @include m.visually-hidden; }
 }

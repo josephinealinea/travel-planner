@@ -52,6 +52,20 @@
 }
 .table .select-cell input { cursor: pointer; }
 
+// A link in a cell (the coordinates) gets the same 28px target.
+.table td a { display: inline-flex; align-items: center; min-height: 28px; }
+
+// The label is the target: 28px on desktop, a fingertip on a phone. The box
+// inside stays the size it is.
+.select-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+}
+
 // Rows that open a detail view.
 .table tbody tr.clickable { cursor: pointer; }
 .table tbody tr.clickable:focus-visible { @include m.focus-ring; }
@@ -88,6 +102,7 @@
     padding: 0;
     text-align: left;
     white-space: normal;
+    overflow-wrap: anywhere;
     border: 0;
   }
 
@@ -100,6 +115,8 @@
   }
 
   .table.table-cards .select-cell input { width: 20px; height: 20px; }
+  .table.table-cards .select-hit { min-width: 44px; min-height: 44px; }
+  .table.table-cards td a { display: inline-flex; align-items: center; min-height: 44px; }
 
   .table.table-cards .cell-title { grid-row: 1; font-weight: 600; }
   .table.table-cards .cell-chips { margin: t.$space-1 0; }
@@ -124,6 +141,22 @@
   }
 
   .table.table-cards .cell-emphasis { font-weight: 600; color: var(--tp-text); }
+
+  // A card table with no checkbox column (Travel Buddies) would otherwise keep
+  // the 44px the checkbox sits in, as an empty gap on the left of every card.
+  .table.table-cards.table-cards-plain tbody tr {
+    grid-template-columns: minmax(0, 1fr);
+    padding-left: t.$space-3;
+  }
+  .table.table-cards.table-cards-plain td { grid-column: 1; }
+  // The name and its badges need the whole line, so the action drops beneath
+  // the details rather than sitting beside — and over — them.
+  .table.table-cards.table-cards-plain .actions {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: t.$space-2;
+    text-align: left;
+  }
 }
 
 // Pager under a paginated table. Wraps on a phone, status line first.

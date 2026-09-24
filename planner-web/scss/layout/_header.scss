@@ -2,6 +2,19 @@
 @use "../abstracts/mixins" as m;
 @use "../abstracts/breakpoints" as bp;
 
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  padding: t.$space-2 t.$space-4;
+  color: var(--tp-on-accent, #fff);
+  background: var(--tp-accent);
+  transform: translateY(-120%);
+}
+.skip-link:focus { transform: none; }
+main:focus { outline: none; }
+
 .site-header {
   position: sticky;
   top: 0;
@@ -13,7 +26,11 @@
 
 .site-header-inner {
   display: flex;
-  gap: t.$space-4;
+  // Wraps rather than overflows: at 200% text the brand and four links do not
+  // fit on one line, and a header that cannot wrap pushes the whole page
+  // sideways. At normal size nothing wraps, so nothing changes.
+  flex-wrap: wrap;
+  gap: t.$space-1 t.$space-4;
   align-items: center;
   max-width: t.$page-max;
   min-height: t.$header-height;
@@ -25,6 +42,7 @@
   display: flex;
   gap: t.$space-2;
   align-items: center;
+  min-height: 28px;
   font-family: var(--tp-font-display);
   font-size: 1.05rem;
   font-weight: 700;
@@ -37,6 +55,8 @@
 
 .site-nav {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: t.$space-1;
   align-items: center;
   margin-left: auto;
@@ -67,7 +87,8 @@
 @include m.mobile {
   .site-header-inner { gap: t.$space-2; padding: 0 t.$space-3; }
   .nav-user { display: none; }
-  .nav-link { padding: 6px 7px; font-size: 0.82rem; }
+  .nav-link { display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; padding: 6px 7px; font-size: 0.82rem; }
+  .site-brand { min-height: 44px; min-width: 44px; }
 }
 
 // The wordmark is the one thing here that can give way. Brand (166px) plus nav
@@ -79,4 +100,10 @@
 // `display: none` would leave the brand link with no accessible name at all.
 @include m.below(bp.$bp-sm) {
   .site-brand-name { @include m.visually-hidden; }
+}
+
+// A phone on its side is ~390px tall: a header that follows you down would
+// take a sixth of the screen for good.
+@media (max-height: 500px) {
+  .site-header { position: static; }
 }

@@ -129,7 +129,8 @@
                   <div class="tiny muted" x-show="countryLabel(item.countryCodes)"
                        x-text="countryLabel(item.countryCodes)"></div>
                 </div>
-                <button type="button" class="btn btn-sm" @click="planFromOverview(item)">Plan</button>
+                <button type="button" class="btn btn-sm" @click="planFromOverview(item)"
+                        :aria-label="`Plan: ${item.description}`">Plan</button>
               </div>
             </template>
           </div>
@@ -167,14 +168,14 @@
         </p>
 
         <div class="table-wrap">
-          <table class="table">
+          <table class="table table-cards table-cards-plain">
             <thead>
               <tr><th>Name</th><th>Email</th><th>Home country</th><th>Added</th><th class="actions"></th></tr>
             </thead>
             <tbody>
               <template x-for="member in membersSignedInFirst" :key="member.userId">
                 <tr>
-                  <td>
+                  <td class="cell-title">
                     <span class="member-name">
                       <span :class="member.screenName ? '' : 'member-email-only'"
                             x-text="member.displayName"></span>
@@ -182,13 +183,14 @@
                       <span class="badge" x-show="member.userId === currentUserId">You</span>
                     </span>
                   </td>
-                  <td class="muted" x-text="member.emailLabel"></td>
-                  <td :class="member.homeCountryCode ? '' : 'muted'" x-text="member.homeCountryCode ? (countryFlagOf(member.homeCountryCode) + ' ' + countryNameOf(member.homeCountryCode)).trim() : 'Unknown'"></td>
-                  <td class="muted tiny" x-text="addedLabel(member)"></td>
+                  <td class="muted" data-label="Email" x-text="member.emailLabel"></td>
+                  <td data-label="Home country" :class="member.homeCountryCode ? '' : 'muted'" x-text="member.homeCountryCode ? (countryFlagOf(member.homeCountryCode) + ' ' + countryNameOf(member.homeCountryCode)).trim() : 'Unknown'"></td>
+                  <td class="muted tiny" data-label="Added" x-text="addedLabel(member)"></td>
                   <td class="actions">
                     <button type="button" class="btn btn-sm btn-danger"
                             x-show="member.role !== 'OWNER' && (isOwner || isSelf(member))"
                             @click="askRemoveMember(member)"
+                            :aria-label="isSelf(member) ? 'Leave the Herd' : `Remove ${member.displayName} from the Herd`"
                             x-text="isSelf(member) ? 'Leave the Herd 🦙' : 'Remove from the Herd'"></button>
                     <span class="tiny muted"
                           x-show="member.role === 'OWNER' || (!isOwner && !isSelf(member))"
@@ -244,7 +246,7 @@
         </div>
 
         <div class="table-wrap" x-show="scopedDestinations.length">
-          <table class="table">
+          <table class="table table-cards">
             <thead>
               <tr>
                 <th class="select-cell"><span class="sr-only">Select</span></th>
@@ -256,30 +258,34 @@
               <template x-for="destination in scopedDestinations" :key="destination.id">
                 <tr>
                   <td class="select-cell">
-                    <input type="checkbox" :checked="isDestSelected(destination.id)"
+                    <label class="select-hit"><input type="checkbox" :checked="isDestSelected(destination.id)"
                            @change="toggleDestSelected(destination.id)"
-                           :aria-label="`Select ${destination.name}`">
+                           :aria-label="`Select ${destination.name}`"></label>
                   </td>
-                  <td class="strong"><span x-text="destination.name"></span>
+                  <td class="strong cell-title"><span x-text="destination.name"></span>
                     <template x-for="pill in travellerPills('destinations', destination.id)" :key="pill.text">
                     <span class="badge badge-traveller" :title="pill.title" x-text="pill.text"></span>
                   </template></td>
-                  <td>
-                    <span x-show="destination.countryCode" x-text="countryFlagOf(destination.countryCode)"></span>
-                    <span class="muted" x-text="countryNameOf(destination.countryCode) || '—'"></span>
+                  <td class="cell-chips">
+                    <span class="chip" x-show="destination.countryCode">
+                      <span x-text="countryFlagOf(destination.countryCode)"></span>
+                      <span x-text="countryNameOf(destination.countryCode)"></span>
+                    </span>
+                    <span class="muted" x-show="!destination.countryCode">—</span>
                   </td>
-                  <td class="mono tiny">
+                  <td class="mono tiny" data-label="Lat / Lon">
                     <a x-show="mapUrl(destination)" :href="mapUrl(destination)"
                        target="_blank" rel="noopener" x-text="coordinates(destination)"></a>
                     <span x-show="!mapUrl(destination)" class="muted">—</span>
                   </td>
-                  <td x-text="destinationDates(destination) || '—'"></td>
-                  <td class="num" x-text="daysOf(destination) ? daysOf(destination) + 'D' : '—'"></td>
-                  <td class="num" x-text="checklistCountFor(destination)"></td>
+                  <td data-label="Dates" x-text="destinationDates(destination) || '—'"></td>
+                  <td class="num" data-label="Days" x-text="daysOf(destination) ? daysOf(destination) + 'D' : '—'"></td>
+                  <td class="num" data-label="Checklist" x-text="checklistCountFor(destination)"></td>
                   <td class="actions">
                     <span class="btn-row">
                       <button type="button" class="btn btn-sm"
-                              @click="openEditDestination(destination)">Edit</button>
+                              @click="openEditDestination(destination)"
+                              :aria-label="`Edit ${destination.name}`">Edit</button>
                     </span>
                   </td>
                 </tr>
@@ -409,7 +415,8 @@
                 </span>
                   <span class="check-side btn-row">
                     <button type="button" class="btn btn-sm"
-                            @click.stop="openChecklistItem(item)">Edit</button>
+                            @click.stop="openChecklistItem(item)"
+                            :aria-label="`Edit ${item.description}`">Edit</button>
                   </span>
                 </div>
               </div>
@@ -545,7 +552,7 @@
                   <label class="select-box select-box-tight">
                     <input type="checkbox" :checked="isItinSelected(entry.item.id)"
                            @change="toggleItinSelected(entry.item.id)"
-                           :aria-label="`Select ${entry.item.description}`">
+                           :aria-label="`Select ${entry.item.description}, ${planWhen(entry.item)}`">
                   </label>
                   <span class="timeline-time" x-text="entryTime(entry)"></span>
                   <div class="timeline-body">
@@ -570,7 +577,8 @@
                   </div>
                   <span class="timeline-cost" x-show="entry.cost" x-text="entryCost(entry)"></span>
                   <span class="timeline-actions btn-row">
-                    <button type="button" class="btn btn-sm" @click="openEditEntry(entry.item)">Edit</button>
+                    <button type="button" class="btn btn-sm" @click="openEditEntry(entry.item)"
+                            :aria-label="`Edit ${entry.item.description}, ${planWhen(entry.item)}`">Edit</button>
                   </span>
                 </div>
               </template>
@@ -729,9 +737,9 @@
                 <template x-for="item in pagedBudgetItems" :key="item.id">
                   <tr>
                     <td class="select-cell">
-                      <input type="checkbox" :checked="isBudgetSelected(item.id)"
+                      <label class="select-hit"><input type="checkbox" :checked="isBudgetSelected(item.id)"
                              @change="toggleBudgetSelected(item.id)"
-                             :aria-label="`Select ${item.description}`">
+                             :aria-label="`Select ${item.description}`"></label>
                     </td>
                     <td class="wrap cell-title" x-text="item.description"></td>
                     <!-- Same icon-and-label chip the checklist and itinerary
@@ -776,7 +784,8 @@
                     <td class="actions">
                       <span class="btn-row">
                         <button type="button" class="btn btn-sm"
-                                @click="openEditExpense(item)">Edit</button>
+                                @click="openEditExpense(item)"
+                                :aria-label="`Edit ${item.description}`">Edit</button>
                       </span>
                     </td>
                   </tr>
@@ -886,7 +895,7 @@
             <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener">
               Open public page
             </a>
-            <button type="button" class="btn btn-sm" @click="copyLink('publicUrl')"
+            <button type="button" class="btn btn-sm" @click="copyLink('publicUrl')" aria-label="Copy link to the trip page"
                     x-text="copied === 'publicUrl' ? 'Copied ✓' : 'Copy link'"></button>
           </div>
           <p class="small muted publish-own-page" x-show="publish.myPublicUrl">
@@ -899,7 +908,7 @@
                target="_blank" rel="noopener">
               Open my page
             </a>
-            <button type="button" class="btn btn-sm" @click="copyLink('myPublicUrl')"
+            <button type="button" class="btn btn-sm" @click="copyLink('myPublicUrl')" aria-label="Copy link to my page"
                     x-text="copied === 'myPublicUrl' ? 'Copied ✓' : 'Copy link'"></button>
           </div>
           <div x-show="(publish.personalPageUrls || []).length">
@@ -909,8 +918,10 @@
             <template x-for="url in publish.personalPageUrls" :key="url">
               <div class="publish-url">
                 <span class="grow" x-text="url"></span>
-                <a class="btn btn-sm" :href="url" target="_blank" rel="noopener">Open</a>
+                <a class="btn btn-sm" :href="url" target="_blank" rel="noopener"
+                   :aria-label="`Open ${url.split('/').pop()}'s page`">Open</a>
                 <button type="button" class="btn btn-sm" @click="copyPageUrl(url)"
+                        :aria-label="`Copy link to ${url.split('/').pop()}'s page`"
                         x-text="copied === url ? 'Copied ✓' : 'Copy link'"></button>
               </div>
             </template>
@@ -1120,9 +1131,11 @@
                     <div class="row row-between">
                       <span class="plan-cost" x-show="plan.cost" x-text="planCost(plan)"></span>
                       <span class="btn-row">
-                        <button type="button" class="btn btn-sm" @click="editPlan(plan)">Edit</button>
+                        <button type="button" class="btn btn-sm" @click="editPlan(plan)"
+                                :aria-label="`Edit plan: ${plan.description}`">Edit</button>
                         <button type="button" class="btn btn-sm btn-danger"
-                                @click="deletePlan(plan)">Delete</button>
+                                @click="deletePlan(plan)"
+                                :aria-label="`Delete plan: ${plan.description}`">Delete</button>
                       </span>
                     </div>
                   </div>
