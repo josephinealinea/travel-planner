@@ -1,4 +1,5 @@
 import { toggleId } from './selection.js';
+import { countryName, countryFlag } from './countries.js';
 
 /**
  * Shared "Use in" / "Location" country picker.
@@ -58,13 +59,9 @@ export function countriesOfTrip(allDestinations) {
   for (const destination of allDestinations || []) {
     const code = (destination.countryCode || '').trim().toUpperCase();
     if (!code || seen.has(code)) continue;
-    const name = destination.countryName || code;
-    seen.set(code, {
-      code,
-      name,
-      flag: destination.countryFlag || '',
-      label: destination.countryFlag ? `${destination.countryFlag} ${name}` : name,
-    });
+    const name = countryName(code);
+    const flag = countryFlag(code);
+    seen.set(code, { code, name, flag, label: flag ? `${flag} ${name}` : name });
   }
   return [...seen.values()];
 }

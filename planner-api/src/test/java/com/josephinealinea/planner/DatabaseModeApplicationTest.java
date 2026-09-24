@@ -110,7 +110,7 @@ class DatabaseModeApplicationTest {
     void startsOnPostgresWithFlywayApplied() {
         assertThat(context.getBean(FeatureFlags.class).databaseEnabled()).isTrue();
         assertThat(jdbc.sql("SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank")
-                .query(String.class).list()).containsExactly("1", "2", "3", "4", "5", "6");
+                .query(String.class).list()).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
     }
 
     @Test
@@ -152,7 +152,7 @@ class DatabaseModeApplicationTest {
                 LocalDate.parse("2026-10-24"), LocalDate.parse("2026-11-08"));
 
         destinations.create(trip.getId(), owner, new DestinationService.Input(
-                "Cusco", "PE", "Peru", -13.53, -71.97, null, "America/Lima",
+                "Cusco", "PE", -13.53, -71.97, null, "America/Lima",
                 LocalDate.parse("2026-10-25"), LocalDate.parse("2026-10-31"), null, null));
         budget.create(trip.getId(), owner, new BudgetService.Input(
                 "Airbnb in Cusco", ChecklistCategory.LODGING, new BigDecimal("246.22"), "EUR",

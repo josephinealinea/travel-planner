@@ -138,7 +138,6 @@ public class GeocodingClient {
                 place.geonameId(),
                 place.name(),
                 code,
-                countries.nameOf(code),
                 countries.flagOf(code),
                 countries.currencyOf(code),
                 place.latitude(),

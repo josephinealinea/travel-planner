@@ -37,8 +37,8 @@
       <form id="profile-form" novalidate>
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" type="email" disabled>
-          <p class="field-hint">Your email address cannot be changed here.</p>
+          <input id="email" type="email" autocomplete="email">
+          <p class="field-hint">This is what you sign in with, and where invitations are sent.</p>
         </div>
         <div class="field">
           <label for="screenName">Screen name</label>
@@ -54,8 +54,20 @@
           <ul class="autocomplete-list" id="homeCountryList" role="listbox" hidden></ul>
           <p class="field-hint">Shown beside your name on the Travel Buddies tab.</p>
         </div>
-        <button type="submit" class="btn btn-primary" id="save-profile">Save profile</button>
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary" id="save-profile">Save profile</button>
+          <button type="button" class="btn btn-danger" id="remove-email">Deactivate and remove my data</button>
+        </div>
       </form>
+      <div id="remove-email-confirm" class="alert alert-warning" role="alert" hidden>
+        <p class="small">
+          This removes your email address from our data and signs you out.
+        </p>
+        <div class="btn-row">
+          <button type="button" class="btn btn-danger" id="confirm-remove-email">Yes, remove my data</button>
+          <button type="button" class="btn" id="cancel-remove-email">Cancel</button>
+        </div>
+      </div>
     </section>
 
     <section class="card">
@@ -84,7 +96,7 @@
           <div class="password-field">
             <input id="confirm" type="password" autocomplete="new-password" required>
           </div>
-          <p class="field-error" id="mismatch" hidden>Those two passwords do not match.</p>
+          <p class="field-error" id="mismatch" hidden>Passwords do not match.</p>
         </div>
         <button type="submit" class="btn btn-primary" id="save-password">Change password</button>
       </form>
@@ -156,6 +168,7 @@
 
 <script type="module">
   import { api } from './js/api.js';
+  import { COUNTRY_OPTIONS, countryName } from './js/countries.js';
   import { renderChrome, escapeHtml } from './js/chrome.js';
   import { requireUser, clearCachedUser } from './js/session.js';
   import { passwordScore } from './js/password-toggle.js';
@@ -176,10 +189,10 @@
   // country name may come out of it, so text that matches nothing snaps back.
   const homeCountry = document.querySelector('#homeCountry');
   const homeList = document.querySelector('#homeCountryList');
-  let countries = [];
-  let chosenCountry = user.homeCountry || '';
-  try { countries = await api.countries(); } catch { /* typing still works against nothing */ }
-  homeCountry.value = chosenCountry;
+  // Names come from the shared table (js/countries.js); only the code is saved.
+  const countries = COUNTRY_OPTIONS;
+  let chosenCode = user.homeCountryCode || '';
+  homeCountry.value = countryName(chosenCode);
 
   function countryMatches() {
     const query = homeCountry.value.trim().toLowerCase();
@@ -198,7 +211,7 @@
     homeCountry.setAttribute('aria-expanded', 'false');
   }
   function pickCountry(country) {
-    chosenCountry = country.name;
+    chosenCode = country.code;
     homeCountry.value = country.name;
     closeCountryList();
   }
@@ -227,12 +240,12 @@
   homeCountry.addEventListener('blur', () => {
     closeCountryList();
     const query = homeCountry.value.trim().toLowerCase();
-    if (!query) { chosenCountry = ''; homeCountry.value = ''; return; }
+    if (!query) { chosenCode = ''; homeCountry.value = ''; return; }
     const exact = countries.find((c) => c.name.toLowerCase() === query || c.code.toLowerCase() === query);
     const matches = countryMatches();
     const found = exact || (matches.length === 1 ? matches[0] : null);
     if (found) pickCountry(found);
-    else homeCountry.value = chosenCountry;
+    else homeCountry.value = countryName(chosenCode);
   });
 
   function alertIn(selector, message, variant) {
@@ -252,7 +265,8 @@
     try {
       const updated = await api.updateProfile({
         screenName: document.querySelector('#screenName').value.trim(),
-        homeCountry: chosenCountry,
+        homeCountryCode: chosenCode,
+        email: document.querySelector('#email').value.trim(),
       });
       clearCachedUser();
       alertIn('#profile-alert', 'Saved.', 'info');
@@ -262,6 +276,28 @@
       alertIn('#profile-alert', error.fullMessage, 'error');
     } finally {
       button.disabled = false;
+    }
+  });
+
+  // ── remove email ──────────────────────────────────
+  const removeConfirm = document.querySelector('#remove-email-confirm');
+  document.querySelector('#remove-email').addEventListener('click', () => {
+    removeConfirm.hidden = false;
+    document.querySelector('#cancel-remove-email').focus();
+  });
+  document.querySelector('#cancel-remove-email').addEventListener('click', () => {
+    removeConfirm.hidden = true;
+    document.querySelector('#remove-email').focus();
+  });
+  document.querySelector('#confirm-remove-email').addEventListener('click', async (event) => {
+    event.target.disabled = true;
+    try {
+      await api.deactivateEmail();
+      clearCachedUser();
+      location.href = 'login.html';
+    } catch (error) {
+      event.target.disabled = false;
+      alertIn('#profile-alert', error.fullMessage, 'error');
     }
   });
 

@@ -271,8 +271,9 @@ public class StaticSiteRenderer {
         // Countries in route order, de-duplicated, for the flag strip.
         Map<String, String> countries = new LinkedHashMap<>();
         allDestinations.forEach(destination -> {
-            if (destination.getCountryName() != null) {
-                countries.putIfAbsent(destination.getCountryName(),
+            String code = destination.getCountryCode();
+            if (code != null && !code.isBlank()) {
+                countries.putIfAbsent(code.toUpperCase(),
                         destination.getCountryFlag() == null ? "" : destination.getCountryFlag());
             }
         });
@@ -280,19 +281,6 @@ public class StaticSiteRenderer {
         // "Tallinn -> Los Angeles -> Cusco", collapsing repeats.
         List<String> route = new ArrayList<>(new LinkedHashSet<>(
                 allDestinations.stream().map(d -> d.getName()).toList()));
-
-        // Items link to countries, so the chips they show are country names —
-        // flag included, which is what the destination cards already show.
-        Map<String, String> countryNames = new LinkedHashMap<>();
-        allDestinations.forEach(destination -> {
-            String code = destination.getCountryCode();
-            if (code == null || code.isBlank()) return;
-            String label = destination.getCountryName() == null
-                    ? code : destination.getCountryName();
-            countryNames.putIfAbsent(code.toUpperCase(),
-                    destination.getCountryFlag() == null
-                            ? label : destination.getCountryFlag() + " " + label);
-        });
 
         return new PublishedTrip(
                 trip.getTitle(),
@@ -308,7 +296,7 @@ public class StaticSiteRenderer {
                 days(allItinerary, allDestinations, options.itineraryCost(),
                         trip.getStartDate(), trip.getEndDate()),
                 allChecklist.stream()
-                        .map(item -> toView(item, countryNames))
+                        .map(this::toView)
                         .toList(),
                 toView(budget, options));
     }
@@ -322,7 +310,7 @@ public class StaticSiteRenderer {
                 : null;
         return new PublishedTrip.Destination(
                 destination.getName(),
-                destination.getCountryName(),
+                destination.getCountryCode(),
                 destination.getCountryFlag(),
                 destination.getLatitude(),
                 destination.getLongitude(),
@@ -336,10 +324,9 @@ public class StaticSiteRenderer {
                 mapUrl);
     }
 
-    private PublishedTrip.Checklist toView(ChecklistItem item, Map<String, String> countryNames) {
-        List<String> names = item.getCountryCodes().stream()
-                .map(code -> countryNames.getOrDefault(code, code))
-                .toList();
+    /** Items carry country codes; the page turns them into names (see page.js). */
+    private PublishedTrip.Checklist toView(ChecklistItem item) {
+        List<String> codes = List.copyOf(item.getCountryCodes());
         return new PublishedTrip.Checklist(
                 item.getCategory().dataKey(),
                 item.getCategory().label(),
@@ -348,7 +335,7 @@ public class StaticSiteRenderer {
                 item.getNote(),
                 item.isCompleted() ? "done" : "todo",
                 item.isCompleted() ? PublishStyle.DONE_ICON : PublishStyle.TODO_ICON,
-                names);
+                codes);
     }
 
     /** Groups itinerary entries by day; undated plans and days outside the trip are left out of the timeline. */
@@ -387,7 +374,7 @@ public class StaticSiteRenderer {
             if (from == null || to == null || to.isBefore(from)) continue;
             PublishedTrip.Place place = new PublishedTrip.Place(
                     destination.getName(),
-                    destination.getCountryName(),
+                    destination.getCountryCode(),
                     destination.getCountryFlag(),
                     destination.getLatitude(),
                     destination.getLongitude());
@@ -470,7 +457,7 @@ public class StaticSiteRenderer {
         List<PublishedTrip.Budget.Country> countries = breakdown.byCountry().stream()
                 .filter(country -> country.amount() != null && country.amount().signum() != 0)
                 .map(country -> new PublishedTrip.Budget.Country(
-                        country.key(), country.name(), country.flag(), country.amount()))
+                        country.key(), country.flag(), country.amount()))
                 .toList();
 
         List<PublishedTrip.Budget.Native> nativeTotals = breakdown.nativeTotals().stream()
@@ -523,6 +510,7 @@ public class StaticSiteRenderer {
                 </noscript>
                 <div id="app" class="page"></div>
                 <footer class="brand-footer">Planned with 🦙 <a href="{{siteUrl}}">Travelling Llama</a></footer>
+                <script>window.COUNTRIES = {{countries}};</script>
                 <script>window.TRIP = {{payload}};</script>
                 <script>
                 {{vendor}}
@@ -555,6 +543,9 @@ public class StaticSiteRenderer {
         // small-slice and single-category cases a hand-drawn pie gets wrong.
         values.put("vendor", resource("publish/vendor/chart.umd.js"));
         values.put("js", resource("publish/page.js"));
+        // Code -> name, the same table the planner uses (planner-web/js/countries.js).
+        // Public reference data, so shipping all of it leaks nothing about the trip.
+        values.put("countries", resource("publish/countries.json").trim());
         values.put("payload", payload);
 
         String out = template;

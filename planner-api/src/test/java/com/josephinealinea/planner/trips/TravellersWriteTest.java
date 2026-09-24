@@ -102,7 +102,7 @@ class TravellersWriteTest {
 
     private Destination cusco(List<String> travellers) {
         return destinationService.create(TRIP_ID, ALEX, new DestinationService.Input(
-                "Cusco", null, null, null, null, null, null, null, null, null, null,
+                "Cusco", null, null, null, null, null, null, null, null, null,
                 travellers, null)).destination();
     }
 
@@ -140,7 +140,7 @@ class TravellersWriteTest {
     void anEditThatSaysNothingAboutTravellersLeavesThemAlone() {
         Destination d = cusco(List.of(SAM));
         destinationService.update(TRIP_ID, ALEX, d.getId(), new DestinationService.Input(
-                "Cusco!", null, null, null, null, null, null, null, null, null, null));
+                "Cusco!", null, null, null, null, null, null, null, null, null));
         assertThat(destinations.findById(SLUG, d.getId()).orElseThrow().getTravellerIds()).containsExactly(SAM);
     }
 
@@ -197,7 +197,7 @@ class TravellersWriteTest {
         Destination cusco = destinations.findAll(SLUG).get(0);
 
         destinationService.update(TRIP_ID, ALEX, cusco.getId(), new DestinationService.Input(
-                null, null, null, null, null, null, null, null, null, null, null, List.of(SAM), null));
+                null, null, null, null, null, null, null, null, null, null, List.of(SAM), null));
         itineraryService.update(TRIP_ID, ALEX, plan.getId(), new ItineraryService.Input(
                 null, null, null, null, null, null, null, null, null, null, null, null, List.of(ALEX), null));
 

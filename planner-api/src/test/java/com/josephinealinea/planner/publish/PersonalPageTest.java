@@ -131,7 +131,6 @@ class PersonalPageTest {
         cusco.setId("cusco");
         cusco.setTripId(TRIP_ID);
         cusco.setName("Cusco");
-        cusco.setCountryName("Peru");
         destinations.save(SLUG, cusco);
 
         // 900 split two ways is 450 each; 1234.56 is Sam's alone. Distinctive
@@ -238,14 +237,17 @@ class PersonalPageTest {
         uyuni.setId("uyuni");
         uyuni.setTripId(TRIP_ID);
         uyuni.setName("Salar de Uyuni");
-        uyuni.setCountryName("Bolivia");
+        uyuni.setCountryCode("BO");
         uyuni.setTravellerIds(List.of(SAM));
         destinationsRepo.save(SLUG, uyuni);
 
         publish.publish(TRIP_ID, ALEX, "minima");
 
-        assertThat(read(personal("alex"))).doesNotContain("Salar de Uyuni").doesNotContain("Bolivia");
-        assertThat(read(personal("sam"))).contains("Salar de Uyuni");
+        // Every page carries the whole code -> name table (public reference
+        // data), so "Bolivia" is always in the file. What must be absent is the
+        // destination's own link to it.
+        assertThat(read(personal("alex"))).doesNotContain("Salar de Uyuni").doesNotContain("\"countryCode\":\"BO\"");
+        assertThat(read(personal("sam"))).contains("Salar de Uyuni").contains("\"countryCode\":\"BO\"");
         assertThat(read(publishDir.resolve(SLUG).resolve("index.html"))).contains("Salar de Uyuni");
     }
 
@@ -363,6 +365,17 @@ class PersonalPageTest {
                 .isEqualTo("http://localhost:8080/p/" + SLUG + "/m/alex");
         assertThat(views.publish(trip, SAM).myPublicUrl())
                 .isEqualTo("http://localhost:8080/p/" + SLUG + "/m/sam");
+    }
+
+    @Test
+    void onlyTheOwnerIsOfferedEveryonesLinks() {
+        publish.publish(TRIP_ID, ALEX, "minima");
+        Trip trip = trips.findById(TRIP_ID).orElseThrow();
+
+        assertThat(views.publish(trip, ALEX).personalPageUrls()).containsExactly(
+                "http://localhost:8080/p/" + SLUG + "/m/alex",
+                "http://localhost:8080/p/" + SLUG + "/m/sam");
+        assertThat(views.publish(trip, SAM).personalPageUrls()).isEmpty();
     }
 
     /**

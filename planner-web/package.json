@@ -5,6 +5,8 @@
   "description": "Travel planner frontend — static pages, no bundler. Sass is the only build step.",
   "scripts": {
     "css": "sass scss/minima.scss:assets/css/minima.css scss/y2k.scss:assets/css/y2k.css scss/dark.scss:assets/css/dark.css --no-source-map --style=expanded",
+    "check": "node scripts/check-dialogs.mjs && node scripts/build-countries.mjs --check",
+    "countries": "node scripts/build-countries.mjs",
     "css:watch": "npm run css -- --watch",
     "build": "npm run css && rm -rf dist && mkdir dist && cp -R *.html _headers js assets vendor dist/",
     "dev": "npm run css && ./serve.sh",

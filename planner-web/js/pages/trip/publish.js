@@ -68,6 +68,12 @@ export function publishTab() {
       return this.publishState === 'PUBLISHED';
     },
 
+    get publishedPageCount() {
+      if (!this.isPublished) return 0;
+      const urls = this.publish?.personalPageUrls || [];
+      return 1 + (urls.length || (this.publish?.myPublicUrl ? 1 : 0));
+    },
+
     get pendingRequests() {
       return (this.publish?.requests || []).filter((request) => request.status === 'PENDING');
     },
@@ -209,6 +215,17 @@ export function publishTab() {
         const shown = this.$refs[which];
         shown?.focus();
         if (shown) document.getSelection()?.selectAllChildren(shown);
+      }
+    },
+
+    /** Copy one of the owner's list of member-page links. */
+    async copyPageUrl(url) {
+      try {
+        await navigator.clipboard.writeText(url);
+        this.copied = url;
+        setTimeout(() => { this.copied = false; }, 2000);
+      } catch {
+        // No clipboard permission: the link stays on screen to copy by hand.
       }
     },
 

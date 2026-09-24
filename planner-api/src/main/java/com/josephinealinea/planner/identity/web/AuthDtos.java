@@ -1,5 +1,6 @@
 package com.josephinealinea.planner.identity.web;
 
+import com.josephinealinea.planner.identity.domain.TierLevel;
 import com.josephinealinea.planner.identity.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -19,7 +20,8 @@ public final class AuthDtos {
             String id,
             String email,
             String screenName,
-            String homeCountry,
+            String homeCountryCode,
+            TierLevel tierLevel,
             String displayName,
             boolean mustChangePassword,
             List<String> currencies,
@@ -32,7 +34,8 @@ public final class AuthDtos {
                     user.getId(),
                     user.getEmail(),
                     user.getScreenName(),
-                    user.getHomeCountry(),
+                    user.getHomeCountryCode(),
+                    user.getTierLevel(),
                     user.displayName(),
                     user.isMustChangePassword(),
                     user.getCurrencies(),
@@ -67,7 +70,7 @@ public final class AuthDtos {
             @Size(min = 8, message = "Your new password needs at least 8 characters") String newPassword,
             String screenName) {}
 
-    public record ProfileRequest(String screenName, String homeCountry) {}
+    public record ProfileRequest(String screenName, String homeCountryCode, String email) {}
 
     public record UpdateCurrenciesRequest(List<String> currencies) {}
 

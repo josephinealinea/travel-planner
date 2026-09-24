@@ -193,7 +193,8 @@ public abstract class UserRepositoryContract {
     protected static User everyFieldSet(String id, String email) {
         User user = user(id, email);
         user.setScreenName("Ana");
-        user.setHomeCountry("Peru");
+        user.setHomeCountryCode("PE");
+        user.setTierLevel(com.josephinealinea.planner.identity.domain.TierLevel.PRO);
         user.setPasswordHash("{bcrypt}$2a$10$abcdefghijklmnopqrstuv");
         user.setMustChangePassword(true);
         user.setCurrencies(new ArrayList<>(List.of("SGD", "EUR", "PEN")));

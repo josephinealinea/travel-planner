@@ -1,11 +1,13 @@
 package com.josephinealinea.planner.identity.api;
 
 import com.josephinealinea.planner.config.AppProperties;
+import com.josephinealinea.planner.geocoding.CountryTable;
 import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
 import com.josephinealinea.planner.shared.ApiException;
+import com.josephinealinea.planner.shared.Emails;
 import com.josephinealinea.planner.shared.Ids;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -73,18 +75,64 @@ public class UserService {
         return users.findById(userId).map(User::displayName).orElse(fallbackEmail);
     }
 
-    public User updateProfile(String userId, String screenName, String homeCountry) {
+    public User updateProfile(String userId, String screenName, String homeCountryCode, String email) {
         User user = require(userId);
+        if (email != null && !email.isBlank()) changeEmail(user, email);
         String trimmed = screenName == null ? null : screenName.trim();
         if (trimmed != null && trimmed.length() > 60) {
             throw ApiException.badRequest("Screen name must be 60 characters or fewer.");
         }
         user.setScreenName(trimmed == null || trimmed.isBlank() ? null : trimmed);
-        String country = homeCountry == null ? null : homeCountry.trim();
-        if (country != null && country.length() > 80) {
-            throw ApiException.badRequest("Home country must be 80 characters or fewer.");
+        String code = homeCountryCode == null ? null : homeCountryCode.trim().toUpperCase();
+        if (code != null && !code.isEmpty() && !CountryTable.isKnown(code)) {
+            throw ApiException.badRequest("Choose a country from the list.");
         }
-        user.setHomeCountry(country == null || country.isBlank() ? null : country);
+        user.setHomeCountryCode(code == null || code.isEmpty() ? null : code);
+        return users.save(user);
+    }
+
+    private void changeEmail(User user, String email) {
+        String normalised = YamlUserRepository.normalise(email);
+        if (!normalised.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
+            throw ApiException.badRequest("That does not look like an email address.");
+        }
+        if (normalised.equals(user.getEmail())) return;
+        if (users.findByEmail(normalised).isPresent()) {
+            throw ApiException.conflict("email_taken", "That email address is already in use.");
+        }
+        user.setEmail(normalised);
+    }
+
+    /**
+     * A stand-in for somebody who has left a trip they were part of the budget
+     * of: the same person on paper (name, country, currencies, tier), under
+     * left-<its id>-<their email>, with a password nobody knows. The trip keeps
+     * it as a member so their expenses still have somebody to belong to.
+     */
+    public User createLeftCopy(String userId) {
+        User original = require(userId);
+        User copy = new User();
+        copy.setId(Ids.newId());
+        copy.setEmail(YamlUserRepository.normalise("left-" + copy.getId() + "-" + original.getEmail()));
+        copy.setScreenName(original.getScreenName());
+        copy.setHomeCountryCode(original.getHomeCountryCode());
+        copy.setTierLevel(original.getTierLevel());
+        copy.setCurrencies(new ArrayList<>(original.getCurrencies()));
+        copy.setDisplayCurrency(original.getDisplayCurrency());
+        copy.setPublishedPage(original.getPublishedPage());
+        copy.setPasswordHash(encoder.encode(Ids.defaultPassword()));
+        copy.setMustChangePassword(true);
+        return users.save(copy);
+    }
+
+    /**
+     * Takes the person's email address out of the system without deleting the
+     * account: the row, its trips and its history stay, and the address becomes
+     * deactivated-<id>@example.com. The caller signs them out.
+     */
+    public User deactivateEmail(String userId) {
+        User user = require(userId);
+        user.setEmail(Emails.deactivated(user.getId()));
         return users.save(user);
     }
 

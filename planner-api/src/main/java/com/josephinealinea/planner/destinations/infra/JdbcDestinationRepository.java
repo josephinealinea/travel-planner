@@ -40,7 +40,7 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
 
     public JdbcDestinationRepository(JdbcClient jdbc, PlatformTransactionManager transactionManager) {
         super(jdbc, transactionManager, "destinations",
-                List.of("name", "country_code", "country_name", "country_flag",
+                List.of("name", "country_code", "country_flag",
                         "latitude", "longitude", "geoname_id", "timezone",
                         "start_date", "end_date", "note", "sort_order",
                         "lodging_seeded", "suppress_checklist", "traveller_ids",
@@ -53,7 +53,6 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
         Map<String, Object> values = new HashMap<>();
         values.put("name", d.getName());
         values.put("country_code", d.getCountryCode());
-        values.put("country_name", d.getCountryName());
         values.put("country_flag", d.getCountryFlag());
         values.put("latitude", d.getLatitude());
         values.put("longitude", d.getLongitude());
@@ -80,7 +79,6 @@ public class JdbcDestinationRepository extends TripScopedJdbcRepository<Destinat
         d.setTripId(rs.getString("trip_id"));
         d.setName(rs.getString("name"));
         d.setCountryCode(rs.getString("country_code"));
-        d.setCountryName(rs.getString("country_name"));
         d.setCountryFlag(rs.getString("country_flag"));
         d.setLatitude(JdbcValues.nullableDouble(rs, "latitude"));
         d.setLongitude(JdbcValues.nullableDouble(rs, "longitude"));

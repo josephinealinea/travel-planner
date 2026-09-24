@@ -66,6 +66,9 @@ app:
     bucket: ${R2_BUCKET:}
     access-key-id: ${R2_ACCESS_KEY_ID:}
     secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  tiers:
+    # Trips a BASIC account may be on, created and joined together.
+    basic-max-trips: ${BASIC_MAX_TRIPS:3}
   proxy:
     # Shared secret the Cloudflare proxy adds to every request. Set only in
     # the cloud; empty locally.

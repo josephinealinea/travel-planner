@@ -131,6 +131,6 @@ export function sharersOfTrip(members) {
     .filter((member) => member.userId)
     .map((member) => ({
       userId: member.userId,
-      label: member.displayName || member.email || member.userId,
+      label: member.displayName || member.userId,
     }));
 }

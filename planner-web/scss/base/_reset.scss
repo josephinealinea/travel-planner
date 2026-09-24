@@ -31,3 +31,13 @@ body[data-dialog-open] { overflow: hidden; }
 // A dialog only takes focus itself when it has nothing tabbable; the ring
 // would outline the whole panel for no benefit.
 [role="dialog"][tabindex="-1"]:focus { outline: none; }
+
+// Anything that still moves — hover fades, width changes — stops for readers
+// who asked the system for less motion.
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -81,9 +81,15 @@ export function scopeTab() {
       return this.namesOf((this.namedTravellers[kind] || {})[id]);
     },
 
-    /** The same names as a list, one pill each; empty for the whole trip. */
+    /**
+     * The same names as a list, one pill each. A record for the whole trip has
+     * no names of its own, so it gets a single "Everyone" pill instead of a
+     * blank that reads as "not set".
+     */
     travellerNameList(kind, id) {
-      return ((this.namedTravellers[kind] || {})[id] || [])
+      const ids = (this.namedTravellers[kind] || {})[id] || [];
+      if (!ids.length) return ['Everyone'];
+      return ids
         .map((userId) => this.members.find((m) => m.userId === userId)?.displayName)
         .filter(Boolean);
     },
@@ -95,6 +101,7 @@ export function scopeTab() {
     travellerPills(kind, id) {
       // The signed-in member leads, so their own name is the one that stays visible.
       const ids = [...((this.namedTravellers[kind] || {})[id] || [])];
+      if (!ids.length) return [{ text: '👥 Everyone', title: 'Everyone on the trip' }];
       const mine = ids.indexOf(this.currentUserId);
       if (mine > 0) ids.unshift(ids.splice(mine, 1)[0]);
       const names = ids

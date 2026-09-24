@@ -11,8 +11,11 @@ body.theme-minima {
   --tp-toast-bg: #3a2f1d;
 
   --tp-text: #3a2f1d;
-  --tp-muted: #7a6a4f;
+  --tp-muted: #6f5f45;  // 5.35:1 on --tp-surface-alt (was 4.54)
   --tp-border: #e2d3b0;
+  // --tp-border is 1.4:1: fine for dividers, too faint for a field edge, which
+  // is the only cue that a field exists. This is 3.9:1 on the input background.
+  --tp-border-control: #8f7a4d;
 
   --tp-accent: #b45309;
   --tp-accent-strong: #92400e;

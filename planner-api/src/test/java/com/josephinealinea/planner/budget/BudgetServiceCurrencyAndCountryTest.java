@@ -145,13 +145,12 @@ class BudgetServiceCurrencyAndCountryTest {
         return budget.save(SLUG, item);
     }
 
-    private Destination destination(String id, String countryCode, String countryName, String flag) {
+    private Destination destination(String id, String countryCode, String flag) {
         Destination destination = new Destination();
         destination.setId(id);
         destination.setTripId("trip-1");
         destination.setName(id);
         destination.setCountryCode(countryCode);
-        destination.setCountryName(countryName);
         destination.setCountryFlag(flag);
         return destinations.save(SLUG, destination);
     }
@@ -254,8 +253,8 @@ class BudgetServiceCurrencyAndCountryTest {
 
     @Test
     void aRowLinkedToOneCountryIsGroupedUnderIt() {
-        destination("dest-1", "PE", "Peru", "🇵🇪");
-        destination("dest-2", "PE", "Peru", "🇵🇪");
+        destination("dest-1", "PE", "🇵🇪");
+        destination("dest-2", "PE", "🇵🇪");
         Trip trip = trip("EUR", Map.of());
         // Two Peruvian cities on the trip, but the row links to Peru once —
         // the name and flag on the slice are borrowed from either of them.
@@ -266,14 +265,14 @@ class BudgetServiceCurrencyAndCountryTest {
 
         assertThat(summary.charged().byCountry()).hasSize(1);
         assertThat(summary.charged().byCountry().get(0).key()).isEqualTo("PE");
-        assertThat(summary.charged().byCountry().get(0).name()).isEqualTo("Peru");
+        assertThat(summary.charged().byCountry().get(0).flag()).isEqualTo("🇵🇪");
         assertThat(summary.charged().byCountry().get(0).amount()).isEqualByComparingTo("60.00");
     }
 
     @Test
     void aRowSpanningTwoCountriesSplitsEvenlyBetweenThem() {
-        destination("dest-1", "PE", "Peru", "🇵🇪");
-        destination("dest-2", "BO", "Bolivia", "🇧🇴");
+        destination("dest-1", "PE", "🇵🇪");
+        destination("dest-2", "BO", "🇧🇴");
         Trip trip = trip("EUR", Map.of());
         expense("e1", new BigDecimal("30.00"), "EUR", ChecklistCategory.TRANSPORTATION,
                 List.of("PE", "BO"));
@@ -289,9 +288,9 @@ class BudgetServiceCurrencyAndCountryTest {
 
     @Test
     void theSplitIsPerCountryHoweverManyCitiesTheTripHasInEach() {
-        destination("dest-1", "FR", "France", "🇫🇷");
-        destination("dest-2", "FR", "France", "🇫🇷");
-        destination("dest-3", "BE", "Belgium", "🇧🇪");
+        destination("dest-1", "FR", "🇫🇷");
+        destination("dest-2", "FR", "🇫🇷");
+        destination("dest-3", "BE", "🇧🇪");
         Trip trip = trip("EUR", Map.of());
         expense("e1", new BigDecimal("90.00"), "EUR", ChecklistCategory.LODGING,
                 List.of("FR", "BE"));
@@ -311,9 +310,9 @@ class BudgetServiceCurrencyAndCountryTest {
 
     @Test
     void anAmountThatWillNotDivideEvenlyStillAddsBackUpToTheWhole() {
-        destination("dest-1", "PE", "Peru", "🇵🇪");
-        destination("dest-2", "BO", "Bolivia", "🇧🇴");
-        destination("dest-3", "CL", "Chile", "🇨🇱");
+        destination("dest-1", "PE", "🇵🇪");
+        destination("dest-2", "BO", "🇧🇴");
+        destination("dest-3", "CL", "🇨🇱");
         Trip trip = trip("EUR", Map.of());
         // 10.00 into three parts is 3.333...; the cents have to land somewhere.
         expense("e1", new BigDecimal("10.00"), "EUR", ChecklistCategory.OTHERS,
@@ -340,8 +339,8 @@ class BudgetServiceCurrencyAndCountryTest {
 
     @Test
     void theCountrySlicesSumToTheSameTotalAsTheCategorySlices() {
-        destination("dest-1", "PE", "Peru", "🇵🇪");
-        destination("dest-2", "BO", "Bolivia", "🇧🇴");
+        destination("dest-1", "PE", "🇵🇪");
+        destination("dest-2", "BO", "🇧🇴");
         Trip trip = trip("EUR", Map.of("USD", new BigDecimal("1.10")));
         expense("e1", new BigDecimal("20.00"), "EUR", ChecklistCategory.OTHERS, null); // no location
         expense("e2", new BigDecimal("60.00"), "EUR", ChecklistCategory.LODGING, List.of("dest-1")); // Peru

@@ -7,6 +7,7 @@ import com.josephinealinea.planner.identity.api.UserService;
 import com.josephinealinea.planner.identity.domain.User;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -30,7 +31,20 @@ public class AccountController {
 
     @PatchMapping("/profile")
     AuthDtos.MeResponse updateProfile(@RequestBody AuthDtos.ProfileRequest request) {
-        return AuthDtos.MeResponse.from(users.updateProfile(currentUser.userId(), request.screenName(), request.homeCountry()));
+        return AuthDtos.MeResponse.from(users.updateProfile(currentUser.userId(), request.screenName(),
+                request.homeCountryCode(), request.email()));
+    }
+
+    /**
+     * Removes this person's email address from the system data and signs them
+     * out. The account itself stays, with a placeholder address nobody can
+     * sign in with.
+     */
+    @PostMapping("/deactivate-email")
+    ResponseEntity<Void> deactivateEmail(HttpServletResponse response) {
+        users.deactivateEmail(currentUser.userId());
+        cookies.clearSession(response);
+        return ResponseEntity.noContent().build();
     }
 
     /**

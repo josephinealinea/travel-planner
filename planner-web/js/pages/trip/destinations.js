@@ -1,5 +1,6 @@
 import { toast } from '../../toast.js';
 import { dateRange, daysBetween } from '../../format.js';
+import { COUNTRY_OPTIONS, countryName } from '../../countries.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import {
   newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
@@ -22,7 +23,6 @@ export function destinationsTab() {
     id: null,
     name: '',
     countryCode: '',
-    countryName: '',
     latitude: '',
     longitude: '',
     geonameId: null,
@@ -61,34 +61,10 @@ export function destinationsTab() {
     // Guards against a slow lookup reopening a list that was dismissed.
     lookupToken: 0,
 
-    // Every country, for the picker. Loaded once, lazily — the destination
-    // form is the only thing that needs it.
-    countryOptions: [],
-
     // What is typed in the country box, kept apart from destForm.countryCode
     // so half-typed text is never mistaken for a chosen country.
     countryQuery: '',
     countryListOpen: false,
-
-    /**
-     * Loads the country list if it is not already here.
-     *
-     * Started when a form opens and deliberately not awaited: it is a 250-item
-     * fetch and the modal should not wait behind it. What makes that safe is
-     * countryChoices, which keeps the destination's own code selectable while
-     * the list is still in flight — without it the <select> would match no
-     * option and silently fall back to whichever country sorts first.
-     */
-    async loadCountries() {
-      if (this.countryOptions.length) return;
-      try {
-        this.countryOptions = await this.api.countries();
-      } catch {
-        // Leaves the picker empty; countryFor keeps the saved code selectable
-        // so nothing is lost, and the code stays visible in its own field.
-        this.countryOptions = [];
-      }
-    },
 
     /**
      * The countries matching what has been typed, or the first few when the
@@ -100,11 +76,11 @@ export function destinationsTab() {
      */
     get countryMatches() {
       const query = this.countryQuery.trim().toLowerCase();
-      if (!query) return this.countryOptions.slice(0, COUNTRY_MATCH_LIMIT);
+      if (!query) return COUNTRY_OPTIONS.slice(0, COUNTRY_MATCH_LIMIT);
 
       const starts = [];
       const contains = [];
-      for (const option of this.countryOptions) {
+      for (const option of COUNTRY_OPTIONS) {
         const name = option.name.toLowerCase();
         if (name.startsWith(query) || option.code.toLowerCase() === query) starts.push(option);
         else if (name.includes(query)) contains.push(option);
@@ -113,14 +89,12 @@ export function destinationsTab() {
     },
 
     onCountryInput() {
-      this.loadCountries();
       this.countryListOpen = true;
     },
 
     /** Choosing is the only way a country gets set; the code comes with it. */
     pickCountry(option) {
       this.destForm.countryCode = option.code;
-      this.destForm.countryName = option.name;
       this.countryQuery = option.name;
       this.countryListOpen = false;
     },
@@ -140,11 +114,10 @@ export function destinationsTab() {
 
       if (!query) {
         this.destForm.countryCode = '';
-        this.destForm.countryName = '';
         return;
       }
 
-      const exact = this.countryOptions.find(
+      const exact = COUNTRY_OPTIONS.find(
         (option) => option.name.toLowerCase() === query.toLowerCase()
           || option.code.toLowerCase() === query.toLowerCase());
       if (exact) {
@@ -164,11 +137,10 @@ export function destinationsTab() {
 
       // Still ambiguous or unrecognised: keep the country that was already
       // chosen, and show its name rather than text that matched nothing.
-      this.countryQuery = this.destForm.countryName || '';
+      this.countryQuery = countryName(this.destForm.countryCode);
     },
 
     openAddDestination() {
-      this.loadCountries();
       this.destForm = blankForm();
       this.countryQuery = '';
       this.countryListOpen = false;
@@ -180,14 +152,12 @@ export function destinationsTab() {
     },
 
     openEditDestination(destination) {
-      this.loadCountries();
       this.countryListOpen = false;
-      this.countryQuery = destination.countryName || destination.countryCode || '';
+      this.countryQuery = countryName(destination.countryCode);
       this.destForm = {
         id: destination.id,
         name: destination.name || '',
         countryCode: destination.countryCode || '',
-        countryName: destination.countryName || '',
         latitude: destination.latitude ?? '',
         longitude: destination.longitude ?? '',
         geonameId: destination.geonameId ?? null,
@@ -273,10 +243,9 @@ export function destinationsTab() {
     pickSuggestion(place) {
       this.destForm.name = place.name;
       this.destForm.countryCode = place.countryCode || '';
-      this.destForm.countryName = place.countryName || '';
       // The country box shows a name, so it has to follow the place's country
       // rather than keep whatever was in it.
-      this.countryQuery = place.countryName || '';
+      this.countryQuery = countryName(place.countryCode);
       this.destForm.latitude = place.latitude ?? '';
       this.destForm.longitude = place.longitude ?? '';
       this.destForm.geonameId = place.geonameId ?? null;
@@ -287,7 +256,7 @@ export function destinationsTab() {
 
     suggestionMeta(place) {
       const bits = [];
-      if (place.countryName) bits.push(place.countryName);
+      if (place.countryCode) bits.push(countryName(place.countryCode));
       if (place.population) bits.push(`pop ${formatPopulation(place.population)}`);
       return bits.join(' · ');
     },
@@ -310,7 +279,6 @@ export function destinationsTab() {
       const payload = {
         name,
         countryCode: this.destForm.countryCode || null,
-        countryName: this.destForm.countryName || null,
         latitude: numberOrNull(this.destForm.latitude),
         longitude: numberOrNull(this.destForm.longitude),
         geonameId: this.destForm.geonameId || null,

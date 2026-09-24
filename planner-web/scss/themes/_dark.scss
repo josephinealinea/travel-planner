@@ -16,6 +16,7 @@ body.theme-dark {
   --tp-text: #e8f0ff;
   --tp-muted: #93a6cc;
   --tp-border: #2a3d6e;
+  --tp-border-control: #5a74b0;  // 3.8:1 on --tp-input-bg; --tp-border is 1.6:1
 
   --tp-accent: #5ad1ff;
   --tp-accent-strong: #8ae0ff;
@@ -37,7 +38,9 @@ body.theme-dark {
   --tp-shadow: 0 0 0 1px rgba(90, 209, 255, 0.14);
 
   // Squared-off, uppercase headings suit the era.
-  .page-title, .modal-title, .drawer-title, h1, h2 {
+  // Page title only: all-caps body headings are slower to read and some screen
+  // readers spell them out.
+  .page-title {
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }

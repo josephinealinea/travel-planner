@@ -27,7 +27,6 @@ public class Destination implements Audited {
     private String tripId;
     private String name;
     private String countryCode;
-    private String countryName;
     private String countryFlag;
     private Double latitude;
     private Double longitude;
@@ -133,8 +132,6 @@ public class Destination implements Audited {
     public String getCountryCode() { return countryCode; }
     public void setCountryCode(String countryCode) { this.countryCode = countryCode; }
 
-    public String getCountryName() { return countryName; }
-    public void setCountryName(String countryName) { this.countryName = countryName; }
 
     public String getCountryFlag() { return countryFlag; }
     public void setCountryFlag(String countryFlag) { this.countryFlag = countryFlag; }

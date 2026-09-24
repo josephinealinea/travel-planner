@@ -100,6 +100,7 @@ export const api = {
   me: () => get('/api/v1/auth/me'),
   config: () => get('/api/v1/config'),
   updateProfile: (data) => patch('/api/v1/account/profile', data),
+  deactivateEmail: () => post('/api/v1/account/deactivate-email'),
   updateCurrencies: (data) => patch('/api/v1/account/currencies', data),
   updateDisplayCurrency: (data) => patch('/api/v1/account/display-currency', data),
   changePassword: (data) => post('/api/v1/account/password', data),
@@ -120,7 +121,6 @@ export const api = {
 
   // ── destinations ───────────────────────────────────
   geocode: (query) => get(`/api/v1/geocode?q=${encodeURIComponent(query)}`),
-  countries: () => get('/api/v1/geocode/countries'),
   destinations: (id) => get(`${trip(id)}/destinations`),
   addDestination: (id, data) => post(`${trip(id)}/destinations`, data),
   updateDestination: (id, destId, data) => patch(`${trip(id)}/destinations/${destId}`, data),

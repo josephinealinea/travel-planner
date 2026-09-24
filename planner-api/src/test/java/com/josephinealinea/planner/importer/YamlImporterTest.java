@@ -378,7 +378,6 @@ class YamlImporterTest {
         cusco.setTripId("trip-latam");
         cusco.setName("Cusco");
         cusco.setCountryCode("PE");
-        cusco.setCountryName("Peru");
         cusco.setCountryFlag("🇵🇪");
         cusco.setLatitude(-13.53);
         cusco.setLongitude(-71.97);

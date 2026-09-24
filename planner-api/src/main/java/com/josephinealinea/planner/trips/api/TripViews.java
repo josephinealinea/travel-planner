@@ -25,10 +25,11 @@ public final class TripViews {
      * their email until then; hasSignedIn drives the "not signed in yet" chip.
      */
     public record MemberView(String userId,
-                             String email,
+                             /** For display only: cut to 37 characters by Emails.shorten. */
+                             String emailLabel,
                              String displayName,
                              String screenName,
-                             String homeCountry,
+                             String homeCountryCode,
                              TripRole role,
                              boolean hasSignedIn,
                              Instant invitedAt) {}
@@ -78,7 +79,13 @@ public final class TripViews {
                                * Server configuration, so the page follows it
                                * rather than assuming.
                                */
-                              boolean requireOwnerApproval) {}
+                              boolean requireOwnerApproval,
+                              /**
+                               * Every member's published page that exists, for
+                               * the owner only; empty for everybody else. Plain
+                               * links: the member's name is already in the URL.
+                               */
+                              List<String> personalPageUrls) {}
 
     /**
      * displayCurrency is the trip's own anchor (what its exchange-rate table

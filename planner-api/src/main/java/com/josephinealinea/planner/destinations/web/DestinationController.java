@@ -22,7 +22,6 @@ public class DestinationController {
             @NotBlank(message = "Give the destination a name")
             @Size(max = 120, message = "That name is too long") String name,
             String countryCode,
-            String countryName,
             Double latitude,
             Double longitude,
             Long geonameId,
@@ -37,7 +36,7 @@ public class DestinationController {
             Boolean inheritTravellers) {
 
         DestinationService.Input toInput() {
-            return new DestinationService.Input(name, countryCode, countryName, latitude,
+            return new DestinationService.Input(name, countryCode, latitude,
                     longitude, geonameId, timezone, startDate, endDate, note,
                     suppressChecklist, travellerIds, inheritTravellers);
         }
@@ -47,7 +46,6 @@ public class DestinationController {
     public record PatchDestinationRequest(
             @Size(max = 120, message = "That name is too long") String name,
             String countryCode,
-            String countryName,
             Double latitude,
             Double longitude,
             Long geonameId,
@@ -62,7 +60,7 @@ public class DestinationController {
             Boolean inheritTravellers) {
 
         DestinationService.Input toInput() {
-            return new DestinationService.Input(name, countryCode, countryName, latitude,
+            return new DestinationService.Input(name, countryCode, latitude,
                     longitude, geonameId, timezone, startDate, endDate, note,
                     suppressChecklist, travellerIds, inheritTravellers);
         }

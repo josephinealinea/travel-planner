@@ -129,7 +129,7 @@ class TripDateWindowTest {
     // ── destinations ────────────────────────────────
 
     private DestinationService.Input stay(String start, String end) {
-        return new DestinationService.Input("Cusco", "PE", "Peru", null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
+        return new DestinationService.Input("Cusco", "PE", null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
     }
 
     @Test
@@ -161,7 +161,7 @@ class TripDateWindowTest {
         trip.setStartDate(LocalDate.parse("2026-11-01"));
         trips.save(trip);
 
-        DestinationService.Input renameOnly = new DestinationService.Input("Cusco (renamed)", null, null, null, null, null, null, null, null, null, null);
+        DestinationService.Input renameOnly = new DestinationService.Input("Cusco (renamed)", null, null, null, null, null, null, null, null, null);
         Destination updated = destinationService.update(TRIP_ID, USER_ID, destinationId, renameOnly);
 
         assertThat(updated.getName()).isEqualTo("Cusco (renamed)");

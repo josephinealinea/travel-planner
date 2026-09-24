@@ -2,6 +2,7 @@ import { toast } from '../../toast.js';
 import { category, money, shortDate, CATEGORIES } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
+import { countryName, countryFlag } from '../../countries.js';
 import { toggleSharer, shareWithEveryone, sharedWithEveryone, choosePayer, chargedToggled, sharersOfTrip } from '../../member-picker.js';
 import { savedBudgetPageSize } from '../../page-size.js';
 
@@ -227,8 +228,8 @@ export function budgetTab() {
         .filter((c) => Number(c.amount) > 0)
         .map((c, i) => ({
           key: c.key,
-          icon: c.flag || '🌍',
-          label: c.name,
+          icon: c.key === 'NO_LOCATION' ? '🌍' : (countryFlag(c.key) || '🌍'),
+          label: c.key === 'NO_LOCATION' ? 'No location' : countryName(c.key),
           color: COUNTRY_PALETTE[i % COUNTRY_PALETTE.length],
           amount: Number(c.amount),
         }));
@@ -635,7 +636,7 @@ export function budgetTab() {
     paidByLabel(item) {
       if (!item.paidByUserId) return '—';
       const member = this.members.find((m) => m.userId === item.paidByUserId);
-      return member ? (member.displayName || member.email) : 'Former travel buddy';
+      return member ? member.displayName : 'Former travel buddy';
     },
 
     /**
@@ -707,7 +708,7 @@ export function budgetTab() {
     /** Same fallback as the Paid by cell: only current members have names. */
     settleMemberName(userId) {
       const member = this.members.find((m) => m.userId === userId);
-      return member ? (member.displayName || member.email) : 'Former travel buddy';
+      return member ? member.displayName : 'Former travel buddy';
     },
 
     /**

@@ -171,6 +171,17 @@ Rules that are easy to break by accident, all with tests:
   `format.js` has both (`nightsBetween`, `daysBetween`) and `daysBetween` is
   deliberately **not** `nightsBetween() + 1`: nights is null for a day trip by
   design, so adding one would print `—` for the stop that is plainly one day.
+- **A country is stored as its code and named by one table.** The API keeps
+  `countryCode` (and the flag beside it) and never a name: `Destination.countryName`
+  is gone, and budget country slices and the published snapshot carry codes.
+  `planner-web/js/countries.js` maps code to name, and every screen that shows a
+  country — Destinations table, the checklist, itinerary and budget chips, the
+  country picker, the budget chart — reads it, so a name cannot differ between
+  tabs. The published page cannot import it, so `npm run countries` writes the
+  same table to `planner-api/.../publish/countries.json`, which the renderer
+  inlines as `window.COUNTRIES` for `page.js`; `npm run check` fails if the two
+  drift. Edit `countries.js`, then run `npm run countries`. A member's home
+  country follows the same rule: `User.homeCountryCode`, named by the table.
 - **Seeded items are ordinary items once created.** Renaming a destination does
   not rewrite their text; `autoSeeded` is metadata only.
 - **Checklist items, itinerary entries and budget rows link to *countries*,
@@ -528,8 +539,8 @@ The plan and its reasoning are in
 
 **Permissions** live entirely in `TripAccessService` — `requireMember` or
 `requireOwner` at the top of each service method. Non-members get 404, not 403,
-so trip ids cannot be probed. Owner-only means exactly two things: deleting the
-trip, and publishing it.
+so trip ids cannot be probed. Owner-only means exactly three things: deleting the
+trip, publishing it, and removing somebody else (anyone may leave).
 
 **Views versus domain.** `TripViews` / `TripViewAssembler` produce the API shape;
 domain objects are the storage shape. Keep them apart — a derived getter added to

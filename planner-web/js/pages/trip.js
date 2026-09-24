@@ -2,6 +2,7 @@ import { api } from '../api.js';
 import { queryParam } from '../chrome.js';
 import { dateRange, CATEGORIES } from '../format.js';
 import { countriesOfTrip } from '../location-picker.js';
+import { countryName, countryFlag } from '../countries.js';
 import { toast } from '../toast.js';
 import { currentUser } from '../session.js';
 
@@ -62,7 +63,7 @@ export function tripPage() {
              forecast: { byCategory: {}, byCountry: [], nativeTotals: [], total: 0,
                          currenciesMissingRates: [] },
              displayCurrency: 'EUR', totalsCurrency: 'EUR' },
-    publish: { status: 'DRAFT', requests: [] },
+    publish: { status: 'DRAFT', requests: [], personalPageUrls: [] },
     currentUserId: null,
     isOwner: false,
 
@@ -168,8 +169,6 @@ export function tripPage() {
         const detail = await api.trip(this.tripId);
         this.trip = detail;
         this.members = detail.members || [];
-        // Only for the flags beside a member's home country; not awaited.
-        this.loadCountries();
         this.destinations = detail.destinations || [];
         this.checklist = detail.checklist || [];
         this.itinerary = detail.itinerary || [];
@@ -244,6 +243,10 @@ export function tripPage() {
       return countriesOfTrip(this.destinations);
     },
 
+    /** Name and flag for a country code, from the shared table in countries.js. */
+    countryNameOf(code) { return countryName(code); },
+    countryFlagOf(code) { return countryFlag(code); },
+
     /** True when a date is set and falls outside the trip's own dates (inclusive). */
     isOutsideTrip(date) {
       if (!date || !this.trip.startDate || !this.trip.endDate) return false;
@@ -272,12 +275,6 @@ export function tripPage() {
       return [...me, ...this.members.filter((member) => member.userId !== this.currentUserId)];
     },
 
-    /** The flag for a member's home country, or '' until the list has loaded. */
-    homeFlag(member) {
-      const name = (member.homeCountry || '').toLowerCase();
-      return name ? (this.countryOptions.find((o) => o.name.toLowerCase() === name)?.flag || '') : '';
-    },
-
     ownerName() {
       return this.members.find((member) => member.role === 'OWNER')?.displayName || '';
     },
@@ -293,7 +290,8 @@ export function tripPage() {
         // badge counting the whole trip's expenses beside a table showing
         // three of them reads as a bug.
         case 'budget': return this.myBudgetItems.length;
-        case 'publish': return this.pendingRequests.length || 0;
+        // Live pages: the trip's own plus the personal ones this member can see.
+        case 'publish': return this.publishedPageCount;
         default: return 0;
       }
     },

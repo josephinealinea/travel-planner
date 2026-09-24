@@ -169,7 +169,7 @@
         <div class="table-wrap">
           <table class="table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th x-show="isOwner">Role</th><th>Home country</th><th>Added</th><th class="actions"></th></tr>
+              <tr><th>Name</th><th>Email</th><th>Home country</th><th>Added</th><th class="actions"></th></tr>
             </thead>
             <tbody>
               <template x-for="member in membersSignedInFirst" :key="member.userId">
@@ -182,18 +182,17 @@
                       <span class="badge" x-show="member.userId === currentUserId">You</span>
                     </span>
                   </td>
-                  <td class="muted" x-text="member.email"></td>
-                  <td x-show="isOwner"><span class="badge" :class="member.role === 'OWNER' ? 'badge-owner' : ''"
-                            x-text="member.role === 'OWNER' ? 'Owner' : 'Travel buddy'"></span></td>
-                  <td :class="member.homeCountry ? '' : 'muted'" x-text="member.homeCountry ? (homeFlag(member) + ' ' + member.homeCountry).trim() : 'Unknown'"></td>
+                  <td class="muted" x-text="member.emailLabel"></td>
+                  <td :class="member.homeCountryCode ? '' : 'muted'" x-text="member.homeCountryCode ? (countryFlagOf(member.homeCountryCode) + ' ' + countryNameOf(member.homeCountryCode)).trim() : 'Unknown'"></td>
                   <td class="muted tiny" x-text="addedLabel(member)"></td>
                   <td class="actions">
                     <button type="button" class="btn btn-sm btn-danger"
-                            x-show="member.role !== 'OWNER'"
+                            x-show="member.role !== 'OWNER' && (isOwner || isSelf(member))"
                             @click="askRemoveMember(member)"
-                            x-text="isSelf(member) ? 'Leave trip' : 'Remove'"></button>
-                    <span class="tiny muted" x-show="member.role === 'OWNER'"
-                          title="Delete the trip instead">Cannot be removed</span>
+                            x-text="isSelf(member) ? 'Leave the Herd 🦙' : 'Remove from the Herd'"></button>
+                    <span class="tiny muted"
+                          x-show="member.role === 'OWNER' || (!isOwner && !isSelf(member))"
+                          :title="member.role === 'OWNER' ? 'Delete the trip instead' : 'Only the trip owner can remove a travel buddy'">Part of the herd! 🦙</span>
                   </td>
                 </tr>
               </template>
@@ -266,8 +265,8 @@
                     <span class="badge badge-traveller" :title="pill.title" x-text="pill.text"></span>
                   </template></td>
                   <td>
-                    <span x-show="destination.countryFlag" x-text="destination.countryFlag"></span>
-                    <span class="muted" x-text="destination.countryName || '—'"></span>
+                    <span x-show="destination.countryCode" x-text="countryFlagOf(destination.countryCode)"></span>
+                    <span class="muted" x-text="countryNameOf(destination.countryCode) || '—'"></span>
                   </td>
                   <td class="mono tiny">
                     <a x-show="mapUrl(destination)" :href="mapUrl(destination)"
@@ -891,8 +890,8 @@
                     x-text="copied === 'publicUrl' ? 'Copied ✓' : 'Copy link'"></button>
           </div>
           <p class="small muted publish-own-page" x-show="publish.myPublicUrl">
-            Everyone on this trip also gets a page of their own. Yours is the same trip, showing only your
-            destinations, checklist, itinerary and share of the expenses instead of the whole trip.
+            Your trip page, showing only your destinations, checklist, itinerary
+            and share of the expenses instead of the whole trip.
           </p>
           <div class="publish-url" x-show="publish.myPublicUrl">
             <span x-ref="myPublicUrl" class="grow" x-text="publish.myPublicUrl"></span>
@@ -902,6 +901,19 @@
             </a>
             <button type="button" class="btn btn-sm" @click="copyLink('myPublicUrl')"
                     x-text="copied === 'myPublicUrl' ? 'Copied ✓' : 'Copy link'"></button>
+          </div>
+          <div x-show="(publish.personalPageUrls || []).length">
+            <p class="small muted publish-own-page">
+              Other pages (<span x-text="publish.personalPageUrls.length"></span>).
+            </p>
+            <template x-for="url in publish.personalPageUrls" :key="url">
+              <div class="publish-url">
+                <span class="grow" x-text="url"></span>
+                <a class="btn btn-sm" :href="url" target="_blank" rel="noopener">Open</a>
+                <button type="button" class="btn btn-sm" @click="copyPageUrl(url)"
+                        x-text="copied === url ? 'Copied ✓' : 'Copy link'"></button>
+              </div>
+            </template>
           </div>
         </div>
 

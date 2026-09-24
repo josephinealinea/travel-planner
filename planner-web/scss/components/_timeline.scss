@@ -13,7 +13,7 @@
   border-bottom: 2px solid var(--tp-border);
 }
 
-.timeline-date-count { font-size: 0.78rem; font-weight: 400; color: var(--tp-muted); }
+.timeline-date-count { font-size: 0.8rem; font-weight: 400; color: var(--tp-muted); }
 
 .timeline-entries { @include m.card-surface; }
 
@@ -124,7 +124,7 @@
   color: var(--tp-muted);
 }
 
-.weather-line-muted { font-size: 0.78rem; }
+.weather-line-muted { font-size: 0.8rem; }
 
 .weather-icon { font-size: 1.05rem; line-height: 1; }
 
@@ -145,7 +145,7 @@
   padding: 1px t.$space-1;
   border: 1px solid var(--tp-border);
   border-radius: var(--tp-radius-sm);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }

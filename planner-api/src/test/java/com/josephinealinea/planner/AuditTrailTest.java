@@ -18,6 +18,7 @@ import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
 import com.josephinealinea.planner.geocoding.CountryCatalog;
+import com.josephinealinea.planner.identity.domain.TierLevel;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
@@ -57,6 +58,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Who made each record, and who changed it last.
@@ -92,6 +94,7 @@ class AuditTrailTest {
     private BudgetService budgetService;
     private TripService tripService;
     private TripRepository trips;
+    private UserRepository userRepo;
     private DestinationRepository destinations;
     private ChecklistRepository checklist;
     private ItineraryRepository itinerary;
@@ -123,6 +126,7 @@ class AuditTrailTest {
         budget = new YamlBudgetRepository(store, paths, locks);
         trips = new YamlTripRepository(store, paths, locks);
         UserRepository users = new YamlUserRepository(store, paths, locks);
+        userRepo = users;
         users.save(account(ALEX, "alex@example.com"));
         users.save(account(SAM, "sam@example.com"));
 
@@ -154,7 +158,9 @@ class AuditTrailTest {
                 new StaticSiteRenderer(destinations, checklist, itinerary,
                         new BudgetService(budget, itinerary, destinations, users, access,
                                 tripCountries, testRates),
-                        new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props));
+                        new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props),
+                new com.josephinealinea.planner.trips.api.TripLimitProperties(3),
+                new com.josephinealinea.planner.trips.api.MemberLinks(budget, destinations, checklist, itinerary));
     }
 
     // ── helpers ─────────────────────────────────────
@@ -168,7 +174,7 @@ class AuditTrailTest {
     }
 
     private DestinationService.Input place(String name, String code, String start, String end) {
-        return new DestinationService.Input(name, code, null, null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
+        return new DestinationService.Input(name, code, null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
     }
 
     /** Asserts a record was made by one member and has not been edited since. */
@@ -390,9 +396,126 @@ class AuditTrailTest {
         String rainer = afterAdd.getMembers().stream()
                 .filter(m -> !m.getUserId().equals(ALEX) && !m.getUserId().equals(SAM))
                 .findFirst().orElseThrow().getUserId();
-        tripService.removeMember(TRIP_ID, SAM, rainer);
+        tripService.removeMember(TRIP_ID, ALEX, rainer);
 
-        assertThat(trips.findById(TRIP_ID).orElseThrow().getUpdatedByUserId()).isEqualTo(SAM);
+        assertThat(trips.findById(TRIP_ID).orElseThrow().getUpdatedByUserId()).isEqualTo(ALEX);
+    }
+
+    @Test
+    void aBasicAccountCannotCreateMoreTripsThanTheCap() {
+        // ALEX already owns TRIP_ID, so two more reach the cap of three.
+        tripService.create(ALEX, "Second", LocalDate.parse("2026-11-01"), LocalDate.parse("2026-11-05"));
+        tripService.create(ALEX, "Third", LocalDate.parse("2026-12-01"), LocalDate.parse("2026-12-05"));
+
+        assertThatThrownBy(() -> tripService.create(ALEX, "Fourth",
+                LocalDate.parse("2027-01-01"), LocalDate.parse("2027-01-05")))
+                .hasMessageContaining("only have 3 trips")
+                .hasMessageContaining("Delete or leave");
+
+        // Leaving one frees a place.
+        String second = tripService.listFor(ALEX).stream()
+                .filter(t -> t.getTitle().equals("Second")).findFirst().orElseThrow().getId();
+        tripService.delete(second, ALEX);
+        tripService.create(ALEX, "Fourth", LocalDate.parse("2027-01-01"), LocalDate.parse("2027-01-05"));
+    }
+
+    @Test
+    void aProAccountIsNotCapped() {
+        User alex = userRepo.findById(ALEX).orElseThrow();
+        alex.setTierLevel(TierLevel.PRO);
+        userRepo.save(alex);
+
+        for (int i = 0; i < 5; i++) {
+            tripService.create(ALEX, "Trip " + i, LocalDate.parse("2026-11-01"), LocalDate.parse("2026-11-05"));
+        }
+
+        assertThat(tripService.listFor(ALEX)).hasSize(6);
+    }
+
+    @Test
+    void aBasicAccountAlreadyOnThreeTripsCannotBeAdded() {
+        User alex = userRepo.findById(ALEX).orElseThrow();
+        alex.setTierLevel(TierLevel.ROCKSTAR);
+        userRepo.save(alex);
+
+        String rainer = tripService.addMember(TRIP_ID, ALEX, "rainer@example.com").getMembers().stream()
+                .filter(m -> !m.getUserId().equals(ALEX) && !m.getUserId().equals(SAM))
+                .findFirst().orElseThrow().getUserId();
+        Trip two = tripService.create(ALEX, "Two", LocalDate.parse("2026-11-01"), LocalDate.parse("2026-11-05"));
+        Trip three = tripService.create(ALEX, "Three", LocalDate.parse("2026-12-01"), LocalDate.parse("2026-12-05"));
+        tripService.addMember(two.getId(), ALEX, "rainer@example.com");
+        tripService.addMember(three.getId(), ALEX, "rainer@example.com");
+        Trip four = tripService.create(ALEX, "Four", LocalDate.parse("2027-01-01"), LocalDate.parse("2027-01-05"));
+
+        assertThatThrownBy(() -> tripService.addMember(four.getId(), ALEX, "rainer@example.com"))
+                .hasMessageContaining("already on 3 trips")
+                .hasMessageContaining("delete or leave");
+
+        tripService.removeMember(three.getId(), rainer, rainer);
+        tripService.addMember(four.getId(), ALEX, "rainer@example.com");
+    }
+
+    private void expenseSharedBy(String... userIds) {
+        com.josephinealinea.planner.budget.domain.BudgetItem item = new com.josephinealinea.planner.budget.domain.BudgetItem();
+        item.setId("expense-1");
+        item.setTripId(TRIP_ID);
+        item.setDescription("Dinner");
+        item.setCategory(ChecklistCategory.FOOD);
+        item.setAmount(new java.math.BigDecimal("40.00"));
+        item.setSharedByUserIds(new java.util.ArrayList<>(List.of(userIds)));
+        item.setPaidByUserId(userIds[0]);
+        budget.save(SLUG, item);
+    }
+
+    @Test
+    void theOwnerMustUnlinkAMemberFromTheBudgetBeforeRemovingThem() {
+        expenseSharedBy(SAM);
+
+        assertThatThrownBy(() -> tripService.removeMember(TRIP_ID, ALEX, SAM))
+                .hasMessageContaining("still linked to the budget")
+                .hasMessageContaining("Unlink them first");
+
+        var item = budget.findById(SLUG, "expense-1").orElseThrow();
+        item.setSharedByUserIds(new java.util.ArrayList<>(List.of(ALEX)));
+        item.setPaidByUserId(ALEX);
+        budget.save(SLUG, item);
+
+        tripService.removeMember(TRIP_ID, ALEX, SAM);
+        assertThat(trips.findById(TRIP_ID).orElseThrow().member(SAM)).isEmpty();
+    }
+
+    @Test
+    void aMemberLeavingWhoIsInTheBudgetIsReplacedByAStandIn() {
+        expenseSharedBy(SAM, ALEX);
+
+        tripService.removeMember(TRIP_ID, SAM, SAM);
+
+        Trip trip = trips.findById(TRIP_ID).orElseThrow();
+        assertThat(trip.member(SAM)).isEmpty();
+        assertThat(trip.getMembers()).hasSize(2);
+        String standIn = trip.getMembers().stream()
+                .map(TripMember::getUserId).filter(id -> !id.equals(ALEX)).findFirst().orElseThrow();
+        User copy = userRepo.findById(standIn).orElseThrow();
+        assertThat(copy.getEmail()).isEqualTo("left-" + standIn + "-sam@example.com");
+
+        var item = budget.findById(SLUG, "expense-1").orElseThrow();
+        assertThat(item.getSharedByUserIds()).containsExactly(standIn, ALEX);
+        assertThat(item.getPaidByUserId()).isEqualTo(standIn);
+        assertThat(tripService.listFor(SAM)).isEmpty();
+    }
+
+    @Test
+    void aTravelBuddyCannotRemoveSomebodyElseButCanLeave() {
+        tripService.addMember(TRIP_ID, ALEX, "rainer@example.com");
+        String rainer = trips.findById(TRIP_ID).orElseThrow().getMembers().stream()
+                .filter(m -> !m.getUserId().equals(ALEX) && !m.getUserId().equals(SAM))
+                .findFirst().orElseThrow().getUserId();
+
+        assertThatThrownBy(() -> tripService.removeMember(TRIP_ID, SAM, rainer))
+                .hasMessageContaining("Only the trip owner");
+
+        tripService.removeMember(TRIP_ID, SAM, SAM);
+        assertThat(trips.findById(TRIP_ID).orElseThrow().member(SAM)).isEmpty();
     }
 
     /**

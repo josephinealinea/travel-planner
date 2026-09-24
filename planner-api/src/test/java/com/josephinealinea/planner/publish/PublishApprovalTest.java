@@ -137,7 +137,6 @@ class PublishApprovalTest {
         cusco.setId("cusco");
         cusco.setTripId(TRIP_ID);
         cusco.setName("Cusco");
-        cusco.setCountryName("Peru");
         cusco.setStartDate(LocalDate.of(2026, 10, 25));
         cusco.setEndDate(LocalDate.of(2026, 10, 31));
         destinations.save(SLUG, cusco);

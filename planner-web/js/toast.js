@@ -31,7 +31,14 @@ function show(message, variant) {
   if (variant !== 'error' && variant !== 'warning') {
     toast.textContent = message;
     regions().polite.appendChild(toast);
-    setTimeout(() => toast.remove(), LIFETIME_MS);
+    // Hovering or focusing a toast holds it, so it can be read at any pace.
+    let timer = setTimeout(() => toast.remove(), LIFETIME_MS);
+    const hold = () => clearTimeout(timer);
+    const resume = () => { timer = setTimeout(() => toast.remove(), LIFETIME_MS); };
+    toast.addEventListener('mouseenter', hold);
+    toast.addEventListener('mouseleave', resume);
+    toast.addEventListener('focusin', hold);
+    toast.addEventListener('focusout', resume);
     return;
   }
 

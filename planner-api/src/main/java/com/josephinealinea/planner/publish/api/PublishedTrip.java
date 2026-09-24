@@ -23,10 +23,10 @@ public record PublishedTrip(
         List<Checklist> checklist,
         Budget budget) {
 
-    public record Country(String name, String flag) {}
+    public record Country(String code, String flag) {}
 
     public record Destination(String name,
-                              String country,
+                              String countryCode,
                               String flag,
                               Double latitude,
                               Double longitude,
@@ -59,7 +59,7 @@ public record PublishedTrip(
 
     /** One place the trip is on a given day, with what a lookup needs. */
     public record Place(String name,
-                        String country,
+                        String countryCode,
                         String flag,
                         Double latitude,
                         Double longitude) {}
@@ -80,7 +80,7 @@ public record PublishedTrip(
                             String note,
                             String status,
                             String statusIcon,
-                            List<String> countries) {}
+                            List<String> countryCodes) {}
 
     /**
      * `charged` is what the trip has actually cost; `forecast` counts the
@@ -108,7 +108,7 @@ public record PublishedTrip(
          * are not a fixed set the way the four categories are, so the page
          * colours them itself and uses the flag it was given.
          */
-        public record Country(String key, String label, String flag, BigDecimal amount) {}
+        public record Country(String key, String flag, BigDecimal amount) {}
 
         /** How much was actually spent in one currency, before conversion. */
         public record Native(String currency, BigDecimal amount) {}

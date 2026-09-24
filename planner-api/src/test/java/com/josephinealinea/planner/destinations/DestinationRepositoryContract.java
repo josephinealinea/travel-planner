@@ -150,7 +150,6 @@ public abstract class DestinationRepositoryContract extends TripScopedRepository
         d.setTripId(tripIdOf(TRIP));
         d.setName("Cusco");
         d.setCountryCode("PE");
-        d.setCountryName("Peru");
         d.setCountryFlag("🇵🇪");
         d.setLatitude(-13.53195);
         d.setLongitude(-71.967463);

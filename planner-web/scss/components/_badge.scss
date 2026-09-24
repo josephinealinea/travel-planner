@@ -4,7 +4,7 @@
 .badge {
   display: inline-block;
   padding: 1px 8px;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   border-radius: 999px;
@@ -86,10 +86,9 @@ button.chip:disabled {
   flex: none;
 }
 
-// Phones: filter chips are tapped, not clicked. 36px plus the wider gap keeps
-// neighbours from being hit by mistake without making a row of six chips
-// wrap into four lines.
+// Phones: filter chips are tapped, not clicked. 44px is the touch minimum; a
+// row of chips may wrap onto more lines, which beats a mis-tap.
 @include m.mobile {
-  button.chip { min-height: 36px; padding: 6px 12px; }
+  button.chip { min-height: 44px; padding: 6px 14px; }
   .chip-group { gap: t.$space-2; }
 }

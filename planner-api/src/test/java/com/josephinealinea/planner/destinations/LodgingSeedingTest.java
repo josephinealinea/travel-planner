@@ -99,14 +99,14 @@ class LodgingSeedingTest {
     }
 
     private DestinationService.Input suppressed(String start, String end) {
-        return new DestinationService.Input("Cusco", "PE", "Peru", null, null, null, null,
+        return new DestinationService.Input("Cusco", "PE", null, null, null, null,
                 start == null ? null : LocalDate.parse(start),
                 end == null ? null : LocalDate.parse(end),
                 null, true);
     }
 
     private DestinationService.Input input(String start, String end) {
-        return new DestinationService.Input("Cusco", "PE", "Peru", null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
+        return new DestinationService.Input("Cusco", "PE", null, null, null, null, start == null ? null : LocalDate.parse(start), end == null ? null : LocalDate.parse(end), null, null);
     }
 
     private List<ChecklistCategory> seededCategories() {
@@ -234,7 +234,7 @@ class LodgingSeedingTest {
         assertThat(checklist.findAll(SLUG)).isEmpty();
 
         service.update(TRIP_ID, USER_ID, created.getId(),
-                new DestinationService.Input(null, null, null, null, null, null, null,
+                new DestinationService.Input(null, null, null, null, null, null,
                         LocalDate.parse("2026-10-25"), LocalDate.parse("2026-10-31"), null, null));
 
         assertThat(checklist.findAll(SLUG)).isEmpty();
@@ -250,7 +250,7 @@ class LodgingSeedingTest {
         assertThat(checklist.findAll(SLUG)).isEmpty();
 
         service.update(TRIP_ID, USER_ID, created.getId(),
-                new DestinationService.Input(null, null, null, null, null, null, null,
+                new DestinationService.Input(null, null, null, null, null, null,
                         null, null, null, false));
 
         // Only the lodging one: transport and activities are seeded at create

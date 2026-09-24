@@ -29,7 +29,6 @@ public class DestinationService {
     public record Input(
             String name,
             String countryCode,
-            String countryName,
             Double latitude,
             Double longitude,
             Long geonameId,
@@ -45,10 +44,10 @@ public class DestinationService {
             Boolean inheritTravellers) {
 
         /** The shape from before travellers existed: says nothing about them. */
-        public Input(String name, String countryCode, String countryName, Double latitude,
+        public Input(String name, String countryCode, Double latitude,
                      Double longitude, Long geonameId, String timezone, LocalDate startDate,
                      LocalDate endDate, String note, Boolean suppressChecklist) {
-            this(name, countryCode, countryName, latitude, longitude, geonameId, timezone,
+            this(name, countryCode, latitude, longitude, geonameId, timezone,
                     startDate, endDate, note, suppressChecklist, null, null);
         }
     }
@@ -292,13 +291,8 @@ public class DestinationService {
         if (input.countryCode() != null && !input.countryCode().isBlank()) {
             String code = input.countryCode().trim().toUpperCase();
             destination.setCountryCode(code);
-            destination.setCountryName(
-                    input.countryName() != null && !input.countryName().isBlank()
-                            ? input.countryName().trim()
-                            : countries.nameOf(code));
+            // The name is not stored: every screen resolves it from the code.
             destination.setCountryFlag(countries.flagOf(code));
-        } else if (input.countryName() != null) {
-            destination.setCountryName(blankToNull(input.countryName()));
         }
     }
 

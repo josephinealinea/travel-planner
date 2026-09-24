@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.trips.api;
 
 import com.josephinealinea.planner.identity.api.UserService;
+import com.josephinealinea.planner.identity.domain.TierLevel;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.notification.EmailSender;
 import com.josephinealinea.planner.notification.MailTemplates;
@@ -28,19 +29,34 @@ public class TripService {
     private final EmailSender email;
     private final MailTemplates templates;
     private final StaticSiteRenderer renderer;
+    private final TripLimitProperties limits;
+    private final MemberLinks links;
 
     public TripService(TripRepository trips,
                        TripAccessService access,
                        UserService users,
                        EmailSender email,
                        MailTemplates templates,
-                       StaticSiteRenderer renderer) {
+                       StaticSiteRenderer renderer,
+                       TripLimitProperties limits,
+                       MemberLinks links) {
         this.trips = trips;
         this.access = access;
         this.users = users;
         this.email = email;
         this.templates = templates;
         this.renderer = renderer;
+        this.limits = limits;
+        this.links = links;
+    }
+
+    /**
+     * A BASIC account may be on a limited number of trips, the ones it created
+     * and the ones it joined counted together. Other tiers are unlimited.
+     */
+    private boolean atTripLimit(User user) {
+        return user.getTierLevel() == TierLevel.BASIC
+                && trips.findAllForUser(user.getId()).size() >= limits.basicMaxTrips();
     }
 
     public List<Trip> listFor(String userId) {
@@ -50,6 +66,11 @@ public class TripService {
     public Trip create(String userId, String title, LocalDate startDate, LocalDate endDate) {
         requireDateOrder(startDate, endDate);
         User owner = users.require(userId);
+        if (atTripLimit(owner)) {
+            throw ApiException.conflict("trip_limit_reached",
+                    "In your current tier you can only have %d trips. Delete or leave a trip to create a new one."
+                            .formatted(limits.basicMaxTrips()));
+        }
 
         Trip trip = new Trip();
         trip.setId(Ids.newId());
@@ -125,6 +146,13 @@ public class TripService {
                     "%s is already on this trip.".formatted(invited.user().displayName()));
         }
 
+        // A brand-new account is on no trips, so only an existing one can be full.
+        if (!invited.created() && atTripLimit(invited.user())) {
+            throw ApiException.conflict("member_trip_limit_reached",
+                    "%s is already on %d trips, the most their current tier allows. Ask them to delete or leave another trip before you add them."
+                            .formatted(invited.user().displayName(), limits.basicMaxTrips()));
+        }
+
         trip.getMembers().add(new TripMember(
                 invited.user().getId(), TripRole.MEMBER, actingUserId));
         Audit.touched(trip, actingUserId);
@@ -140,12 +168,17 @@ public class TripService {
     }
 
     /**
-     * Any member can remove any other member, and removing yourself is how you
-     * leave a trip. The owner cannot be removed at all — the trip would be left
+     * The owner can remove any other member, and anyone can remove themselves,
+     * which is how you leave a trip. The owner cannot be removed at all — the trip would be left
      * with nobody able to delete or publish it.
      */
     public Trip removeMember(String tripId, String actingUserId, String memberUserId) {
         Trip trip = access.requireMember(tripId, actingUserId);
+
+        // Anyone may leave; only the owner may remove somebody else.
+        if (!memberUserId.equals(actingUserId) && !trip.isOwner(actingUserId)) {
+            throw ApiException.forbidden("Only the trip owner can remove a travel buddy.");
+        }
 
         TripMember member = trip.member(memberUserId)
                 .orElseThrow(() -> ApiException.notFound("Member"));
@@ -155,7 +188,26 @@ public class TripService {
                     "The trip owner cannot be removed. Delete the trip instead.");
         }
 
-        trip.getMembers().removeIf(m -> m.getUserId().equals(memberUserId));
+        boolean leaving = memberUserId.equals(actingUserId);
+        if (!leaving) {
+            // The owner has to unlink somebody before removing them, so no
+            // record is left naming a person who is no longer on the trip.
+            List<String> areas = links.areasLinkedTo(trip.getSlug(), memberUserId);
+            if (!areas.isEmpty()) {
+                throw ApiException.conflict("member_still_linked",
+                        "%s is still linked to the %s. Unlink them first, then remove them from the trip."
+                                .formatted(users.require(memberUserId).displayName(), joined(areas)));
+            }
+            trip.getMembers().removeIf(m -> m.getUserId().equals(memberUserId));
+        } else if (links.inBudget(trip.getSlug(), memberUserId)) {
+            // Their share of the budget stays: it moves to a stand-in that takes
+            // their place on the trip, and they leave without it.
+            User standIn = users.createLeftCopy(memberUserId);
+            links.moveBudgetLinks(trip.getSlug(), memberUserId, standIn.getId());
+            member.setUserId(standIn.getId());
+        } else {
+            trip.getMembers().removeIf(m -> m.getUserId().equals(memberUserId));
+        }
         Audit.touched(trip, actingUserId);
         Trip saved = trips.save(trip);
 
@@ -164,6 +216,12 @@ public class TripService {
             email.send(templates.removedFromTrip(users.require(memberUserId).getEmail(), trip.getTitle()));
         }
         return saved;
+    }
+
+    /** "budget", "destinations" and "checklist" */
+    private static String joined(List<String> areas) {
+        if (areas.size() == 1) return areas.get(0);
+        return String.join(", ", areas.subList(0, areas.size() - 1)) + " and " + areas.get(areas.size() - 1);
     }
 
     private static void requireDateOrder(LocalDate start, LocalDate end) {

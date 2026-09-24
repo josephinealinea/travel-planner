@@ -167,13 +167,12 @@ class BudgetSharingTest {
         return service.summarise(TRIP_ID, userId);
     }
 
-    private Destination place(String id, String countryCode, String countryName) {
+    private Destination place(String id, String countryCode) {
         Destination destination = new Destination();
         destination.setId(id);
         destination.setTripId(TRIP_ID);
         destination.setName(id);
         destination.setCountryCode(countryCode);
-        destination.setCountryName(countryName);
         return destinations.save(SLUG, destination);
     }
 
@@ -293,7 +292,7 @@ class BudgetSharingTest {
 
     @Test
     void aSharedAmountIsDividedBeforeItIsConvertedAndBrokenDown() {
-        place("Cusco", "PE", "Peru");
+        place("Cusco", "PE");
         service.create(TRIP_ID, ALEX, new BudgetService.Input(
                 "Hotel in Cusco", ChecklistCategory.LODGING, new BigDecimal("220.00"), "USD",
                 null, List.of("PE"), List.of(ALEX, SAM), ALEX, true));

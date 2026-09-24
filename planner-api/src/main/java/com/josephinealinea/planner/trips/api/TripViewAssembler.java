@@ -12,6 +12,7 @@ import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.publish.api.PersonalPages;
 import com.josephinealinea.planner.publish.api.PublishApprovalProperties;
 import com.josephinealinea.planner.publish.infra.PageStore;
+import com.josephinealinea.planner.shared.Emails;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.trips.domain.TripMember;
 import org.springframework.stereotype.Service;
@@ -131,10 +132,10 @@ public class TripViewAssembler {
             boolean hasSignedIn = user != null && !user.isMustChangePassword();
             return new TripViews.MemberView(
                     member.getUserId(),
-                    user == null ? null : user.getEmail(),
+                    user == null ? null : Emails.shorten(user.getEmail()),
                     user == null ? "Former member" : user.displayName(),
                     user == null ? null : user.getScreenName(),
-                    user == null ? null : user.getHomeCountry(),
+                    user == null ? null : user.getHomeCountryCode(),
                     member.getRole(),
                     hasSignedIn,
                     member.getInvitedAt());
@@ -158,7 +159,27 @@ public class TripViewAssembler {
                 trip.getPublishedAt(),
                 requests,
                 personalUrl(trip, currentUserId),
-                approval.requireOwnerApproval());
+                approval.requireOwnerApproval(),
+                allPersonalUrls(trip, currentUserId));
+    }
+
+    /**
+     * Every personal page actually written, for the owner. Built from the same
+     * slugs the publisher names the folders with and checked against one
+     * listing of the store, so a member added since the last publish is left
+     * out rather than offered as a 404.
+     */
+    private List<String> allPersonalUrls(Trip trip, String currentUserId) {
+        if (currentUserId == null || !trip.isPublished() || !trip.isOwner(currentUserId)) {
+            return List.of();
+        }
+        var written = pages.publishedMemberPages(trip.getSlug());
+        String base = publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/";
+        return PersonalPages.slugsFor(trip, usersById(trip)).values().stream()
+                .filter(written::contains)
+                .sorted()
+                .map(slug -> base + trip.getSlug() + "/m/" + slug)
+                .toList();
     }
 
     /**

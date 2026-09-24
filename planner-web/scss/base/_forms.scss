@@ -14,13 +14,13 @@
 
 .field-hint {
   margin: t.$space-1 0 0;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--tp-muted);
 }
 
 .field-error {
   margin: t.$space-1 0 0;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--tp-danger);
 }
 
@@ -40,7 +40,7 @@ textarea {
   font: inherit;
   color: var(--tp-text);
   background: var(--tp-input-bg);
-  border: 1px solid var(--tp-border);
+  border: 1px solid var(--tp-border-control, var(--tp-border));
   border-radius: var(--tp-radius-sm);
   transition: border-color t.$transition, box-shadow t.$transition;
 }

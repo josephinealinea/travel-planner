@@ -159,13 +159,12 @@ class BudgetStatusTest {
         return budget.findById(SLUG, id).orElseThrow();
     }
 
-    private Destination place(String id, String countryCode, String countryName) {
+    private Destination place(String id, String countryCode) {
         Destination destination = new Destination();
         destination.setId(id);
         destination.setTripId(TRIP_ID);
         destination.setName(id);
         destination.setCountryCode(countryCode);
-        destination.setCountryName(countryName);
         return destinations.save(SLUG, destination);
     }
 
@@ -349,8 +348,8 @@ class BudgetStatusTest {
 
     @Test
     void theCountrySlicesSplitTheSameWayTheTotalsDo() {
-        place("Cusco", "PE", "Peru");
-        place("La Paz", "BO", "Bolivia");
+        place("Cusco", "PE");
+        place("La Paz", "BO");
 
         service.create(TRIP_ID, USER_ID, new BudgetService.Input("Hotel in Cusco",
                 ChecklistCategory.LODGING, new BigDecimal("200.00"), "EUR", null, List.of("PE"), null, USER_ID, true));

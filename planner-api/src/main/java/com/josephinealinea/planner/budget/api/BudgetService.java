@@ -187,9 +187,9 @@ public class BudgetService {
      * destination. A row spanning several countries is split between them
      * rather than bucketed apart — see countrySharesFor.
      */
-    public record CountryAmount(String key, String name, String flag, BigDecimal amount) {}
+    public record CountryAmount(String key, String flag, BigDecimal amount) {}
 
-    private static final CountryAmount NO_LOCATION = new CountryAmount("NO_LOCATION", "No location", null, null);
+    private static final CountryAmount NO_LOCATION = new CountryAmount("NO_LOCATION", null, null);
 
     private final BudgetRepository budget;
     private final ItineraryRepository itinerary;
@@ -433,7 +433,7 @@ public class BudgetService {
         List<CountryAmount> byCountry = countryTotals.entrySet().stream()
                 .map(entry -> {
                     CountryAmount meta = countryMeta.get(entry.getKey());
-                    return new CountryAmount(meta.key(), meta.name(), meta.flag(),
+                    return new CountryAmount(meta.key(), meta.flag(),
                             entry.getValue().setScale(2, RoundingMode.HALF_UP));
                 })
                 .sorted(Comparator.comparing(CountryAmount::amount).reversed())
@@ -495,7 +495,6 @@ public class BudgetService {
             Destination sample = countrySamples.get(key);
             perDestination.add(new CountryAmount(
                     key,
-                    sample != null && sample.getCountryName() != null ? sample.getCountryName() : key,
                     sample == null ? null : sample.getCountryFlag(),
                     null));
         }

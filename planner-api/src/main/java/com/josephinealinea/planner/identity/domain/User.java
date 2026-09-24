@@ -1,5 +1,7 @@
 package com.josephinealinea.planner.identity.domain;
 
+import com.josephinealinea.planner.shared.Emails;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +19,15 @@ public class User {
     private String id;
     private String email;
     private String screenName;
-    /** Country name as picked from the country list; blank until they set one. */
-    private String homeCountry;
+    /** ISO 3166-1 alpha-2 code, named by the shared country table; blank until they set one. */
+    private String homeCountryCode;
+
+    /**
+     * Never null: a users.yml record with no tier, or a row written before the
+     * column existed, is BASIC, which is what every account started as.
+     */
+    private TierLevel tierLevel = TierLevel.BASIC;
+
     private String passwordHash;
     private boolean mustChangePassword;
     private List<String> currencies = new ArrayList<>();
@@ -41,7 +50,7 @@ public class User {
     public User() {}
 
     public String displayName() {
-        return (screenName == null || screenName.isBlank()) ? email : screenName;
+        return (screenName == null || screenName.isBlank()) ? Emails.shorten(email) : screenName;
     }
 
     public String getId() { return id; }
@@ -50,8 +59,11 @@ public class User {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public String getHomeCountry() { return homeCountry; }
-    public void setHomeCountry(String homeCountry) { this.homeCountry = homeCountry; }
+    public String getHomeCountryCode() { return homeCountryCode; }
+    public void setHomeCountryCode(String homeCountryCode) { this.homeCountryCode = homeCountryCode; }
+
+    public TierLevel getTierLevel() { return tierLevel; }
+    public void setTierLevel(TierLevel tierLevel) { this.tierLevel = tierLevel == null ? TierLevel.BASIC : tierLevel; }
 
     public String getScreenName() { return screenName; }
     public void setScreenName(String screenName) { this.screenName = screenName; }

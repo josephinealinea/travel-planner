@@ -53,6 +53,24 @@
     return currency ? formatted + ' ' + currency : formatted;
   }
 
+  // Country names come from one table, inlined by the renderer as
+  // window.COUNTRIES (code -> name) from publish/countries.json. The payload
+  // carries only codes, so a name is spelled in one place.
+  var COUNTRY_NAMES = window.COUNTRIES || {};
+  function countryName(code) {
+    var key = String(code || '').toUpperCase();
+    return key ? (COUNTRY_NAMES[key] || key) : '';
+  }
+  function flagOf(code) {
+    var key = String(code || '').toUpperCase();
+    if (!/^[A-Z]{2}$/.test(key)) return '';
+    return String.fromCodePoint(0x1F1A5 + key.charCodeAt(0), 0x1F1A5 + key.charCodeAt(1));
+  }
+  function countryLabel(code) {
+    var flag = flagOf(code);
+    return (flag ? flag + ' ' : '') + countryName(code);
+  }
+
   function list(value) {
     return Array.isArray(value) ? value : [];
   }
@@ -183,7 +201,7 @@
       card.appendChild(name);
 
       var meta = [];
-      if (destination.country) meta.push(destination.country);
+      if (destination.countryCode) meta.push(countryName(destination.countryCode));
       if (destination.startDate) {
         meta.push(destination.endDate && destination.endDate !== destination.startDate
           ? shortDate(destination.startDate) + ' – ' + shortDate(destination.endDate)
@@ -241,9 +259,8 @@
 
           var head = el('div', 'weather-card-head');
           head.appendChild(el('span', 'weather-place', place.name || ''));
-          if (place.country) {
-            head.appendChild(el('span', 'chip',
-              (place.flag ? place.flag + ' ' : '') + place.country));
+          if (place.countryCode) {
+            head.appendChild(el('span', 'chip', countryLabel(place.countryCode)));
           }
           pc.appendChild(head);
 
@@ -315,8 +332,8 @@
 
       var body = el('div', 'check-desc');
       body.appendChild(document.createTextNode(item.description || ''));
-      (item.countries || []).forEach(function (name) {
-        body.appendChild(el('span', 'chip', name));
+      (item.countryCodes || []).forEach(function (code) {
+        body.appendChild(el('span', 'chip', countryLabel(code)));
       });
       if (item.categoryLabel) body.appendChild(el('span', 'chip', item.categoryLabel));
       if (item.note) body.appendChild(el('span', 'check-note', item.note));
@@ -397,7 +414,9 @@
     if (dimension === 'country') {
       return list(rollup.byCountry).map(function (country, i) {
         return {
-          label: (country.flag ? country.flag + ' ' : '') + country.label,
+          label: country.key === 'NO_LOCATION'
+            ? 'No location'
+            : (country.flag ? country.flag + ' ' : '') + countryName(country.key),
           amount: Number(country.amount) || 0,
           color: COUNTRY_COLOURS[i % COUNTRY_COLOURS.length]
         };

@@ -103,7 +103,6 @@ class StaticSiteRendererTest {
         cusco.setTripId("trip-1");
         cusco.setName("Cusco");
         cusco.setCountryCode("PE");
-        cusco.setCountryName("Peru");
         cusco.setCountryFlag("🇵🇪");
         cusco.setLatitude(-13.53188);
         cusco.setLongitude(-71.96701);
@@ -258,6 +257,17 @@ class StaticSiteRendererTest {
 
         assertThat(publishDir.resolve(SLUG).resolve("index.html")).exists();
         assertThat(publishDir.resolve(SLUG).resolve("trip.json")).exists();
+    }
+
+    @Test
+    void carriesCountryCodesAndOneTableThatNamesThem() throws Exception {
+        String html = render("minima");
+
+        // The snapshot names a destination's country by code only; the name is
+        // looked up in the inlined table, the same one the planner uses.
+        assertThat(html).contains("window.COUNTRIES =").contains("\"PE\":\"Peru\"");
+        assertThat(html).contains("\"countryCode\":\"PE\"");
+        assertThat(html).doesNotContain("\"country\":\"Peru\"");
     }
 
     @Test

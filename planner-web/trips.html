@@ -93,7 +93,7 @@
   <!-- Create trip -->
   <div class="modal-backdrop" x-show="creating" x-cloak @click.self="creating = false"
        @keydown.escape.window="creating = false">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title" x-dialog="creating">
       <div class="modal-header">
         <h2 class="modal-title" id="create-title">New trip</h2>
         <button type="button" class="modal-close" @click="creating = false" aria-label="Close">✕</button>
@@ -129,7 +129,7 @@
   <!-- Delete trip: typing the title is the confirmation -->
   <div class="modal-backdrop" x-show="deleting" x-cloak @click.self="deleting = null"
        @keydown.escape.window="deleting = null">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" x-dialog="deleting">
       <div class="modal-header">
         <h2 class="modal-title" id="delete-title">Delete this trip?</h2>
         <button type="button" class="modal-close" @click="deleting = null" aria-label="Close">✕</button>
