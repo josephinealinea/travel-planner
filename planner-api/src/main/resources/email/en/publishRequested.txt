@@ -1,0 +1,5 @@
+Subject: {{requestedBy}} wants to publish {{tripTitle}}
+
+{{requestedBy}} has asked to publish the trip "{{tripTitle}}".
+
+Open the trip's Publish tab at {{signInUrl}} to approve or reject it.

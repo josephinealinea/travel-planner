@@ -72,7 +72,30 @@ yaml() { printf "%s: '%s'\n" "$1" "${2//\'/\'\'}"; }
   yaml R2_BUCKET "$R2_BUCKET"
   yaml R2_ACCESS_KEY_ID "$R2_ACCESS_KEY_ID"
   yaml MAIL_MODE "$MAIL_MODE"
+  # Optional: MAIL_EVENT_<NAME>='false' in .env.deploy switches that email off.
+  # Unset means on. Names: docs/deploy.md, Part 11.
+  for v in MAIL_EVENT_INVITED_NEW_MEMBER MAIL_EVENT_ADDED_EXISTING_MEMBER MAIL_EVENT_REMOVED_FROM_TRIP \
+           MAIL_EVENT_PUBLISH_REQUESTED MAIL_EVENT_PUBLISH_APPROVED MAIL_EVENT_PUBLISH_REJECTED \
+           MAIL_EVENT_TRIP_PUBLISHED MAIL_EVENT_PAYMENT_RECORDED; do
+    if [[ -n ${!v:-} ]]; then yaml "$v" "${!v}"; fi
+  done
+  # Only meaningful in smtp mode; the password comes from Secret Manager below.
+  if [[ $MAIL_MODE == smtp ]]; then
+    for v in SMTP_HOST SMTP_PORT SMTP_USER MAIL_FROM; do
+      [[ -n ${!v:-} ]] || { echo "MAIL_MODE=smtp needs $v in .env.deploy" >&2; exit 1; }
+    done
+    yaml SMTP_HOST "$SMTP_HOST"
+    yaml SMTP_PORT "$SMTP_PORT"
+    yaml SMTP_USER "$SMTP_USER"
+    yaml SMTP_AUTH true
+    yaml SMTP_SSL "${SMTP_SSL:-false}"
+    yaml SMTP_STARTTLS "${SMTP_STARTTLS:-false}"
+    yaml MAIL_FROM "$MAIL_FROM"
+  fi
 } >"$envfile"
+
+secrets=JWT_SECRET=jwt-secret:latest,DB_PASSWORD=db-password:latest,R2_SECRET_ACCESS_KEY=r2-secret-access-key:latest,PROXY_SECRET=proxy-secret:latest
+[[ $MAIL_MODE == smtp ]] && secrets+=,SMTP_PASSWORD=smtp-password:latest
 
 echo "==> Deploying $SERVICE ($image)"
 gcloud run deploy "$SERVICE" \
@@ -80,7 +103,7 @@ gcloud run deploy "$SERVICE" \
   --allow-unauthenticated \
   --min-instances=0 --max-instances=1 --cpu=1 --memory=1Gi --cpu-boost \
   --env-vars-file="$envfile" \
-  --set-secrets=JWT_SECRET=jwt-secret:latest,DB_PASSWORD=db-password:latest,R2_SECRET_ACCESS_KEY=r2-secret-access-key:latest,PROXY_SECRET=proxy-secret:latest
+  --set-secrets="$secrets"
 
 url=$(gcloud run services describe "$SERVICE" --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')
 echo "==> $url"

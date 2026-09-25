@@ -310,10 +310,56 @@ class PublishApprovalTest {
         assertThat(publish.previewPending(TRIP_ID, OWNER)).isNull();
     }
 
+    /** Everything the service under test tried to send. */
+    private final java.util.List<com.josephinealinea.planner.notification.Email> sent = new java.util.ArrayList<>();
+
     private PublishService serviceWith(boolean requireOwnerApproval) {
         return new PublishService(trips, access, views, renderer, userService,
-                new LoggingEmailSender(), mailTemplates,
+                email -> { sent.add(email); new LoggingEmailSender().send(email); }, mailTemplates,
                 new PublishApprovalProperties(requireOwnerApproval));
+    }
+
+    // ── telling the members ─────────────────────────
+
+    private java.util.List<String> sentTo(com.josephinealinea.planner.notification.MailEvent event) {
+        return sent.stream().filter(e -> e.event() == event)
+                .map(com.josephinealinea.planner.notification.Email::to).toList();
+    }
+
+    /** Approval tells the requester it was approved; everybody else hears it is live. */
+    @Test
+    void anApprovalTellsTheRequesterAndTheOtherMembersSeparately() {
+        publish.requestPublish(TRIP_ID, MEMBER, null, "y2k");
+        sent.clear();
+
+        publish.approveRequest(TRIP_ID, OWNER, pendingRequestId(), "minima");
+
+        assertThat(sentTo(com.josephinealinea.planner.notification.MailEvent.PUBLISH_APPROVED))
+                .containsExactly("member@example.com");
+        // The owner did it and the member was just told; nobody is left to hear.
+        assertThat(sentTo(com.josephinealinea.planner.notification.MailEvent.TRIP_PUBLISHED)).isEmpty();
+    }
+
+    @Test
+    void publishingDirectlyTellsTheOtherMembersWithTheirOwnPage() {
+        serviceWith(false).publish(TRIP_ID, MEMBER, "y2k");
+
+        var told = sent.stream()
+                .filter(e -> e.event() == com.josephinealinea.planner.notification.MailEvent.TRIP_PUBLISHED).toList();
+        assertThat(told).extracting(com.josephinealinea.planner.notification.Email::to)
+                .containsExactly("owner@example.com");
+        assertThat(told.get(0).body()).contains("/m/");
+    }
+
+    @Test
+    void publishingAgainDoesNotTellEveryoneAgain() {
+        var open = serviceWith(false);
+        open.publish(TRIP_ID, MEMBER, "y2k");
+        sent.clear();
+
+        open.publish(TRIP_ID, MEMBER, "minima");
+
+        assertThat(sent).isEmpty();
     }
 
     // ── require-owner-approval switched off ─────────

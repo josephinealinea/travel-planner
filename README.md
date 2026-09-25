@@ -37,18 +37,13 @@ lsof -ti :8080 | xargs -r kill; lsof -ti :3000 | xargs -r kill
 ```bash
 ./docker-stop.sh
 ```
-#### Start the API (yml mode ON)
-
-cd planner-api && FEATURE_ENABLE_DATABASE=false && BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
-
-#### If database mode ON
 #### Start Postgres
 ```bash
 ./docker-start.sh
 ```
-#### Start the API in database mode
+#### Start the API in database mode and real email
 ```bash
-cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
+cd planner-api && (set -a; . ./.env.resend; set +a; FEATURE_ENABLE_DATABASE=true MAIL_MODE=smtp SMTP_HOST=smtp.resend.com SMTP_PORT=465 SMTP_SSL=true SMTP_AUTH=true SMTP_USER=resend SMTP_PASSWORD="$RESEND_API_KEY" MAIL_FROM=no-reply@travellingllama.fun BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun)
 ```
 #### Build the stylesheets & serve the FE
 ```bash
@@ -198,23 +193,6 @@ Every repository is also backed by PostgreSQL, so the same app runs on a real
 database — needed for more than one instance, and what the [Cloud Run
 deployment](docs/deploy.md) uses. Locally, a Postgres 17 container
 (`compose.yaml`) stands in for it. Start it, then point the API at it:
-
-#### Start Postgres
-```bash
-./docker-start.sh
-```
-#### Start the API in database mode
-```bash
-cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
-```
-#### Stop Postgres
-```bash
-./docker-stop.sh
-```
-
-`docker-stop.sh` leaves the container's data in place — `docker-start.sh` picks
-up where it left off. To also wipe the data, run `docker compose down
---volumes` instead.
 
 #### Run the tests
 ```bash

@@ -1,0 +1,11 @@
+Subject: You have been added to {{tripTitle}}
+
+{{invitedBy}} added you to the trip "{{tripTitle}}".
+
+Sign in at {{signInUrl}}
+
+  Email:    {{email}}
+  Password: {{password}}
+
+You will be asked to choose your own password and a screen name the
+first time you sign in.

@@ -83,11 +83,12 @@ class SettlementPaymentTest {
     private BudgetService budgetService;
     private SettlementService settlement;
     private Trip trip;
+    private AppProperties props;
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
         this.dir = tempDir;
-        AppProperties props = new AppProperties(
+        props = new AppProperties(
                 new AppProperties.Storage(tempDir.toString()),
                 new AppProperties.Publish(tempDir.resolve("published").toString(), null),
                 new AppProperties.Mail(null, null),
@@ -322,6 +323,68 @@ class SettlementPaymentTest {
         budgetService.create(TRIP_ID, ALEX, new BudgetService.Input(
                 description, ChecklistCategory.OTHERS, new BigDecimal(amount), "EUR",
                 null, null, sharers, paidBy, false));
+    }
+
+    // ── email ───────────────────────────────────────────────────────────
+
+    private SettlementService mailing(List<com.josephinealinea.planner.notification.Email> sent) {
+        return new SettlementService(payments, access,
+                new com.josephinealinea.planner.identity.api.UserService(users,
+                        new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(), props),
+                sent::add,
+                new com.josephinealinea.planner.notification.MailTemplates(props,
+                        com.josephinealinea.planner.i18n.I18nConfig.standalone()));
+    }
+
+    private static SettlementService.Input input(String from, String to) {
+        return new SettlementService.Input(from, to, new BigDecimal("24.91"), "PEN", null, null);
+    }
+
+    @Test
+    void thePayerRecordingTellsTheReceiverAndNobodyElse() {
+        var sent = new java.util.ArrayList<com.josephinealinea.planner.notification.Email>();
+
+        mailing(sent).record(TRIP_ID, SAM, input(SAM, RAY));
+
+        assertThat(sent).hasSize(1);
+        assertThat(sent.get(0).to()).isEqualTo("ray@example.com");
+        assertThat(sent.get(0).event())
+                .isEqualTo(com.josephinealinea.planner.notification.MailEvent.PAYMENT_RECORDED);
+        assertThat(sent.get(0).body()).contains("paid").contains("24.91 PEN");
+    }
+
+    @Test
+    void theReceiverRecordingTellsThePayer() {
+        var sent = new java.util.ArrayList<com.josephinealinea.planner.notification.Email>();
+
+        mailing(sent).record(TRIP_ID, RAY, input(SAM, RAY));
+
+        assertThat(sent).extracting(com.josephinealinea.planner.notification.Email::to)
+                .containsExactly("sam@example.com");
+    }
+
+    @Test
+    void theOwnerRecordingForTwoOthersTellsBoth() {
+        var sent = new java.util.ArrayList<com.josephinealinea.planner.notification.Email>();
+
+        mailing(sent).record(TRIP_ID, ALEX, input(SAM, RAY));
+
+        assertThat(sent).extracting(com.josephinealinea.planner.notification.Email::to)
+                .containsExactlyInAnyOrder("sam@example.com", "ray@example.com");
+    }
+
+    /** A payment is saved even if the email cannot be built or sent. */
+    @Test
+    void aMailFailureNeverUndoesThePayment() {
+        var service = new SettlementService(payments, access,
+                new com.josephinealinea.planner.identity.api.UserService(users,
+                        new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(), props),
+                email -> { throw new IllegalStateException("mail is down"); },
+                new com.josephinealinea.planner.notification.MailTemplates(props,
+                        com.josephinealinea.planner.i18n.I18nConfig.standalone()));
+
+        assertThat(service.record(TRIP_ID, SAM, input(SAM, RAY))).isNotNull();
+        assertThat(payments.findAll(SLUG)).hasSize(1);
     }
 
     // ── who may record and delete ───────────────────────────────────────

@@ -326,7 +326,6 @@ export default {
   'trip.anythingWorthRememberingSeason': "Anything worth remembering — season, altitude, emergency numbers, how to get around, etc.",
   'trip.approvePublish': "Approve & publish",
   'trip.assembleTheHerd': "Assemble the herd",
-  'trip.backTo': "Back to {name}'s",
   'trip.balanceIn': "Balance in {currency}",
   'trip.basedOnTheCharged': "Based on the charged expenses only, in the same currency each was paid in.",
   'trip.basedOnTheChargedExpenses': "Based on the charged expenses only, in the same currency each was paid in. Payments are simplified across the whole trip to keep the number of transfers down.",

@@ -4,7 +4,7 @@ import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames, countriesOfTrip } from '../../location-picker.js';
 import {
   newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
-  toggleTravellerFollowing, everyoneGoes, followParent, effectiveTravellers,
+  toggleTravellerFollowing, everyoneGoes, effectiveTravellers,
   defaultCostSharers,
 } from '../../traveller-picker.js';
 import { t } from '../../i18n/index.js';
@@ -53,7 +53,6 @@ export function checklistTab() {
   return {
     toggleTravellerFollowing,
     everyoneGoes,
-    followParent,
     effectiveTravellers,
 
     // filters
@@ -388,12 +387,6 @@ export function checklistTab() {
     checklistInherited(item) {
       const from = item?.seededFromDestinationId;
       return from ? ((this.namedTravellers.destinations || {})[from] || []) : [];
-    },
-
-    checklistParentLabel(item) {
-      const from = item?.seededFromDestinationId;
-      const destination = from && this.destinations.find((d) => d.id === from);
-      return destination ? destination.name : t('trip.theTrip');
     },
 
     /** What a plan follows while unset: its checklist item's resolved list. */

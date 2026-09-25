@@ -1022,6 +1022,29 @@ the language, each by its own rule:
 - **Emails** go out in the *recipient's* language; a brand-new invitee has none,
   so they get the inviter's request language (`MailTemplates`, via
   `LocaleContextHolder`).
+  **The words are not in `messages_en.properties`.** Each email is a plain
+  file, `resources/email/<language>/<name>.txt`: `Subject: …`, a blank line,
+  the body, with `{{name}}` where a value goes. Nothing is appended, so the file
+  is the email. Only `MailTemplates` reads them. A language or a single file
+  that is missing is English. Values are filled in one pass, so a trip called
+  `{{password}}` is printed, not expanded, and a line break in a title is
+  flattened in the subject. Adding a language is a folder of translated files.
+  **Every email is a `MailEvent` and can be switched off in config**:
+  `app.mail-events.enabled.<event>` (`MAIL_EVENT_<EVENT>` in the environment,
+  default on) for `invited-new-member`, `added-existing-member`,
+  `removed-from-trip`, `publish-requested`, `publish-approved`,
+  `publish-rejected`, `trip-published` and `payment-recorded`. The gate is
+  `EventGatedEmailSender`, the `@Primary` `EmailSender` every service is
+  handed, in front of the transport (`TransportEmailSender`: log, file or
+  smtp), so no service knows about the switches and a new event needs only an
+  enum value, its templates, a `MailTemplates` method and a line in
+  `application.yml` and `deploy.sh` (`MailEventGateTest` fails if the yml
+  misses one). A misspelt event name fails the start. **Do not switch off
+  `invited-new-member`**: it holds the only copy of a new member's temporary
+  password. `trip-published` goes to each member separately with their own
+  page, only when a trip goes live and not on a re-publish;
+  `payment-recorded` goes to the people in the payment who did not record it,
+  and a failure there is logged and never undoes the payment.
 - **A published page is written in the language of the member it is for**, decided
   at publish time like everything else about whose page it is — a static file
   cannot ask its reader. A personal page uses its member's, not the

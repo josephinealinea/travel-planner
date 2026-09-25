@@ -8,11 +8,18 @@ import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.api.TripMembers;
 import com.josephinealinea.planner.trips.domain.Trip;
+import com.josephinealinea.planner.identity.api.UserService;
+import com.josephinealinea.planner.notification.EmailSender;
+import com.josephinealinea.planner.notification.MailTemplates;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Recording, and taking back, a payment between two trip members.
@@ -42,12 +49,27 @@ public class SettlementService {
                         LocalDate date,
                         String note) {}
 
+    private static final Logger log = LoggerFactory.getLogger(SettlementService.class);
+
     private final SettlementPaymentRepository payments;
     private final TripAccessService access;
+    private final UserService users;
+    private final EmailSender email;
+    private final MailTemplates templates;
 
+    /** No mail: what a hand-built service in a test means. */
     public SettlementService(SettlementPaymentRepository payments, TripAccessService access) {
+        this(payments, access, null, null, null);
+    }
+
+    @Autowired
+    public SettlementService(SettlementPaymentRepository payments, TripAccessService access,
+                             UserService users, EmailSender email, MailTemplates templates) {
         this.payments = payments;
         this.access = access;
+        this.users = users;
+        this.email = email;
+        this.templates = templates;
     }
 
     public SettlementPayment record(String tripId, String userId, Input input) {
@@ -84,7 +106,33 @@ public class SettlementService {
         payment.setNote(isBlank(input.note()) ? null : input.note().trim());
         Audit.created(payment, userId);
 
-        return payments.save(trip.getSlug(), payment);
+        SettlementPayment saved = payments.save(trip.getSlug(), payment);
+        tellTheOtherParty(trip, userId, saved);
+        return saved;
+    }
+
+    /**
+     * The people in the payment who did not record it. Two friends settling up
+     * hear about it from whoever entered it; an owner correcting the record
+     * for both of them tells both. A failure here must never undo a payment
+     * that has been saved, so it is logged and left.
+     */
+    private void tellTheOtherParty(Trip trip, String actorId, SettlementPayment payment) {
+        if (email == null) return;
+        try {
+            var accounts = users.byId(List.of(actorId, payment.getFromUserId(), payment.getToUserId()));
+            var recordedBy = accounts.get(actorId).displayName();
+            var payer = accounts.get(payment.getFromUserId());
+            var receiver = accounts.get(payment.getToUserId());
+            for (var party : List.of(payer, receiver)) {
+                if (party.getId().equals(actorId)) continue;
+                email.send(templates.paymentRecorded(party.getLanguageCode(), party.getEmail(), trip.getTitle(),
+                        recordedBy, payer.displayName(), receiver.displayName(),
+                        payment.getAmount().toPlainString(), payment.getCurrency(), payment.getDate().toString()));
+            }
+        } catch (RuntimeException e) {
+            log.error("Could not tell the other party about payment {}", payment.getId(), e);
+        }
     }
 
     public void delete(String tripId, String userId, String paymentId) {

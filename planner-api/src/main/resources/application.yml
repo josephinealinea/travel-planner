@@ -8,6 +8,17 @@ spring:
     port: ${SMTP_PORT:1025}
     username: ${SMTP_USER:}
     password: ${SMTP_PASSWORD:}
+    # Local mail catchers (port 1025) speak neither; a real provider needs one
+    # of them. Port 465 is TLS from the first byte (SMTP_SSL=true); 587 upgrades
+    # in place (SMTP_STARTTLS=true). The timeouts stop a mail outage from
+    # holding a request open, since the send happens inside it.
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.ssl.enable: ${SMTP_SSL:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   # Only read in database mode. With feature-enable-database off,
   # DatabaseModeEnvironment excludes every DataSource and Flyway
   # auto-configuration, so none of this is ever used or connected to.
@@ -88,6 +99,18 @@ app:
     # a new member's default password in local development.
     mode: ${MAIL_MODE:file}
     from: ${MAIL_FROM:no-reply@travel-planner.local}
+  # One switch per kind of email; false drops it (logged, never sent). A kind not
+  # listed is on. See notification/MailEvent.
+  mail-events:
+    enabled:
+      invited-new-member: ${MAIL_EVENT_INVITED_NEW_MEMBER:true}
+      added-existing-member: ${MAIL_EVENT_ADDED_EXISTING_MEMBER:true}
+      removed-from-trip: ${MAIL_EVENT_REMOVED_FROM_TRIP:true}
+      publish-requested: ${MAIL_EVENT_PUBLISH_REQUESTED:true}
+      publish-approved: ${MAIL_EVENT_PUBLISH_APPROVED:true}
+      publish-rejected: ${MAIL_EVENT_PUBLISH_REJECTED:true}
+      trip-published: ${MAIL_EVENT_TRIP_PUBLISHED:true}
+      payment-recorded: ${MAIL_EVENT_PAYMENT_RECORDED:true}
   security:
     jwt-secret: ${JWT_SECRET:}
     session-ttl: 12h

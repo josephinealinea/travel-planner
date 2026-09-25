@@ -19,7 +19,7 @@ import java.time.ZoneOffset;
  */
 @Component
 @ConditionalOnProperty(name = "app.mail.mode", havingValue = "file", matchIfMissing = true)
-public class FileEmailSender implements EmailSender {
+public class FileEmailSender implements TransportEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(FileEmailSender.class);
     private static final DateTimeFormatter STAMP =

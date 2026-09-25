@@ -35,12 +35,6 @@ export function chooseTravellers(state, inheritedIds) {
   state.mode = state.ids.length ? 'named' : 'everyone';
 }
 
-/** "Back to Cusco's". */
-export function followParent(state) {
-  state.ids.splice(0);
-  state.mode = 'inherit';
-}
-
 export function toggleTraveller(state, userId) {
   toggleId(state.ids, userId);
   state.mode = state.ids.length ? 'named' : 'everyone';

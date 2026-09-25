@@ -1,4 +1,4 @@
 package com.josephinealinea.planner.notification;
 
-/** One outgoing message, already rendered. */
-public record Email(String to, String subject, String body) {}
+/** One outgoing message, already rendered, and the event it belongs to. */
+public record Email(MailEvent event, String to, String subject, String body) {}

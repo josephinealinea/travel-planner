@@ -1,0 +1,5 @@
+Subject: A payment was recorded in {{tripTitle}}
+
+{{recordedBy}} recorded that {{payer}} paid {{receiver}} {{amount}} {{currency}} on {{date}}.
+
+Open the trip's Expense tab at {{signInUrl}} to see where everyone stands.

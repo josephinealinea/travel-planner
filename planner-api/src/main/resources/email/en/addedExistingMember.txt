@@ -1,0 +1,5 @@
+Subject: You have been added to {{tripTitle}}
+
+{{invitedBy}} added you to the trip "{{tripTitle}}".
+
+Open it at {{signInUrl}}

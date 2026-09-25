@@ -1,0 +1,5 @@
+Subject: {{tripTitle}} is now published
+
+Your request to publish "{{tripTitle}}" was approved.
+
+The public page is at {{publicUrl}}

@@ -121,6 +121,7 @@ and all `chmod 600` (only you can read them):
 | `.env.neon` | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Part 2 |
 | `.env.r2` | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Part 4 |
 | `.env.deploy` | Project, region, domain, image tag, app settings (no secrets) | Part 7 |
+| `.env.resend` | `RESEND_API_KEY`, only needed once, to store it in Secret Manager | Part 11 |
 
 Values are written in single quotes, one per line, like `DB_USER='planner_owner'`.
 A command loads a file with `set -a && . ./.env.neon && set +a`, which makes
@@ -260,6 +261,8 @@ so they never sit in the service's settings, in git or in the image.
 | `proxy-secret` | The header only the Cloudflare proxy knows | Generated at random |
 | `db-password` | Neon password | `.env.neon` |
 | `r2-secret-access-key` | R2 key | `.env.r2` |
+
+A fifth, `smtp-password`, is added in Part 11 when real email is switched on.
 
 `jwt-secret` matters most. Without it the app generates one inside its data
 folder, which Cloud Run throws away on every restart, logging everybody out.
@@ -410,7 +413,7 @@ What the deploy settings mean:
 | 0–1 instances | Scales to **zero** when idle, which keeps it free. The price is a **cold start of about 7–8 seconds** for the first visitor after a quiet spell. |
 | 1 instance at most | Plenty for a group of friends, and the app is designed for one instance |
 | 1 CPU, 1 GiB, CPU boost | Enough to start the Java app quickly |
-| `MAIL_MODE=log` | New members' invitation emails, including their temporary passwords, appear in **Cloud Run → Logs** instead of being sent. Switching to real email later means `smtp` plus `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `MAIL_FROM` and an `SMTP_PASSWORD` secret. Never use `file` on Cloud Run: it writes to a disk that's thrown away. |
+| `MAIL_MODE=log` | New members' invitation emails, including their temporary passwords, appear in **Cloud Run → Logs** instead of being sent. Switching to real email is Part 11 (Resend). Never use `file` on Cloud Run: it writes to a disk that's thrown away. |
 | No `BOOTSTRAP_OWNER_*` | On purpose. The first account is created in Part 9. |
 
 The service's address is `https://planner-api-<project number>.europe-west3.run.app`.
@@ -672,6 +675,172 @@ To check where it stands:
 
 On the first day, everything was below 1 % except Artifact Registry, which
 holds one image and so reads about 33 %.
+
+---
+
+## Part 11: Real email (Resend)
+
+Until now `MAIL_MODE='log'` has meant a new member's invitation, temporary
+password included, only appears in Cloud Run's logs, and you have to copy it to
+them yourself. **Resend** sends it for real, and its free plan is plenty for a
+group of friends: at the time of writing, 3,000 emails a month, 100 a day and
+one domain. Check Resend's pricing page for the current figures.
+
+The API talks to it as an ordinary SMTP server (`SmtpEmailSender`), so nothing
+Resend-specific is in the code. Only settings change.
+
+| Setting | Value for Resend |
+|---|---|
+| `SMTP_HOST` | `smtp.resend.com` |
+| `SMTP_PORT` | `465` (TLS from the first byte, so `SMTP_SSL='true'`). `587` with `SMTP_STARTTLS='true'` also works. **Never 25**: Google Cloud blocks it. |
+| `SMTP_USER` | the word `resend`, literally |
+| `SMTP_PASSWORD` | your Resend API key, which starts with `re_` |
+| `MAIL_FROM` | an address on the domain you verify below, e.g. `no-reply@travellingllama.fun` |
+
+### 11.1 Verify the domain in Resend
+
+Resend will only send *from* a domain it has checked you own. Until then it
+only lets you send from `onboarding@resend.dev`, and only to your own address,
+which is no use for inviting friends.
+
+1. In the Resend dashboard, open **Domains → Add Domain** and enter
+   `travellingllama.fun`. Pick the same region as the rest of the app, Europe
+   (Ireland) if offered.
+   Leave the two optional fields alone: **Custom Return-Path** stays `send`
+   (bounces are handled on `send.travellingllama.fun`, so nothing on the main
+   domain changes), and **Tracking Subdomain** stays empty (it only tracks
+   opens and clicks in HTML email, and this app sends plain text).
+2. Resend lists a few DNS records (an SPF `TXT`, a DKIM `TXT` and an `MX` for
+   bounces). Choose **Sign in to Cloudflare** if offered and let it add them
+   for you. Otherwise add each one by hand in Cloudflare → the domain → **DNS**.
+   Set every one of them to **DNS only** (grey cloud), not proxied.
+3. Back in Resend, press **Verify DNS Records**. It usually turns green within
+   minutes and can take up to a few hours. Wait for **Verified** before going on.
+
+These records only *add* mail-related entries. They don't touch the ones that
+point the website and API at Cloudflare.
+
+### 11.2 Create the API key
+
+In Resend: **API Keys → Create API Key**, name it `travel-planner`, permission
+**Sending access**, and limit it to the `travellingllama.fun` domain. The key
+is shown **once**. Copy it straight into a private file:
+
+#### Create the file, private from the start
+```bash
+cd planner-api && touch .env.resend && chmod 600 .env.resend && open -e .env.resend
+```
+
+```
+RESEND_API_KEY='re_...'
+```
+
+> **Watch for pasted spaces**, as with the R2 key. No spaces or line breaks
+> inside the quotes.
+
+### 11.3 Store the key in Secret Manager
+
+#### Store the Resend key, read from .env.resend
+```bash
+cd planner-api && (set -a; . ./.env.resend; set +a; printf '%s' "$RESEND_API_KEY" | gcloud secrets create smtp-password --data-file=- --replication-policy=automatic --project=travellingllama)
+```
+#### Check it arrived (prints the length only)
+```bash
+gcloud secrets versions access latest --secret=smtp-password --project=travellingllama | wc -c
+```
+
+If you ever replace the key, add a new version rather than creating the
+secret again:
+
+#### Add a new version of the secret
+```bash
+cd planner-api && (set -a; . ./.env.resend; set +a; printf '%s' "$RESEND_API_KEY" | gcloud secrets versions add smtp-password --data-file=- --project=travellingllama)
+```
+
+Cloud Run reads `latest` when an instance starts, so redeploy afterwards.
+
+### 11.4 Switch the API over
+
+In `planner-api/.env.deploy`, change `MAIL_MODE` and add the rest:
+
+```
+MAIL_MODE='smtp'
+SMTP_HOST='smtp.resend.com'
+SMTP_PORT='465'
+SMTP_SSL='true'
+SMTP_USER='resend'
+MAIL_FROM='no-reply@travellingllama.fun'
+```
+
+`deploy.sh` passes these on only when `MAIL_MODE` is `smtp`, refuses to start if
+any is missing, and hands the API `smtp-password` from Secret Manager as
+`SMTP_PASSWORD`.
+
+**This first time it needs a new image, not just new settings.** The TLS
+settings Resend requires (`SMTP_SSL`, `SMTP_STARTTLS`, timeouts) were added to
+`application.yml` for this, so bump `IMAGE_TAG` in `.env.deploy` (for example
+`v2`) and run a full deploy:
+
+#### Build, push and deploy
+```bash
+cd planner-api && ./deploy.sh
+```
+
+### 11.5 Try it
+
+Invite **yourself** from a second address you can read, e.g. a Gmail or Yahoo
+account, on a trip's Travel Buddies tab. The email should arrive within a
+minute, from `no-reply@travellingllama.fun`, with the temporary password. If it
+isn't in the inbox, check spam.
+
+#### Read the API's recent logs (a failed send is logged, not shown on screen)
+```bash
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="planner-api" AND severity>=ERROR' --project=travellingllama --limit=20 --freshness=1h --format='value(textPayload)'
+```
+
+A failed send never fails the invitation: the member is still added and the
+error, `Could not send email to …`, appears in the logs. So a member can exist
+without ever having received their password. The Resend dashboard's **Emails**
+page shows every message it received and what became of it.
+
+| Symptom in the logs or dashboard | Cause | Fix |
+|---|---|---|
+| `535 Authentication failed` / `Invalid API key` | Wrong key, or spaces pasted with it | Create a new key, add a new secret version, redeploy |
+| `The … domain is not verified` / `403` | `MAIL_FROM` isn't on the verified domain, or verification is still pending | Match the domain in Resend, wait for **Verified** |
+| Timeout or `Could not connect` | Port 25, or `SMTP_SSL` doesn't match the port | 465 with `SMTP_SSL='true'`, or 587 with `SMTP_STARTTLS='true'` |
+| Arrives in spam | DNS records not all verified yet | Recheck the three records in Cloudflare |
+| Nothing sent, no error | `MAIL_MODE` is still `log` | Fix `.env.deploy`, redeploy |
+
+### 11.6 Turning an email off
+
+Each kind of email has its own switch, on by default. To stop one, add it to
+`planner-api/.env.deploy` set to `false` and redeploy. The email is then not
+sent, and the log says so (`Not sending … switched off`).
+
+| Setting | Email | Sent to |
+|---|---|---|
+| `MAIL_EVENT_INVITED_NEW_MEMBER` | Added to a trip, with sign-in details | A new account. **Leave this on**: it holds the only copy of the temporary password. |
+| `MAIL_EVENT_ADDED_EXISTING_MEMBER` | Added to a trip | An existing account |
+| `MAIL_EVENT_REMOVED_FROM_TRIP` | Removed from a trip | The removed member |
+| `MAIL_EVENT_PUBLISH_REQUESTED` | Asked to publish | The owner |
+| `MAIL_EVENT_PUBLISH_APPROVED` | Request approved | The requester |
+| `MAIL_EVENT_PUBLISH_REJECTED` | Request declined | The requester |
+| `MAIL_EVENT_TRIP_PUBLISHED` | The trip is live, with their own page | Every member except whoever published, and only the first time it goes live, not on a re-publish |
+| `MAIL_EVENT_PAYMENT_RECORDED` | A payment was recorded | The other person in it (both, if the owner recorded it) |
+
+#### Redeploy with the change
+```bash
+cd planner-api && ./deploy.sh --no-build
+```
+
+Locally, put the same variable in front of the run command, for example
+`MAIL_EVENT_PAYMENT_RECORDED=false`.
+
+**Going back.** Set `MAIL_MODE='log'` in `.env.deploy` and run
+`./deploy.sh --no-build`. Nothing else needs undoing.
+
+**Local development is unchanged**: `MAIL_MODE` defaults to `file`, which writes
+`.eml` files to `planner-api/data/outbox/`. Nothing local ever reaches Resend.
 
 ---
 

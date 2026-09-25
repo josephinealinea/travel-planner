@@ -1,0 +1,8 @@
+Subject: {{tripTitle}} is now published
+
+"{{tripTitle}}" has been published.
+
+The public page is at {{publicUrl}}
+
+Your own page, which shows just your part of the trip, is at
+{{personalUrl}}

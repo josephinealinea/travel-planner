@@ -66,7 +66,14 @@
 @include m.mobile {
   .timeline-entry { flex-wrap: wrap; }
   .timeline-time { width: auto; }
-  .timeline-actions, .timeline-cost { margin-left: auto; }
+  // Checkbox, time and Edit share the first line; the description block then
+  // gets a full-width line of its own instead of being squeezed between them,
+  // and the cost sits right-aligned beneath it.
+  .select-box-tight { order: 0; }
+  .timeline-time { order: 1; }
+  .timeline-actions { order: 2; margin-left: auto; }
+  .timeline-body { order: 3; flex: 1 1 100%; }
+  .timeline-cost { order: 4; margin-left: auto; }
   // Negative margin grows the hit area to 44px without moving the layout.
   .select-box-tight { padding: t.$space-3; margin: -#{t.$space-3}; }
 }

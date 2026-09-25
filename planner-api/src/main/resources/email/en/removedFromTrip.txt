@@ -1,0 +1,3 @@
+Subject: You have been removed from {{tripTitle}}
+
+You no longer have access to the trip "{{tripTitle}}".

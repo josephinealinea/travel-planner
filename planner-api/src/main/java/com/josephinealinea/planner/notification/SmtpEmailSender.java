@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(name = "app.mail.mode", havingValue = "smtp")
-public class SmtpEmailSender implements EmailSender {
+public class SmtpEmailSender implements TransportEmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(SmtpEmailSender.class);
 

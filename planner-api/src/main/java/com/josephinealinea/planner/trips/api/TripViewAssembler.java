@@ -219,7 +219,7 @@ public class TripViewAssembler {
      * for this member: against R2 every check is a network round trip, and
      * this runs on every trip load.
      */
-    private String personalUrl(Trip trip, String currentUserId) {
+    public String personalUrl(Trip trip, String currentUserId) {
         if (currentUserId == null || !trip.isPublished()) return null;
         String memberSlug = PersonalPages
                 .slugsFor(trip, usersById(trip))

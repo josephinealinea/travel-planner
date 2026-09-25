@@ -30,6 +30,7 @@ import java.util.ArrayList;
 
 
 import java.util.List;
+import java.util.Set;
 
 
 @Service
@@ -164,11 +165,14 @@ public class PublishService {
         // The staged page goes live as it was built, so the theme recorded on
         // the trip is the requester's, not the approving owner's. The `theme`
         // argument is ignored for an approval for exactly that reason.
+        boolean firstTime = !trip.isPublished();
         Trip published = goLive(trip, request, userId);
 
         var requester = users.require(request.getRequestedByUserId());
         email.send(templates.publishApproved(requester.getLanguageCode(),
-                requester.getEmail(), trip.getTitle(), views.publicUrl(published)));
+                requester.getEmail(), trip.getTitle(), views.publicUrl(published),
+                views.personalUrl(published, requester.getId())));
+        if (firstTime) tellMembersItIsPublished(published, userId, Set.of(requester.getId()));
         return published;
     }
 
@@ -251,6 +255,7 @@ public class PublishService {
     }
 
     private Trip publishInternal(Trip trip, String userId, String theme) {
+        boolean firstTime = !trip.isPublished();
         trip.setStatus(TripStatus.PUBLISHED);
         trip.setPublishedAt(Instant.now());
         Audit.touched(trip, userId);
@@ -263,7 +268,24 @@ public class PublishService {
         // Publishing directly supersedes anything staged for an undecided
         // request, so it must not be left behind to go live later.
         renderer.removePending(saved.getSlug());
+        // Only when it goes live, not on every re-publish of a page that already is.
+        if (firstTime) tellMembersItIsPublished(saved, userId, Set.of());
         return saved;
+    }
+
+    /**
+     * Each member is told separately, with the link to their own page. Not the
+     * person who did it, and not anybody in {@code alreadyTold}: on an approval
+     * the requester has just been sent the approval, which says the same.
+     */
+    private void tellMembersItIsPublished(Trip trip, String actorId, Set<String> alreadyTold) {
+        var accounts = users.byId(PersonalPages.memberIds(trip));
+        String publicUrl = views.publicUrl(trip);
+        accounts.forEach((memberId, member) -> {
+            if (memberId.equals(actorId) || alreadyTold.contains(memberId)) return;
+            email.send(templates.tripPublished(member.getLanguageCode(), member.getEmail(), trip.getTitle(),
+                    publicUrl, views.personalUrl(trip, memberId)));
+        });
     }
 
     private Optional<PublishRequest> pendingRequest(Trip trip) {

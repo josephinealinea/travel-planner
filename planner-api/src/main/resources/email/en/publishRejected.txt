@@ -1,0 +1,3 @@
+Subject: Publish request for {{tripTitle}} was declined
+
+The owner declined the request to publish "{{tripTitle}}" for now.
