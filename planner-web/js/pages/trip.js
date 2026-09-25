@@ -14,15 +14,16 @@ import { checklistTab } from './trip/checklist.js';
 import { itineraryTab } from './trip/itinerary.js';
 import { budgetTab } from './trip/budget.js';
 import { publishTab } from './trip/publish.js';
+import { t } from '../i18n/index.js';
 
 const TABS = [
-  { id: 'overview',     label: 'Overview' },
-  { id: 'members',      label: 'Travel Buddies' },
-  { id: 'destinations', label: 'Destinations' },
-  { id: 'checklist',    label: 'Checklist' },
-  { id: 'itinerary',    label: 'Itinerary' },
-  { id: 'budget',       label: 'Budget' },
-  { id: 'publish',      label: 'Publish' },
+  { id: 'overview',     get label() { return t('trip.tabs.overview'); } },
+  { id: 'members',      get label() { return t('trip.tabs.members'); } },
+  { id: 'destinations', get label() { return t('trip.tabs.destinations'); } },
+  { id: 'checklist',    get label() { return t('trip.tabs.checklist'); } },
+  { id: 'itinerary',    get label() { return t('trip.tabs.itinerary'); } },
+  { id: 'budget',       get label() { return t('trip.tabs.budget'); } },
+  { id: 'publish',      get label() { return t('trip.tabs.publish'); } },
 ];
 
 /**
@@ -77,7 +78,7 @@ export function tripPage() {
 
     async init() {
       if (!this.tripId) {
-        this.error = 'No trip was specified.';
+        this.error = t('trip.noTripSpecified');
         this.loading = false;
         return;
       }
@@ -105,7 +106,7 @@ export function tripPage() {
     syncTitle() {
       const label = TABS.find((tab) => tab.id === this.tab)?.label;
       const trip = this.trip?.title;
-      document.title = [trip, label, 'Travelling Llama'].filter(Boolean).join(' — ');
+      document.title = [trip, label, t('common.travellingLlama')].filter(Boolean).join(' — ');
     },
 
     tabFromHash() {
@@ -273,14 +274,13 @@ export function tripPage() {
      */
     warnIfBeyondTrip(...dates) {
       if (!dates.some((date) => this.isOutsideTrip(date))) return;
-      toast.warning(`That date is beyond the trip dates (${this.tripDates()}), `
-        + 'so it will not be displayed in the itinerary.');
+      toast.warning(t('trip.dateBeyondTrip', { dates: this.tripDates() }));
     },
 
     /** Checks a date against the trip's own dates; '' when fine (expenses only). */
-    dateOutsideTrip(date, what) {
+    dateOutsideTrip(date, whatKey) {
       if (!this.isOutsideTrip(date)) return '';
-      return `The ${what} must be within the trip, ${this.tripDates()}.`;
+      return t('trip.dateMustBeWithin', { what: t(whatKey), dates: this.tripDates() });
     },
 
     /** The signed-in member leads the Travel Buddies list; the rest keep their order. */
@@ -325,11 +325,11 @@ export function tripPage() {
     async saveEdit() {
       const title = this.editForm.title.trim();
       if (!title) {
-        this.editError = 'Give the trip a title.';
+        this.editError = t('trip.giveTheTripATitle');
         return;
       }
       if (this.editForm.endDate < this.editForm.startDate) {
-        this.editError = 'The end date cannot be before the start date.';
+        this.editError = t('trips.endBeforeStart');
         return;
       }
 
@@ -343,7 +343,7 @@ export function tripPage() {
           displayCurrency: this.editForm.displayCurrency,
         });
         this.editOpen = false;
-        toast.success('Trip updated');
+        toast.success(t('trip.tripUpdated'));
         await this.reload();
       } catch (error) {
         this.editError = error.fullMessage;

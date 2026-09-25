@@ -12,8 +12,31 @@
   var root = document.getElementById('app');
   if (!root) return;
 
-  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'];
+  // Every word this page says comes from window.I18N, filled in by the
+  // renderer for the language of whoever this page is for (page.* keys in the
+  // API's messages_<language>.properties). The script holds no sentences of its
+  // own: PageStringsTest fails if one comes back.
+  var I18N = window.I18N || {};
+  var LANG = I18N._lang || 'en';
+
+  /** A word or sentence by key, with {name} placeholders filled from `params`. */
+  function t(key, params) {
+    var text = I18N[key];
+    if (text == null) return key;
+    if (!params) return text;
+    return text.replace(/\{(\w+)\}/g, function (whole, name) {
+      return params[name] != null ? params[name] : whole;
+    });
+  }
+
+  /** Month names come from the browser in the page's language, not from a table here. */
+  function monthName(date, style) {
+    try {
+      return new Intl.DateTimeFormat(LANG, { month: style }).format(date);
+    } catch (e) {
+      return String(date.getMonth() + 1);
+    }
+  }
 
   // ── helpers ───────────────────────────────────────────
 
@@ -35,13 +58,13 @@
   function longDate(iso) {
     var date = parseDate(iso);
     if (!date) return '';
-    return date.getDate() + ' ' + MONTHS[date.getMonth()] + ' ' + date.getFullYear();
+    return date.getDate() + ' ' + monthName(date, 'long') + ' ' + date.getFullYear();
   }
 
   function shortDate(iso) {
     var date = parseDate(iso);
     if (!date) return '';
-    return date.getDate() + ' ' + MONTHS[date.getMonth()].slice(0, 3);
+    return date.getDate() + ' ' + monthName(date, 'short');
   }
 
   // "25 – 26 Oct" inside one month, "31 Oct – 4 Nov" across two.
@@ -67,9 +90,20 @@
   // window.COUNTRIES (code -> name) from publish/countries.json. The payload
   // carries only codes, so a name is spelled in one place.
   var COUNTRY_NAMES = window.COUNTRIES || {};
+  // English is the reviewed table; another language uses the browser's own
+  // region names, so there is no table per language to keep.
+  var REGION_NAMES = null;
+  function localCountryName(key) {
+    if (LANG === 'en') return null;
+    try {
+      REGION_NAMES = REGION_NAMES || new Intl.DisplayNames([LANG], { type: 'region' });
+      var name = REGION_NAMES.of(key);
+      return name && name !== key ? name : null;
+    } catch (e) { return null; }
+  }
   function countryName(code) {
     var key = String(code || '').toUpperCase();
-    return key ? (COUNTRY_NAMES[key] || key) : '';
+    return key ? (localCountryName(key) || COUNTRY_NAMES[key] || key) : '';
   }
   function flagOf(code) {
     var key = String(code || '').toUpperCase();
@@ -89,7 +123,7 @@
 
   function header() {
     var wrap = el('header', 'trip-header');
-    wrap.appendChild(el('h1', 'trip-title', trip.title || 'Trip'));
+    wrap.appendChild(el('h1', 'trip-title', trip.title || t('page.trip.default')));
 
     if (trip.startDate || trip.endDate) {
       wrap.appendChild(el('p', 'trip-dates',
@@ -116,11 +150,11 @@
   // choice overrides it from then on, remembered across every published trip
   // they open on this origin.
   var THEME_LABELS = {
-    minima: 'Minima',
-    y2k: 'Y2K',
-    dark: 'Dark',
-    'retro-game': 'FF7',
-    manila: 'Manila',
+    minima: 'page.theme.minima',
+    y2k: 'page.theme.y2k',
+    dark: 'page.theme.dark',
+    'retro-game': 'page.theme.retro-game',
+    manila: 'page.theme.manila',
   };
   var THEME_STORAGE_KEY = 'publishedTripTheme';
 
@@ -153,13 +187,13 @@
     if (offered.length < 2) return null;
 
     var bar = el('div', 'theme-bar');
-    bar.appendChild(el('span', 'theme-bar-label', 'Theme'));
+    bar.appendChild(el('span', 'theme-bar-label', t('page.theme.label')));
 
     var active = readTheme(offered);
     apply(active);
 
     offered.forEach(function (name) {
-      var button = el('button', 'theme-btn', THEME_LABELS[name]);
+      var button = el('button', 'theme-btn', t(THEME_LABELS[name]));
       button.type = 'button';
       button.setAttribute('data-theme-choice', name);
       button.setAttribute('aria-pressed', String(name === active));
@@ -190,13 +224,13 @@
   // Present only when the publishing account asked for it: the payload has no
   // home country otherwise, so this is also what relabels the section.
   var HOMES = list(trip.homes);
-  var DESTINATIONS_LABEL = HOMES.length ? 'Home & Destinations' : 'Destinations';
+  var DESTINATIONS_LABEL = HOMES.length ? t('page.destinations.titleWithHome') : t('page.destinations.title');
 
   function destinationsPanel() {
     var items = list(trip.destinations);
     var panel = section('destinations', '🧭 ' + DESTINATIONS_LABEL);
     if (!items.length && !HOMES.length) {
-      panel.appendChild(el('p', 'empty', 'No destinations yet.'));
+      panel.appendChild(el('p', 'empty', t('page.destinations.empty')));
       return panel;
     }
 
@@ -230,7 +264,7 @@
       // The time there right now, from the browser's own clock and the
       // stop's IANA zone: no request. An unknown zone just leaves it out.
       var now = localTime(destination.timezone);
-      if (now) line.push('🕒 ' + now + ' now');
+      if (now) line.push(t('page.destinations.localTime', { time: now }));
       row.appendChild(document.createTextNode(line.join(' · ')));
       if (destination.notes) row.appendChild(el('div', 'dest-meta', destination.notes));
       return row;
@@ -238,7 +272,7 @@
 
     function fact(label, value) {
       if (value == null || value === '' || (Array.isArray(value) && !value.length)) return null;
-      return label + ': ' + (Array.isArray(value) ? value.join(', ') : value);
+      return t('page.fact.line', { label: label, value: Array.isArray(value) ? value.join(', ') : value });
     }
 
     // Related facts share a line, and a line with nothing on it is not drawn.
@@ -252,18 +286,18 @@
       var name = el('div', 'dest-name');
       name.textContent = (country.flag ? country.flag + ' ' : '') + countryName(country.code)
         + ' (' + country.code + ')';
-      if (isHome) name.appendChild(el('span', 'nights-badge', 'Home'));
+      if (isHome) name.appendChild(el('span', 'nights-badge', t('page.country.home')));
       // Whichever the publishing account asked for arrives; the other is absent.
       if (country.nights || country.days) {
         name.appendChild(el('span', 'nights-badge', country.days
-          ? country.days + 'D'
-          : country.nights + 'N'));
+          ? t('page.country.days', { n: country.days })
+          : t('page.country.nights', { n: country.nights })));
       }
       card.appendChild(name);
-      factLine(card, [fact('Region', country.region)]);
-      factLine(card, [fact('Capital city', country.capital), fact('Currency', country.currencies)]);
-      factLine(card, [fact('Calling code', country.callingCode), fact('Emergency', country.emergencyNumber)]);
-      factLine(card, [fact('Language', country.languages), fact('Demonym', country.demonym)]);
+      factLine(card, [fact(t('page.fact.region'), country.region)]);
+      factLine(card, [fact(t('page.fact.capital'), country.capital), fact(t('page.fact.currency'), country.currencies)]);
+      factLine(card, [fact(t('page.fact.callingCode'), country.callingCode), fact(t('page.fact.emergency'), country.emergencyNumber)]);
+      factLine(card, [fact(t('page.fact.language'), country.languages), fact(t('page.fact.demonym'), country.demonym)]);
       if (!isHome) {
         items.filter(function (d) { return (d.countryCode || '').toUpperCase() === country.code; })
           .forEach(function (d) { card.appendChild(stopRow(d)); });
@@ -282,7 +316,7 @@
     });
     if (others.length) {
       var other = el('div', 'card');
-      other.appendChild(el('div', 'dest-name', 'Other stops'));
+      other.appendChild(el('div', 'dest-name', t('page.destinations.otherStops')));
       others.forEach(function (d) { other.appendChild(stopRow(d)); });
       grid.appendChild(other);
     }
@@ -297,13 +331,13 @@
 
   function itineraryPanel() {
     var days = list(trip.days);
-    var panel = section('weather itinerary', '🗓 Itinerary');
+    var panel = section('weather itinerary', '🗓 ' + t('page.itinerary.title'));
     // The heading is rewritten by show() when only one half is on screen: a
     // column of weather cards under the word "Itinerary" reads wrong.
     panel.querySelector('.panel-heading').setAttribute('data-heading-weather',
-      '🌤 Weather Forecast');
+      '🌤 ' + t('page.itinerary.weatherTitle'));
     if (!days.length) {
-      panel.appendChild(el('p', 'empty', 'Nothing planned yet.'));
+      panel.appendChild(el('p', 'empty', t('page.itinerary.empty')));
       return panel;
     }
 
@@ -328,7 +362,7 @@
           pc.appendChild(head);
 
           // Filled in by the lookup below, or left saying why it is empty.
-          var line = el('div', 'weather-line weather-line-muted', '📅 Loading weather…');
+          var line = el('div', 'weather-line weather-line-muted', t('page.weather.loading'));
           pc.appendChild(line);
           // The extra readings (sunrise, UV, wind ...), filled by render() only
           // when the lookup had some; empty and hidden until then.
@@ -339,7 +373,7 @@
             pending.push({ date: day.date, lat: place.latitude, lon: place.longitude,
                            line: line, extras: extras });
           } else {
-            line.textContent = '📅 No coordinates for this place';
+            line.textContent = t('page.weather.noCoordinates');
           }
           grid.appendChild(pc);
         });
@@ -383,14 +417,14 @@
 
   function checklistPanel() {
     var items = list(trip.checklist);
-    var panel = section('checklist', '🧳 Travel Checklist');
+    var panel = section('checklist', '🧳 ' + t('page.checklist.title'));
     if (!items.length) {
-      panel.appendChild(el('p', 'empty', 'No checklist items yet.'));
+      panel.appendChild(el('p', 'empty', t('page.checklist.empty')));
       return panel;
     }
 
     var done = items.filter(function (item) { return item.status === 'done'; }).length;
-    panel.appendChild(el('p', 'trip-route', done + ' of ' + items.length + ' done'));
+    panel.appendChild(el('p', 'trip-route', t('page.checklist.progress', { done: done, total: items.length })));
 
     var card = el('div', 'card');
     // Already ordered todo-first by the API, matching how the trip pages on the
@@ -427,7 +461,7 @@
     var wrap = el('div', 'budget-pie');
     var canvas = document.createElement('canvas');
     canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', label || 'Spend by category');
+    canvas.setAttribute('aria-label', label || t('page.chart.spendByCategory'));
     wrap.appendChild(canvas);
 
     var total = categories.reduce(function (sum, c) { return sum + (Number(c.amount) || 0); }, 0);
@@ -484,7 +518,7 @@
       return list(rollup.byCountry).map(function (country, i) {
         return {
           label: country.key === 'NO_LOCATION'
-            ? 'No location'
+            ? t('page.budget.noLocation')
             : (country.flag ? country.flag + ' ' : '') + countryName(country.key),
           amount: Number(country.amount) || 0,
           color: COUNTRY_COLOURS[i % COUNTRY_COLOURS.length]
@@ -516,13 +550,13 @@
 
   function budgetPanel() {
     var budget = trip.budget || {};
-    var panel = section('budget', '💰 Budget');
+    var panel = section('budget', '💰 ' + t('page.budget.title'));
 
     // Charged is always shipped; forecast only when the publishing account
     // asked for it, so its absence is what hides the two extra buttons.
     var charged = budget.charged || {};
     if (!list(charged.byCategory).length && !list((budget.forecast || {}).byCategory).length) {
-      panel.appendChild(el('p', 'empty', 'No costs recorded yet.'));
+      panel.appendChild(el('p', 'empty', t('page.budget.empty')));
       return panel;
     }
 
@@ -532,11 +566,11 @@
     // anywhere else, and the panel toggle at the top of it already reads as a
     // row of buttons.
     var modes = el('div', 'panel-toggle budget-modes');
-    modes.appendChild(el('span', 'panel-toggle-label', 'Group by'));
-    var modeList = [['category', 'Category'], ['country', 'Country']];
+    modes.appendChild(el('span', 'panel-toggle-label', t('page.budget.groupBy')));
+    var modeList = [['category', t('page.budget.category')], ['country', t('page.budget.country')]];
     if (budget.forecast) {
-      modeList.push(['category-forecast', 'Category (Forecast)']);
-      modeList.push(['country-forecast', 'Country (Forecast)']);
+      modeList.push(['category-forecast', t('page.budget.categoryForecast')]);
+      modeList.push(['country-forecast', t('page.budget.countryForecast')]);
     }
     modeList.forEach(function (pair) {
       var button = el('button', 'panel-btn', pair[1]);
@@ -573,8 +607,8 @@
       var rollup = chosen.rollup;
       var slices = budgetSlices(rollup, chosen.dimension);
 
-      totalLine.textContent = (chosen.forecast ? 'Forecast total: ' : 'Total: ')
-        + money(rollup.total, budget.displayCurrency);
+      totalLine.textContent = t(chosen.forecast ? 'page.budget.forecastTotal' : 'page.budget.total',
+        { amount: money(rollup.total, budget.displayCurrency) });
 
       // What was actually spent, in the currencies it was actually spent in —
       // nativeTotals already comes from the API summed and sorted, so this
@@ -583,18 +617,20 @@
         .filter(function (n) { return Number(n.amount) > 0; })
         .map(function (n) { return money(n.amount, n.currency); })
         .join(' + ');
-      nativeLine.textContent = nativeLabel ? 'Native: ' + nativeLabel : '';
+      nativeLine.textContent = nativeLabel ? t('page.budget.native', { amounts: nativeLabel }) : '';
       nativeLine.hidden = !nativeLabel;
 
       var missing = list(rollup.currenciesMissingRates);
       warning.textContent = missing.length
-        ? 'Not included in the total — no exchange rate set for: ' + missing.join(', ')
+        ? t('page.budget.missingRates', { currencies: missing.join(', ') })
         : '';
       warning.hidden = !missing.length;
 
       chartHolder.textContent = '';
-      chartHolder.appendChild(pieChart(slices,
-        (chosen.forecast ? 'Forecast spend by ' : 'Spend by ') + chosen.dimension));
+      chartHolder.appendChild(pieChart(slices, t(
+        chosen.forecast
+          ? (chosen.dimension === 'country' ? 'page.chart.forecastSpendByCountry' : 'page.chart.forecastSpendByCategory')
+          : (chosen.dimension === 'country' ? 'page.chart.spendByCountry' : 'page.chart.spendByCategory'))));
 
       legend.textContent = '';
       var total = slices.reduce(function (sum, s) { return sum + s.amount; }, 0);
@@ -662,12 +698,12 @@
   // Same order the panels are mounted in below: what was packed, then what
   // the days look like, then what it cost.
   var PANELS = [
-    { key: 'all', label: 'Show All' },
+    { key: 'all', label: t('page.show.all') },
     { key: 'destinations', label: DESTINATIONS_LABEL },
-    { key: 'checklist', label: 'Checklist' },
-    { key: 'weather', label: 'Weather Forecast' },
-    { key: 'itinerary', label: 'Itinerary' },
-    { key: 'budget', label: 'Budget' }
+    { key: 'checklist', label: t('page.show.checklist') },
+    { key: 'weather', label: t('page.show.weather') },
+    { key: 'itinerary', label: t('page.show.itinerary') },
+    { key: 'budget', label: t('page.show.budget') }
   ].filter(function (panel) {
     // No budget in the payload means the account left the section out, and a
     // filter for a section that is not there would show a blank page.
@@ -688,7 +724,7 @@
    */
   function toggleBar() {
     var bar = el('div', 'panel-toggle');
-    bar.appendChild(el('span', 'panel-toggle-label', 'Show'));
+    bar.appendChild(el('span', 'panel-toggle-label', t('page.show.label')));
 
     PANELS.forEach(function (panel) {
       var button = el('button', 'panel-btn', panel.label);
@@ -853,28 +889,30 @@
     ['cloudCoverMean', 'cloud_cover_mean', false, true]
   ];
 
-  var WMO = [[0,'☀️','Clear'],[1,'🌤','Mainly clear'],[2,'⛅️','Partly cloudy'],
-             [3,'☁️','Overcast'],[45,'🌫','Fog'],[48,'🌫','Freezing fog'],
-             [51,'🌦','Light drizzle'],[53,'🌦','Drizzle'],[55,'🌧','Heavy drizzle'],
-             [61,'🌦','Light rain'],[63,'🌧','Rain'],[65,'🌧','Heavy rain'],
-             [71,'🌨','Light snow'],[73,'🌨','Snow'],[75,'❄️','Heavy snow'],
-             [80,'🌦','Light showers'],[81,'🌧','Showers'],[82,'⛈','Violent showers'],
-             [95,'⛈','Thunderstorm'],[96,'⛈','Thunderstorm with hail'],
-             [99,'⛈','Thunderstorm with hail']];
+  // [WMO code, icon, message key]
+  var WMO = [[0,'☀️','page.wmo.0'],[1,'🌤','page.wmo.1'],[2,'⛅️','page.wmo.2'],
+             [3,'☁️','page.wmo.3'],[45,'🌫','page.wmo.45'],[48,'🌫','page.wmo.48'],
+             [51,'🌦','page.wmo.51'],[53,'🌦','page.wmo.53'],[55,'🌧','page.wmo.55'],
+             [61,'🌦','page.wmo.61'],[63,'🌧','page.wmo.63'],[65,'🌧','page.wmo.65'],
+             [71,'🌨','page.wmo.71'],[73,'🌨','page.wmo.73'],[75,'❄️','page.wmo.75'],
+             [80,'🌦','page.wmo.80'],[81,'🌧','page.wmo.81'],[82,'⛈','page.wmo.82'],
+             [95,'⛈','page.wmo.95'],[96,'⛈','page.wmo.96'],
+             [99,'⛈','page.wmo.99']];
 
-  var RAIN = [[20,'⛈','Very wet'],[10,'🌧','Wet'],[4,'🌧','Rain likely'],
-              [1,'🌦','Showers likely'],[0.1,'🌤','Mostly dry'],[0,'☀️','Dry']];
+  // [rain in mm, icon, message key]
+  var RAIN = [[20,'⛈','page.rain.veryWet'],[10,'🌧','page.rain.wet'],[4,'🌧','page.rain.likely'],
+              [1,'🌦','page.rain.showersLikely'],[0.1,'🌤','page.rain.mostlyDry'],[0,'☀️','page.rain.dry']];
 
   function conditionOf(code, rain) {
     var i;
     if (code != null) {
       var match = WMO[0];
       for (i = 0; i < WMO.length; i++) if (code >= WMO[i][0]) match = WMO[i];
-      return { icon: match[1], label: match[2] };
+      return { icon: match[1], label: t(match[2]) };
     }
     if (rain != null) {
       for (i = 0; i < RAIN.length; i++) if (rain >= RAIN[i][0]) {
-        return { icon: RAIN[i][1], label: RAIN[i][2] };
+        return { icon: RAIN[i][1], label: t(RAIN[i][2]) };
       }
     }
     return { icon: '', label: '' };
@@ -982,21 +1020,21 @@
     var rise = clockOf(d.sunrise);
     var set = clockOf(d.sunset);
     if (rise || set) {
-      chips.push(['🌅', [rise, set].filter(Boolean).join(' · '), 'Sunrise · sunset, local time']);
+      chips.push(['🌅', [rise, set].filter(Boolean).join(' · '), t('page.detail.sunTimes')]);
     }
-    if (known(d.uvIndexMax)) chips.push(['☀️', 'UV ' + whole(d.uvIndexMax), 'Peak UV index']);
+    if (known(d.uvIndexMax)) chips.push(['☀️', t('page.detail.uv', { n: whole(d.uvIndexMax) }), t('page.detail.uvTip')]);
 
     var rain = [];
     if (known(d.precipitationProbabilityMax)) rain.push(whole(d.precipitationProbabilityMax) + '%');
-    if (known(d.rainSum) && d.rainSum > 0) rain.push(tenth(d.rainSum) + ' mm');
-    if (rain.length) chips.push(['💧', rain.join(' · ') + ' rain', 'Chance and amount of rain']);
+    if (known(d.rainSum) && d.rainSum > 0) rain.push(t('page.detail.mm', { n: tenth(d.rainSum) }));
+    if (rain.length) chips.push(['💧', t('page.detail.rain', { value: rain.join(' · ') }), t('page.detail.rainTip')]);
     if (known(d.snowfallSum) && d.snowfallSum > 0) {
-      chips.push(['❄️', tenth(d.snowfallSum) + ' cm snow', 'Snowfall']);
+      chips.push(['❄️', t('page.detail.snow', { n: tenth(d.snowfallSum) }), t('page.detail.snowTip')]);
     }
 
     if (known(d.windSpeedMax)) {
-      chips.push(['💨', whole(d.windSpeedMax) + ' km/h wind',
-        known(d.windGustsMax) ? 'Gusts up to ' + whole(d.windGustsMax) + ' km/h' : 'Top wind speed']);
+      chips.push(['💨', t('page.detail.wind', { n: whole(d.windSpeedMax) }),
+        known(d.windGustsMax) ? t('page.detail.gustsTip', { n: whole(d.windGustsMax) }) : t('page.detail.windTip')]);
     }
 
     // Only when it differs from the real temperature by a degree or more.
@@ -1007,23 +1045,24 @@
       var feels = [];
       if (known(d.apparentTemperatureMax)) feels.push(whole(d.apparentTemperatureMax) + '°');
       if (known(d.apparentTemperatureMin)) feels.push(whole(d.apparentTemperatureMin) + '°');
-      chips.push(['🌡', 'Feels ' + feels.join(' / '), 'Feels like']);
+      chips.push(['🌡', t('page.detail.feels', { value: feels.join(' / ') }), t('page.detail.feelsTip')]);
     }
     return chips;
   }
 
   /** Everything else that is known, as one sentence for a tooltip. */
   function detailsTitle(d) {
-    var compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    var compass = ['page.compass.n', 'page.compass.ne', 'page.compass.e', 'page.compass.se',
+                   'page.compass.s', 'page.compass.sw', 'page.compass.w', 'page.compass.nw'];
     var parts = [];
-    if (known(d.humidityMean)) parts.push('Humidity ' + whole(d.humidityMean) + '%');
-    if (known(d.cloudCoverMean)) parts.push('Cloud cover ' + whole(d.cloudCoverMean) + '%');
+    if (known(d.humidityMean)) parts.push(t('page.detail.humidity', { n: whole(d.humidityMean) }));
+    if (known(d.cloudCoverMean)) parts.push(t('page.detail.cloudCover', { n: whole(d.cloudCoverMean) }));
     if (known(d.daylightSeconds)) {
       var minutes = Math.round(d.daylightSeconds / 60);
       var rest = minutes % 60;
-      parts.push('Daylight ' + Math.floor(minutes / 60) + 'h ' + (rest < 10 ? '0' : '') + rest + 'm');
+      parts.push(t('page.detail.daylight', { h: Math.floor(minutes / 60), m: (rest < 10 ? '0' : '') + rest }));
     }
-    if (known(d.windDirection)) parts.push('Wind from ' + compass[Math.round(d.windDirection / 45) % 8]);
+    if (known(d.windDirection)) parts.push(t('page.detail.windFrom', { direction: t(compass[Math.round(d.windDirection / 45) % 8]) }));
     return parts.join(' · ');
   }
 
@@ -1036,14 +1075,14 @@
     if (cond.icon) line.appendChild(el('span', 'weather-icon', cond.icon));
     var temps = max == null ? Math.round(min) + '°'
       : (min == null ? Math.round(max) + '°'
-        : Math.round(max) + '° / ' + Math.round(min) + '°');
+        : t('page.weather.temps', { max: Math.round(max), min: Math.round(min) }));
     line.appendChild(el('span', 'weather-temps', temps));
     if (cond.label) line.appendChild(el('span', 'weather-condition', cond.label));
     // "Typical" is the one that matters: a climate projection is not a
     // forecast, and a reader packing a bag needs to be told which it is.
     line.appendChild(el('span',
       kind === 'climate' ? 'weather-badge weather-badge-typical' : 'weather-badge',
-      kind === 'climate' ? 'Typical' : 'Forecast'));
+      t(kind === 'climate' ? 'page.weather.typical' : 'page.weather.forecast')));
 
     var chips = detailChips(details || {}, max, min);
     slot.extras.textContent = '';
@@ -1052,7 +1091,7 @@
     chips.forEach(function (chip) {
       var node = el('span', 'weather-detail');
       node.title = chip[2];
-      node.setAttribute('aria-label', chip[1] + ' (' + chip[2] + ')');
+      node.setAttribute('aria-label', t('page.detail.chipLabel', { text: chip[1], tip: chip[2] }));
       node.appendChild(el('span', 'weather-detail-icon', chip[0]));
       node.appendChild(el('span', null, chip[1]));
       slot.extras.appendChild(node);
@@ -1063,8 +1102,8 @@
     slots.forEach(function (slot) {
       slot.line.className = 'weather-line weather-line-muted';
       slot.line.textContent = daysAhead(slot.date) > HORIZON_DAYS
-        ? '📅 Forecast not yet open'
-        : '📅 Weather unavailable';
+        ? t('page.weather.notYetOpen')
+        : t('page.weather.unavailable');
     });
   }
 
@@ -1081,8 +1120,8 @@
 
   var footer = el('div', 'footer');
   footer.textContent = trip.publishedAt
-    ? 'Published ' + new Date(trip.publishedAt).toLocaleString()
-    : 'Published trip plan';
+    ? t('page.footer.published', { when: new Date(trip.publishedAt).toLocaleString() })
+    : t('page.footer.publishedPlain');
   root.appendChild(footer);
 
   var requested = [];

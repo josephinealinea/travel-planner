@@ -10,8 +10,8 @@ import { DEFAULT_PANEL_MODE } from './config.js';
 export { DEFAULT_PANEL_MODE };
 
 export const PANEL_MODES = {
-  popup: { label: 'Popup — opens centred' },
-  side: { label: 'Side panel — opens at the right' },
+  popup: {},
+  side: {},
 };
 
 const STORAGE_KEY = 'panelMode';

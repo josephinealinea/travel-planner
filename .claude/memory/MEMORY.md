@@ -1,2 +1,4 @@
 - [Project-scoped Claude config](project-scoped-claude-config.md) — in travel-planner only: plans, skills and commands go in the project's .claude/, not ~/.claude/
 - [Git workflow preference](git-workflow-preference.md) — plain git commands (push/pull), not gh CLI
+- [Kill only what you started](kill-only-what-you-started.md) — never pkill by pattern; the user's :8080/:3000 are usually running
+- [User writes own git history](user-writes-own-git-history.md) — hook blocks commits/branches/stash; just edit and report

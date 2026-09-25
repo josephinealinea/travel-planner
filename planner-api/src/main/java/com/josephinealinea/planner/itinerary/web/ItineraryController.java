@@ -21,8 +21,8 @@ public class ItineraryController {
     public record CreateRequest(
             String checklistItemId,
             ChecklistCategory category,
-            @NotBlank(message = "Describe the plan")
-            @Size(max = 300, message = "That description is too long") String description,
+            @NotBlank(message = "{validation.plan.descriptionRequired}")
+            @Size(max = 300, message = "{validation.description.tooLong}") String description,
             LocalDateTime startAt,
             LocalDateTime endAt,
             /**
@@ -60,7 +60,7 @@ public class ItineraryController {
 
     public record PatchRequest(
             ChecklistCategory category,
-            @Size(max = 300, message = "That description is too long") String description,
+            @Size(max = 300, message = "{validation.description.tooLong}") String description,
             LocalDateTime startAt,
             LocalDateTime endAt,
             Boolean allDay,

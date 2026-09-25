@@ -19,8 +19,8 @@ public class DestinationController {
 
     /** Coordinates are optional and always accepted as sent. */
     public record DestinationRequest(
-            @NotBlank(message = "Give the destination a name")
-            @Size(max = 120, message = "That name is too long") String name,
+            @NotBlank(message = "{validation.destination.nameRequired}")
+            @Size(max = 120, message = "{validation.name.tooLong}") String name,
             String countryCode,
             Double latitude,
             Double longitude,
@@ -44,7 +44,7 @@ public class DestinationController {
 
     /** Same fields, but nothing is required when editing. */
     public record PatchDestinationRequest(
-            @Size(max = 120, message = "That name is too long") String name,
+            @Size(max = 120, message = "{validation.name.tooLong}") String name,
             String countryCode,
             Double latitude,
             Double longitude,

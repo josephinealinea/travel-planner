@@ -25,12 +25,16 @@ import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.trips.domain.TripMember;
 import com.josephinealinea.planner.trips.domain.TripRole;
 import com.josephinealinea.planner.trips.infra.YamlTripRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
+
+import org.springframework.context.i18n.LocaleContextHolder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -137,5 +141,28 @@ class TravellersViewTest {
         assertThat(views.summary(trip, ALEX).checklistCompleted()).isZero();
         assertThat(views.summary(trip, SAM).checklistTotal()).isEqualTo(2);
         assertThat(views.summary(trip, SAM).checklistCompleted()).isEqualTo(1);
+    }
+
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
+    }
+
+    private String nameOfSomebodyWhoHasLeft() {
+        trip.getMembers().add(new TripMember("user-gone", TripRole.MEMBER, ALEX));
+        return views.members(trip).stream()
+                .filter(m -> m.userId().equals("user-gone"))
+                .findFirst().orElseThrow().displayName();
+    }
+
+    @Test
+    void aMemberWhoseAccountIsGoneIsNamedInEnglishByDefault() {
+        assertThat(nameOfSomebodyWhoHasLeft()).isEqualTo("Former member");
+    }
+
+    @Test
+    void aMemberWhoseAccountIsGoneIsNamedInTheRequestsLanguageToo() {
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("xx"));
+        assertThat(nameOfSomebodyWhoHasLeft()).isEqualTo("[xx] Former member");
     }
 }

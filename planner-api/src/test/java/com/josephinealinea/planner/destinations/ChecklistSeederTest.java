@@ -5,10 +5,13 @@ import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.checklist.domain.ChecklistStatus;
 import com.josephinealinea.planner.destinations.api.ChecklistSeeder;
 import com.josephinealinea.planner.destinations.domain.Destination;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -106,5 +109,28 @@ class ChecklistSeederTest {
         });
         // Sort order continues from the existing checklist length.
         assertThat(seeded).extracting(ChecklistItem::getSortOrder).containsExactly(7, 8, 9);
+    }
+
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
+    }
+
+    /**
+     * Seeded lines are ordinary stored text, written once in the language of
+     * the member whose action created them; they do not change if that member
+     * later switches language.
+     */
+    @Test
+    void seededTextIsWrittenInTheLanguageOfTheRequest() {
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("xx"));
+
+        List<ChecklistItem> seeded = seeder.seedFor(
+                cusco(LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 31)), 0);
+
+        assertThat(seeded).extracting(ChecklistItem::getDescription).containsExactly(
+                "[xx] Plan transportation to Cusco",
+                "[xx] Plan 6N accommodation in Cusco",
+                "[xx] Plan activities in Cusco");
     }
 }

@@ -23,8 +23,8 @@ public class TripAccessService {
 
     /** Any member: read and edit destinations, checklist, itinerary, budget, members. */
     public Trip requireMember(String tripId, String userId) {
-        Trip trip = trips.findById(tripId).orElseThrow(() -> ApiException.notFound("Trip"));
-        if (!trip.isMember(userId)) throw ApiException.notFound("Trip");
+        Trip trip = trips.findById(tripId).orElseThrow(() -> ApiException.notFound("error.trip.notFound"));
+        if (!trip.isMember(userId)) throw ApiException.notFound("error.trip.notFound");
         return trip;
     }
 
@@ -32,7 +32,7 @@ public class TripAccessService {
     public Trip requireOwner(String tripId, String userId) {
         Trip trip = requireMember(tripId, userId);
         if (!trip.isOwner(userId)) {
-            throw ApiException.forbidden("Only the trip owner can do that.");
+            throw ApiException.forbidden("error.trip.ownerOnly");
         }
         return trip;
     }

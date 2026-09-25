@@ -21,9 +21,9 @@ import java.util.List;
 public class ChecklistController {
 
     public record CreateRequest(
-            @NotNull(message = "Pick a category") ChecklistCategory category,
-            @NotBlank(message = "Describe what needs doing")
-            @Size(max = 300, message = "That description is too long") String description,
+            @NotNull(message = "{validation.category.required}") ChecklistCategory category,
+            @NotBlank(message = "{validation.checklist.descriptionRequired}")
+            @Size(max = 300, message = "{validation.description.tooLong}") String description,
             String note,
             List<String> countryCodes,
             /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
@@ -39,7 +39,7 @@ public class ChecklistController {
 
     public record PatchRequest(
             ChecklistCategory category,
-            @Size(max = 300, message = "That description is too long") String description,
+            @Size(max = 300, message = "{validation.description.tooLong}") String description,
             String note,
             List<String> countryCodes,
             /** Who's going; absent leaves it alone, [] is the whole trip. See Travellers. */
@@ -53,7 +53,7 @@ public class ChecklistController {
         }
     }
 
-    public record StatusRequest(@NotNull(message = "Pick a status") ChecklistStatus status) {}
+    public record StatusRequest(@NotNull(message = "{validation.status.required}") ChecklistStatus status) {}
 
     private final ChecklistService checklist;
     private final ItineraryService itinerary;

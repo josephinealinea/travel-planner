@@ -1,5 +1,6 @@
 package com.josephinealinea.planner.trips.api;
 
+import com.josephinealinea.planner.i18n.Msg;
 import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.trips.domain.Trip;
 
@@ -29,18 +30,19 @@ public record TripWindow(LocalDate start, LocalDate end) {
      * Rejects a date outside the trip. Both ends are inclusive — a flight on
      * the first day and a checkout on the last are the normal case.
      *
-     * @param what how the field is named back to the caller, e.g. "start date"
+     * @param whatKey message key naming the field back to the caller, e.g.
+     *                {@code field.startDate}
      */
-    public void require(LocalDate date, String what) {
+    public void require(LocalDate date, String whatKey) {
         if (date == null || start == null || end == null) return;
         if (date.isBefore(start) || date.isAfter(end)) {
             throw ApiException.badRequest(
-                    "The " + what + " must be within the trip dates, " + start + " to " + end + ".");
+                    "error.dates.outsideTrip", new Msg(whatKey), start, end);
         }
     }
 
     /** The itinerary stores times; only the day part has to be inside the trip. */
-    public void require(LocalDateTime at, String what) {
-        require(at == null ? null : at.toLocalDate(), what);
+    public void require(LocalDateTime at, String whatKey) {
+        require(at == null ? null : at.toLocalDate(), whatKey);
     }
 }

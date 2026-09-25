@@ -4,6 +4,9 @@ import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.shared.Ids;
+import com.josephinealinea.planner.i18n.I18nConfig;
+import com.josephinealinea.planner.i18n.Messages;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -34,17 +37,29 @@ import java.util.List;
 @Component
 public class ChecklistSeeder {
 
+    private final Messages messages;
+
+    @Autowired
+    public ChecklistSeeder(Messages messages) {
+        this.messages = messages;
+    }
+
+    /** English, for tests that build the seeder by hand. */
+    public ChecklistSeeder() {
+        this(I18nConfig.standalone());
+    }
+
     public List<ChecklistItem> seedFor(Destination destination, int startingSortOrder) {
         String name = destination.getName();
         List<ChecklistItem> seeded = new ArrayList<>();
 
         seeded.add(item(destination, ChecklistCategory.TRANSPORTATION,
-                "Plan transportation to %s".formatted(name), startingSortOrder));
+                messages.get("seed.transportation", name), startingSortOrder));
         if (needsAccommodation(destination)) {
             seeded.add(accommodationFor(destination, startingSortOrder + seeded.size()));
         }
         seeded.add(item(destination, ChecklistCategory.ACTIVITIES,
-                "Plan activities in %s".formatted(name), startingSortOrder + seeded.size()));
+                messages.get("seed.activities", name), startingSortOrder + seeded.size()));
         return List.copyOf(seeded);
     }
 
@@ -56,7 +71,7 @@ public class ChecklistSeeder {
     /** The accommodation line on its own, for dates that arrive later. */
     public ChecklistItem accommodationFor(Destination destination, int sortOrder) {
         return item(destination, ChecklistCategory.LODGING,
-                "Plan %dN accommodation in %s".formatted(destination.nights(), destination.getName()),
+                messages.get("seed.accommodation", String.valueOf(destination.nights()), destination.getName()),
                 sortOrder);
     }
 

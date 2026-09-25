@@ -20,13 +20,13 @@ public class AuthService {
     public User authenticate(String email, String password) {
         // One message for both branches so this cannot be used to test which
         // email addresses have accounts.
-        ApiException rejected = ApiException.unauthorized("That email or password is not right.");
+        ApiException rejected = ApiException.unauthorized("error.login.invalid");
         User user = users.findByEmail(email).orElseThrow(() -> rejected);
         if (!encoder.matches(password, user.getPasswordHash())) throw rejected;
         return user;
     }
 
     public CurrentUser toCurrentUser(User user) {
-        return new CurrentUser(user.getId(), user.getEmail(), user.displayName(), user.isMustChangePassword());
+        return new CurrentUser(user.getId(), user.getEmail(), user.displayName(), user.isMustChangePassword(), user.getLanguageCode());
     }
 }

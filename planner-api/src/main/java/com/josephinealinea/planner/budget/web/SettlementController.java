@@ -28,9 +28,9 @@ import java.time.LocalDate;
 public class SettlementController {
 
     public record RecordRequest(
-            @NotBlank(message = "Say who paid") String fromUserId,
-            @NotBlank(message = "Say who was paid") String toUserId,
-            @NotNull(message = "Enter an amount") BigDecimal amount,
+            @NotBlank(message = "{validation.payer.required}") String fromUserId,
+            @NotBlank(message = "{validation.receiver.required}") String toUserId,
+            @NotNull(message = "{validation.amount.required}") BigDecimal amount,
             /** Absent means the trip's own currency. */
             String currency,
             /** Absent means today. */

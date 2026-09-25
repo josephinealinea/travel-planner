@@ -57,7 +57,7 @@ class UserEmailTest {
         users.findOrCreate("alex@example.com");
 
         assertThatThrownBy(() -> users.updateProfile(sam.getId(), null, null, "alex@example.com"))
-                .hasMessageContaining("already in use");
+                .hasMessage("error.email.taken");
     }
 
     @Test
@@ -65,7 +65,7 @@ class UserEmailTest {
         User sam = users.findOrCreate("sam@example.com").user();
 
         assertThatThrownBy(() -> users.updateProfile(sam.getId(), null, null, "nope"))
-                .hasMessageContaining("does not look like an email");
+                .hasMessage("error.email.invalid");
     }
 
     @Test

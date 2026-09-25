@@ -3,6 +3,7 @@ package com.josephinealinea.planner.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -37,7 +38,8 @@ public class SecurityConfig {
                                     JwtCookieAuthFilter authFilter,
                                     CsrfFilter csrfFilter,
                                     PasswordChangeGate passwordGate,
-                                    ProxySecretFilter proxySecretFilter) throws Exception {
+                                    ProxySecretFilter proxySecretFilter,
+                                    FilterErrors errors) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsSource()))
             // Replaced by CsrfFilter, which speaks the double-submit contract
@@ -59,10 +61,7 @@ public class SecurityConfig {
                                  "/api/v1/auth/me").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, e) -> {
-                response.setStatus(401);
-                response.setContentType("application/problem+json");
-                response.getWriter().write("""
-                        {"status":401,"code":"unauthorized","detail":"Please sign in."}""");
+                errors.write(request, response, HttpStatus.UNAUTHORIZED, "unauthorized", "error.signIn.required");
             }))
             // ProxySecretFilter → CORS → CsrfFilter → JwtCookieAuthFilter →
             // PasswordChangeGate. The proxy check goes first so a caller going

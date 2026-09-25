@@ -1,3 +1,4 @@
+import { currentLanguage } from './i18n/index.js';
 /**
  * Every country the app can show, by ISO 3166-1 alpha-2 code.
  *
@@ -267,10 +268,29 @@ export const COUNTRY_NAMES = {
   ZW: "Zimbabwe",
 };
 
+const displayNames = new Map();
+
+/**
+ * The name in the page's language, from the browser's own region names. English
+ * keeps the table above (it is the reviewed, published set); every other
+ * language would otherwise need a table of its own for 250 places.
+ */
+function localName(key) {
+  const language = currentLanguage();
+  if (language === 'en') return null;
+  try {
+    if (!displayNames.has(language)) displayNames.set(language, new Intl.DisplayNames([language], { type: 'region' }));
+    const name = displayNames.get(language).of(key);
+    return name && name !== key ? name : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The country's name, or the code itself for one this table does not know. */
 export function countryName(code) {
   const key = (code || '').trim().toUpperCase();
-  return key ? (COUNTRY_NAMES[key] || key) : '';
+  return key ? (localName(key) || COUNTRY_NAMES[key] || key) : '';
 }
 
 /** The flag emoji for a code, built from its two regional-indicator letters. */
@@ -280,6 +300,18 @@ export function countryFlag(code) {
   return String.fromCodePoint(...[...key].map((letter) => 0x1f1a5 + letter.charCodeAt(0)));
 }
 
-/** [{ code, name, flag }] in name order, for the country picker. */
-export const COUNTRY_OPTIONS = Object.entries(COUNTRY_NAMES)
-  .map(([code, name]) => ({ code, name, flag: countryFlag(code) }));
+const optionsByLanguage = new Map();
+
+/** [{ code, name, flag }] in name order, for the country picker — in the page's language. */
+export function countryOptions() {
+  const language = currentLanguage();
+  if (!optionsByLanguage.has(language)) {
+    const options = Object.keys(COUNTRY_NAMES)
+      .map((code) => ({ code, name: countryName(code), flag: countryFlag(code) }));
+    // English is already in the table's order, which is name order; another
+    // language's names sort differently.
+    if (language !== 'en') options.sort((a, b) => a.name.localeCompare(b.name, language));
+    optionsByLanguage.set(language, options);
+  }
+  return optionsByLanguage.get(language);
+}

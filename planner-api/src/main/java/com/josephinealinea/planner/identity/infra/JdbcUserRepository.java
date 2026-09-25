@@ -64,16 +64,17 @@ import java.util.Optional;
 public class JdbcUserRepository implements UserRepository {
 
     private static final String UPSERT = """
-            INSERT INTO users (id, email, screen_name, home_country_code, tier_level, password_hash, must_change_password,
+            INSERT INTO users (id, email, screen_name, home_country_code, language_code, tier_level, password_hash, must_change_password,
                                currencies, display_currency, published_page,
                                created_at, updated_at)
-            VALUES (:id, :email, :screenName, :homeCountryCode, :tierLevel, :passwordHash, :mustChangePassword,
+            VALUES (:id, :email, :screenName, :homeCountryCode, :languageCode, :tierLevel, :passwordHash, :mustChangePassword,
                     :currencies, :displayCurrency, :publishedPage::jsonb,
                     :createdAt, :updatedAt)
             ON CONFLICT (id) DO UPDATE SET
                 email                = EXCLUDED.email,
                 screen_name          = EXCLUDED.screen_name,
                 home_country_code    = EXCLUDED.home_country_code,
+                language_code        = EXCLUDED.language_code,
                 tier_level           = EXCLUDED.tier_level,
                 password_hash        = EXCLUDED.password_hash,
                 must_change_password = EXCLUDED.must_change_password,
@@ -140,6 +141,7 @@ public class JdbcUserRepository implements UserRepository {
                 .param("email", user.getEmail())
                 .param("screenName", user.getScreenName())
                 .param("homeCountryCode", user.getHomeCountryCode())
+                .param("languageCode", user.getLanguageCode())
                 .param("tierLevel", user.getTierLevel().name())
                 .param("passwordHash", user.getPasswordHash())
                 .param("mustChangePassword", user.isMustChangePassword())
@@ -163,6 +165,7 @@ public class JdbcUserRepository implements UserRepository {
         user.setEmail(rs.getString("email"));
         user.setScreenName(rs.getString("screen_name"));
         user.setHomeCountryCode(rs.getString("home_country_code"));
+        user.setLanguageCode(rs.getString("language_code"));
         String tier = rs.getString("tier_level");
         user.setTierLevel(tier == null ? null : TierLevel.valueOf(tier.trim().toUpperCase()));
         user.setPasswordHash(rs.getString("password_hash"));

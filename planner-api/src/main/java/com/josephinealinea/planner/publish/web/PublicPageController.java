@@ -72,7 +72,7 @@ public class PublicPageController {
         // requireSafe rejects anything that could climb out of the publish
         // dir; the store checks the member half, as YamlPaths always did.
         String body = pages.read(Area.PUBLISHED, Slugs.requireSafe(slug), member, file)
-                .orElseThrow(() -> ApiException.notFound("Published trip"));
+                .orElseThrow(() -> ApiException.notFound("error.publishedTrip.notFound"));
         return ResponseEntity.ok()
                 .contentType(type)
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")

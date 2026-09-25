@@ -154,7 +154,7 @@ class AuditTrailTest {
         budgetService = new BudgetService(budget, itinerary, destinations, users, access, tripCountries, testRates);
         tripService = new TripService(trips, access,
                 new UserService(users, new BCryptPasswordEncoder(), props),
-                new LoggingEmailSender(), new MailTemplates(props),
+                new LoggingEmailSender(), new MailTemplates(props, com.josephinealinea.planner.i18n.I18nConfig.standalone()),
                 new StaticSiteRenderer(destinations, checklist, itinerary,
                         new BudgetService(budget, itinerary, destinations, users, access,
                                 tripCountries, testRates),
@@ -409,8 +409,7 @@ class AuditTrailTest {
 
         assertThatThrownBy(() -> tripService.create(ALEX, "Fourth",
                 LocalDate.parse("2027-01-01"), LocalDate.parse("2027-01-05")))
-                .hasMessageContaining("only have 3 trips")
-                .hasMessageContaining("Delete or leave");
+                .hasMessage("error.trip.limitReached");
 
         // Leaving one frees a place.
         String second = tripService.listFor(ALEX).stream()
@@ -448,8 +447,7 @@ class AuditTrailTest {
         Trip four = tripService.create(ALEX, "Four", LocalDate.parse("2027-01-01"), LocalDate.parse("2027-01-05"));
 
         assertThatThrownBy(() -> tripService.addMember(four.getId(), ALEX, "rainer@example.com"))
-                .hasMessageContaining("already on 3 trips")
-                .hasMessageContaining("delete or leave");
+                .hasMessage("error.trip.memberLimitReached");
 
         tripService.removeMember(three.getId(), rainer, rainer);
         tripService.addMember(four.getId(), ALEX, "rainer@example.com");
@@ -472,8 +470,7 @@ class AuditTrailTest {
         expenseSharedBy(SAM);
 
         assertThatThrownBy(() -> tripService.removeMember(TRIP_ID, ALEX, SAM))
-                .hasMessageContaining("still linked to the budget")
-                .hasMessageContaining("Unlink them first");
+                .hasMessage("error.trip.memberStillLinked");
 
         var item = budget.findById(SLUG, "expense-1").orElseThrow();
         item.setSharedByUserIds(new java.util.ArrayList<>(List.of(ALEX)));
@@ -512,7 +509,7 @@ class AuditTrailTest {
                 .findFirst().orElseThrow().getUserId();
 
         assertThatThrownBy(() -> tripService.removeMember(TRIP_ID, SAM, rainer))
-                .hasMessageContaining("Only the trip owner");
+                .hasMessage("error.trip.ownerRemovesBuddy");
 
         tripService.removeMember(TRIP_ID, SAM, SAM);
         assertThat(trips.findById(TRIP_ID).orElseThrow().member(SAM)).isEmpty();

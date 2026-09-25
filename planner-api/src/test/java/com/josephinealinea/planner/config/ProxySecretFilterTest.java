@@ -77,7 +77,7 @@ class ProxySecretFilterTest {
     private static Result run(ProxyProperties props, MockHttpServletRequest request) throws Exception {
         var response = new MockHttpServletResponse();
         var chain = new MockFilterChain();
-        new ProxySecretFilter(props).doFilter(request, response, chain);
+        new ProxySecretFilter(props, TestFilterErrors.create()).doFilter(request, response, chain);
         return new Result(chain.getRequest() != null, response);
     }
 }

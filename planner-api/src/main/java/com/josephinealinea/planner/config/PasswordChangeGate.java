@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -30,9 +29,11 @@ public class PasswordChangeGate extends OncePerRequestFilter {
             "/api/v1/account/password");
 
     private final ObjectProvider<CurrentUserContext> currentUser;
+    private final FilterErrors errors;
 
-    public PasswordChangeGate(ObjectProvider<CurrentUserContext> currentUser) {
+    public PasswordChangeGate(ObjectProvider<CurrentUserContext> currentUser, FilterErrors errors) {
         this.currentUser = currentUser;
+        this.errors = errors;
     }
 
     @Override
@@ -46,11 +47,8 @@ public class PasswordChangeGate extends OncePerRequestFilter {
                 && !ALLOWED.contains(request.getRequestURI());
 
         if (blocked) {
-            response.setStatus(HttpStatus.CONFLICT.value());
-            response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            response.getWriter().write("""
-                    {"status":409,"code":"password_change_required",\
-                    "detail":"Please choose a new password before continuing."}""");
+            errors.write(request, response, HttpStatus.CONFLICT,
+                    "password_change_required", "error.password.changeRequired");
             return;
         }
 

@@ -4,6 +4,7 @@ import com.josephinealinea.planner.config.AuthCookies;
 import com.josephinealinea.planner.config.CurrentUserContext;
 import com.josephinealinea.planner.config.JwtService;
 import com.josephinealinea.planner.identity.api.UserService;
+import com.josephinealinea.planner.i18n.Messages;
 import com.josephinealinea.planner.identity.domain.User;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -18,15 +19,25 @@ public class AccountController {
     private final CurrentUserContext currentUser;
     private final JwtService jwt;
     private final AuthCookies cookies;
+    private final Messages messages;
 
     public AccountController(UserService users,
                              CurrentUserContext currentUser,
                              JwtService jwt,
-                             AuthCookies cookies) {
+                             AuthCookies cookies,
+                             Messages messages) {
+        this.messages = messages;
         this.users = users;
         this.currentUser = currentUser;
         this.jwt = jwt;
         this.cookies = cookies;
+    }
+
+    /** Blank clears the choice, so the browser's language decides again. */
+    @PatchMapping("/language")
+    AuthDtos.MeResponse updateLanguage(@RequestBody AuthDtos.LanguageRequest request) {
+        return AuthDtos.MeResponse.from(users.updateLanguage(
+                currentUser.userId(), request.languageCode(), messages.supported()));
     }
 
     @PatchMapping("/profile")

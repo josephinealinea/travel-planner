@@ -1,9 +1,14 @@
+import { t, currentLanguage } from './i18n/index.js';
 /** Display formatting. Everything here tolerates null, because most fields are optional. */
 
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June',
-                     'July', 'August', 'September', 'October', 'November', 'December'];
+/** A month's name in the page's language, from the browser rather than a table here. */
+function monthName(date, style) {
+  try {
+    return new Intl.DateTimeFormat(currentLanguage(), { month: style }).format(date);
+  } catch {
+    return String(date.getMonth() + 1);
+  }
+}
 
 /** Parses "2026-10-25" as a local date, so the day never shifts by timezone. */
 export function parseDate(iso) {
@@ -15,12 +20,12 @@ export function parseDate(iso) {
 
 export function shortDate(iso) {
   const date = parseDate(iso);
-  return date ? `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}` : '';
+  return date ? `${date.getDate()} ${monthName(date, 'short')}` : '';
 }
 
 export function longDate(iso) {
   const date = parseDate(iso);
-  return date ? `${date.getDate()} ${MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}` : '';
+  return date ? `${date.getDate()} ${monthName(date, 'long')} ${date.getFullYear()}` : '';
 }
 
 /**
@@ -43,7 +48,7 @@ export function dateLabel(iso) {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}`;
+  return `${date.getDate()} ${monthName(date, 'short')} ${date.getFullYear()}`;
 }
 
 export function dateRange(startIso, endIso) {
@@ -127,11 +132,11 @@ export function daysUntil(iso) {
 export function countdownLabel(iso) {
   const days = daysUntil(iso);
   if (days == null) return '';
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days > 1) return `In ${days} days`;
-  if (days === -1) return 'Yesterday';
-  return `${Math.abs(days)} days ago`;
+  if (days === 0) return t('date.today');
+  if (days === 1) return t('date.tomorrow');
+  if (days > 1) return t('date.inDays', { count: days });
+  if (days === -1) return t('date.yesterday');
+  return t('date.daysAgo', { count: Math.abs(days) });
 }
 
 /**
@@ -144,12 +149,12 @@ export function countdownLabel(iso) {
  * the hand-written trips. Adding one means adding it there first.
  */
 export const CATEGORIES = [
-  { value: 'TRANSPORTATION', label: 'Transportation', icon: '✈️', color: '#F76707' },
-  { value: 'LODGING',        label: 'Lodging',        icon: '🏨', color: '#4C6EF5' },
-  { value: 'ACTIVITIES',     label: 'Activities',     icon: '🎟️', color: '#E64980' },
-  { value: 'SHOPPING',       label: 'Shopping',       icon: '🛍️', color: '#AE3EC9' },
-  { value: 'FOOD',           label: 'Food',           icon: '🍽️', color: '#2F9E44' },
-  { value: 'OTHERS',         label: 'Others',         icon: '💰', color: '#868E96' },
+  { value: 'TRANSPORTATION', get label() { return t('category.transport'); }, icon: '✈️', color: '#F76707' },
+  { value: 'LODGING',        get label() { return t('category.lodging'); },        icon: '🏨', color: '#4C6EF5' },
+  { value: 'ACTIVITIES',     get label() { return t('category.activities'); },     icon: '🎟️', color: '#E64980' },
+  { value: 'SHOPPING',       get label() { return t('category.shopping'); },       icon: '🛍️', color: '#AE3EC9' },
+  { value: 'FOOD',           get label() { return t('category.food'); },           icon: '🍽️', color: '#2F9E44' },
+  { value: 'OTHERS',         get label() { return t('category.other'); },         icon: '💰', color: '#868E96' },
 ];
 
 const BY_VALUE = Object.fromEntries(CATEGORIES.map((c) => [c.value, c]));

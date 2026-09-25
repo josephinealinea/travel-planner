@@ -625,4 +625,74 @@ class StaticSiteRendererTest {
         assertThat(flight.get("2026-10-24").get("startTime").asText()).isEqualTo("22:15");
         assertThat(flight.get("2026-10-24").get("endTime").asText()).isEqualTo("08:40");
     }
+
+    // ── language ────────────────────────────────────────────────────────────
+
+    private static PublishOptions inLanguage(String code) {
+        return new PublishOptions(false, false, false, false, java.util.List.of(), code);
+    }
+
+    /** The window.I18N table the page reads its words from. */
+    private JsonNode i18n(String html) throws Exception {
+        String marker = "window.I18N = ";
+        int start = html.indexOf(marker) + marker.length();
+        int end = html.indexOf(";</script>", start);
+        return new ObjectMapper().readTree(html.substring(start, end));
+    }
+
+    @Test
+    void aPageWithNoLanguageChosenIsEnglish() throws Exception {
+        String html = render("minima", inLanguage(null));
+
+        assertThat(html).contains("<html lang=\"en\"");
+        assertThat(i18n(html).get("_lang").asText()).isEqualTo("en");
+        assertThat(i18n(html).get("page.itinerary.title").asText()).isEqualTo("Itinerary");
+        assertThat(payload(html).get("checklist").get(0).get("categoryLabel").asText()).isEqualTo("Lodging");
+    }
+
+    @Test
+    void aPageIsWrittenInTheLanguageOfWhoseMemberItIsFor() throws Exception {
+        String html = render("minima", inLanguage("xx"));
+
+        assertThat(html).contains("<html lang=\"xx\"");
+        assertThat(html).contains("[xx] needs JavaScript");
+        assertThat(html).contains("[xx]from 2026-10-24 to 2026-11-08");
+        assertThat(html).contains("[xx] Planned with");
+        assertThat(i18n(html).get("_lang").asText()).isEqualTo("xx");
+        assertThat(i18n(html).get("page.itinerary.title").asText()).isEqualTo("[xx] Itinerary");
+        // Words the server writes into the data, not just the ones the script looks up.
+        assertThat(payload(html).get("checklist").get(0).get("categoryLabel").asText()).isEqualTo("[xx] Lodging");
+    }
+
+    @Test
+    void aLanguageWeDoNotHaveIsEnglish() throws Exception {
+        assertThat(render("minima", inLanguage("fr"))).contains("<html lang=\"en\"");
+    }
+
+    @Test
+    void aKeyMissingFromALanguageFallsBackToEnglishInsideThePage() throws Exception {
+        // The test language does not translate this one.
+        assertThat(i18n(render("minima", inLanguage("xx"))).get("page.checklist.empty").asText())
+                .isEqualTo("No checklist items yet.");
+    }
+
+    /** A published page is public: it gets the words it needs and none of the API's own. */
+    @Test
+    void onlyThePagesOwnWordsAreShipped() throws Exception {
+        JsonNode table = i18n(render("minima", inLanguage("xx")));
+
+        table.fieldNames().forEachRemaining(key ->
+                assertThat(key).matches("_lang|page\\..*"));
+        assertThat(table.has("error.trip.notFound")).isFalse();
+        assertThat(table.has("email.invitedNewMember.body")).isFalse();
+    }
+
+    @Test
+    void theTablePlacesNothingThatCouldEndTheScriptEarly() throws Exception {
+        assertThat(render("minima", inLanguage("xx"))).doesNotContain("</script><script>window.I18N");
+        String html = render("minima", inLanguage("xx"));
+        int start = html.indexOf("window.I18N = ");
+        int end = html.indexOf(";</script>", start);
+        assertThat(html.substring(start, end)).doesNotContain("</");
+    }
 }

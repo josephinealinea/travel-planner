@@ -140,6 +140,6 @@ class TravellersTest {
         assertThat(Travellers.change(trip, null, null, null)).isNull();
         assertThatThrownBy(() -> Travellers.change(trip, null, List.of(KIM), null))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("travel buddies");
+                .hasMessage("error.trip.notABuddy");
     }
 }

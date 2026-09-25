@@ -21,6 +21,12 @@ public class User {
     private String screenName;
     /** ISO 3166-1 alpha-2 code, named by the shared country table; blank until they set one. */
     private String homeCountryCode;
+    /**
+     * The language this member reads the app in, a code with a messages file
+     * (see {@code i18n.Messages}). Null until they choose one, which means
+     * "whatever the browser asks for, else English" rather than a stored "en".
+     */
+    private String languageCode;
 
     /**
      * Never null: a users.yml record with no tier, or a row written before the
@@ -52,6 +58,9 @@ public class User {
     public String displayName() {
         return (screenName == null || screenName.isBlank()) ? Emails.shorten(email) : screenName;
     }
+
+    public String getLanguageCode() { return languageCode; }
+    public void setLanguageCode(String languageCode) { this.languageCode = languageCode; }
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }

@@ -1,3 +1,4 @@
+import { t } from './i18n/index.js';
 /**
  * Turning one day's reading into something readable.
  *
@@ -24,44 +25,44 @@
  * group below them, so a future code never renders blank.
  */
 const WMO = [
-  [0,  '☀️', 'Clear'],
-  [1,  '🌤', 'Mainly clear'],
-  [2,  '⛅️', 'Partly cloudy'],
-  [3,  '☁️', 'Overcast'],
-  [45, '🌫', 'Fog'],
-  [48, '🌫', 'Freezing fog'],
-  [51, '🌦', 'Light drizzle'],
-  [53, '🌦', 'Drizzle'],
-  [55, '🌧', 'Heavy drizzle'],
-  [56, '🌧', 'Freezing drizzle'],
-  [57, '🌧', 'Freezing drizzle'],
-  [61, '🌦', 'Light rain'],
-  [63, '🌧', 'Rain'],
-  [65, '🌧', 'Heavy rain'],
-  [66, '🌧', 'Freezing rain'],
-  [67, '🌧', 'Freezing rain'],
-  [71, '🌨', 'Light snow'],
-  [73, '🌨', 'Snow'],
-  [75, '❄️', 'Heavy snow'],
-  [77, '🌨', 'Snow grains'],
-  [80, '🌦', 'Light showers'],
-  [81, '🌧', 'Showers'],
-  [82, '⛈', 'Violent showers'],
-  [85, '🌨', 'Snow showers'],
-  [86, '❄️', 'Heavy snow showers'],
-  [95, '⛈', 'Thunderstorm'],
-  [96, '⛈', 'Thunderstorm with hail'],
-  [99, '⛈', 'Thunderstorm with hail'],
+  [0,  '☀️', 'weather.wmo.0'],
+  [1,  '🌤', 'weather.wmo.1'],
+  [2,  '⛅️', 'weather.wmo.2'],
+  [3,  '☁️', 'weather.wmo.3'],
+  [45, '🌫', 'weather.wmo.45'],
+  [48, '🌫', 'weather.wmo.48'],
+  [51, '🌦', 'weather.wmo.51'],
+  [53, '🌦', 'weather.wmo.53'],
+  [55, '🌧', 'weather.wmo.55'],
+  [56, '🌧', 'weather.wmo.56'],
+  [57, '🌧', 'weather.wmo.57'],
+  [61, '🌦', 'weather.wmo.61'],
+  [63, '🌧', 'weather.wmo.63'],
+  [65, '🌧', 'weather.wmo.65'],
+  [66, '🌧', 'weather.wmo.66'],
+  [67, '🌧', 'weather.wmo.67'],
+  [71, '🌨', 'weather.wmo.71'],
+  [73, '🌨', 'weather.wmo.73'],
+  [75, '❄️', 'weather.wmo.75'],
+  [77, '🌨', 'weather.wmo.77'],
+  [80, '🌦', 'weather.wmo.80'],
+  [81, '🌧', 'weather.wmo.81'],
+  [82, '⛈', 'weather.wmo.82'],
+  [85, '🌨', 'weather.wmo.85'],
+  [86, '❄️', 'weather.wmo.86'],
+  [95, '⛈', 'weather.wmo.95'],
+  [96, '⛈', 'weather.wmo.96'],
+  [99, '⛈', 'weather.wmo.99'],
 ];
 
 /** Millimetres of rain in a day, to the same icon-and-label shape. */
 const RAIN = [
-  [20,  '⛈', 'Very wet'],
-  [10,  '🌧', 'Wet'],
-  [4,   '🌧', 'Rain likely'],
-  [1,   '🌦', 'Showers likely'],
-  [0.1, '🌤', 'Mostly dry'],
-  [0,   '☀️', 'Dry'],
+  [20,  '⛈', 'weather.rain.veryWet'],
+  [10,  '🌧', 'weather.rain.wet'],
+  [4,   '🌧', 'weather.rain.likely'],
+  [1,   '🌦', 'weather.rain.showersLikely'],
+  [0.1, '🌤', 'weather.rain.mostlyDry'],
+  [0,   '☀️', 'weather.rain.dry'],
 ];
 
 // No placeholder glyph: an icon slot with a dot in it reads as a bullet
@@ -81,12 +82,12 @@ export function condition(day) {
     for (const entry of WMO) {
       if (day.weatherCode >= entry[0]) match = entry;
     }
-    return { icon: match[1], label: match[2] };
+    return { icon: match[1], label: t(match[2]) };
   }
 
   if (day.precipitation != null) {
     for (const [threshold, icon, label] of RAIN) {
-      if (day.precipitation >= threshold) return { icon, label };
+      if (day.precipitation >= threshold) return { icon, label: t(label) };
     }
   }
 
@@ -100,7 +101,7 @@ export function temperatureRange(day) {
   if (high == null && low == null) return '';
   if (low == null) return `${high}°`;
   if (high == null) return `${low}°`;
-  return `${high}° / ${low}°`;
+  return t('weather.range', { high, low });
 }
 
 /**
@@ -113,7 +114,7 @@ export function temperatureRange(day) {
 export function sourceNote(day) {
   switch (day?.source) {
     case 'FORECAST': return '';
-    case 'CLIMATE': return 'typical for these dates, not a forecast';
+    case 'CLIMATE': return t('weather.typicalNote');
     default: return '';
   }
 }
@@ -139,13 +140,13 @@ export function unavailableHint(day) {
   const date = parseIsoDate(day?.date);
   if (date && daysFromToday(date) > FORECAST_OPENS_DAYS_AHEAD) {
     return {
-      text: '📅 Forecast not yet open',
-      title: `Forecast opens ${FORECAST_OPENS_DAYS_AHEAD} days before this date`,
+      text: t('weather.notYetOpen'),
+      title: t('weather.opensDaysBefore', { days: FORECAST_OPENS_DAYS_AHEAD }),
     };
   }
   return {
-    text: '📅 Weather unavailable',
-    title: 'The lookup did not come back. Reopening this tab tries again.',
+    text: t('weather.unavailable'),
+    title: t('weather.lookupFailed'),
   };
 }
 
@@ -164,8 +165,8 @@ function daysFromToday(date) {
 /** Shorter version of the same, for the badge itself. */
 export function sourceBadge(day) {
   switch (day?.source) {
-    case 'FORECAST': return 'Forecast';
-    case 'CLIMATE': return 'Typical';
+    case 'FORECAST': return t('weather.forecast');
+    case 'CLIMATE': return t('weather.typical');
     default: return '';
   }
 }
@@ -198,8 +199,9 @@ const whole = (value) => Math.round(value);
 /** "05:35" from "2026-09-25T05:35" — the API already sends destination-local time. */
 const clock = (iso) => (typeof iso === 'string' && iso.length >= 16 ? iso.slice(11, 16) : null);
 
-const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-const compass = (degrees) => COMPASS[Math.round(degrees / 45) % 8];
+const COMPASS = ['weather.compass.n', 'weather.compass.ne', 'weather.compass.e', 'weather.compass.se',
+                 'weather.compass.s', 'weather.compass.sw', 'weather.compass.w', 'weather.compass.nw'];
+const compass = (degrees) => t(COMPASS[Math.round(degrees / 45) % 8]);
 
 /**
  * The few that earn room on the card itself, in reading order.
@@ -220,11 +222,11 @@ export function detailChips(day) {
       id: 'sun',
       icon: '🌅',
       text: [rise, set].filter(Boolean).join(' · '),
-      title: 'Sunrise · sunset, local time',
+      title: t('weather.sunTimes'),
     });
   }
   if (known(d.uvIndexMax)) {
-    chips.push({ id: 'uv', icon: '☀️', text: `UV ${whole(d.uvIndexMax)}`, title: 'Peak UV index' });
+    chips.push({ id: 'uv', icon: '☀️', text: t('weather.uv', { n: whole(d.uvIndexMax) }), title: t('weather.uvTip') });
   }
 
   // Chance and amount share one chip. A dry day with a known chance still says
@@ -232,20 +234,20 @@ export function detailChips(day) {
   // chance to state, says nothing — its condition label already reads "Dry".
   const rainParts = [];
   if (known(d.precipitationProbabilityMax)) rainParts.push(`${whole(d.precipitationProbabilityMax)}%`);
-  if (known(d.rainSum) && d.rainSum > 0) rainParts.push(`${round1(d.rainSum)} mm`);
+  if (known(d.rainSum) && d.rainSum > 0) rainParts.push(t('weather.mm', { n: round1(d.rainSum) }));
   if (rainParts.length) {
-    chips.push({ id: 'rain', icon: '💧', text: `${rainParts.join(' · ')} rain`, title: 'Chance and amount of rain' });
+    chips.push({ id: 'rain', icon: '💧', text: t('weather.rain', { value: rainParts.join(' · ') }), title: t('weather.rainTip') });
   }
   if (known(d.snowfallSum) && d.snowfallSum > 0) {
-    chips.push({ id: 'snow', icon: '❄️', text: `${round1(d.snowfallSum)} cm snow`, title: 'Snowfall' });
+    chips.push({ id: 'snow', icon: '❄️', text: t('weather.snow', { n: round1(d.snowfallSum) }), title: t('weather.snowTip') });
   }
 
   if (known(d.windSpeedMax)) {
     chips.push({
       id: 'wind',
       icon: '💨',
-      text: `${whole(d.windSpeedMax)} km/h wind`,
-      title: known(d.windGustsMax) ? `Gusts up to ${whole(d.windGustsMax)} km/h` : 'Top wind speed',
+      text: t('weather.wind', { n: whole(d.windSpeedMax) }),
+      title: known(d.windGustsMax) ? t('weather.gustsTip', { n: whole(d.windGustsMax) }) : t('weather.windTip'),
     });
   }
 
@@ -257,7 +259,7 @@ export function detailChips(day) {
     if (differs(d.apparentTemperatureMax, day.temperatureMax) || differs(d.apparentTemperatureMin, day.temperatureMin)) {
       const high = known(d.apparentTemperatureMax) ? `${whole(d.apparentTemperatureMax)}°` : null;
       const low = known(d.apparentTemperatureMin) ? `${whole(d.apparentTemperatureMin)}°` : null;
-      chips.push({ id: 'feels', icon: '🌡', text: `Feels ${[high, low].filter(Boolean).join(' / ')}`, title: 'Feels like' });
+      chips.push({ id: 'feels', icon: '🌡', text: t('weather.feels', { value: [high, low].filter(Boolean).join(' / ') }), title: t('weather.feelsTip') });
     }
   }
   return chips;
@@ -268,13 +270,13 @@ export function detailsTitle(day) {
   const d = day?.details;
   if (!d) return '';
   const parts = [];
-  if (known(d.humidityMean)) parts.push(`Humidity ${whole(d.humidityMean)}%`);
-  if (known(d.cloudCoverMean)) parts.push(`Cloud cover ${whole(d.cloudCoverMean)}%`);
+  if (known(d.humidityMean)) parts.push(t('weather.humidity', { n: whole(d.humidityMean) }));
+  if (known(d.cloudCoverMean)) parts.push(t('weather.cloudCover', { n: whole(d.cloudCoverMean) }));
   if (known(d.daylightSeconds)) {
     const minutes = Math.round(d.daylightSeconds / 60);
-    parts.push(`Daylight ${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`);
+    parts.push(t('weather.daylight', { h: Math.floor(minutes / 60), m: String(minutes % 60).padStart(2, '0') }));
   }
-  if (known(d.windDirection)) parts.push(`Wind from ${compass(d.windDirection)}`);
+  if (known(d.windDirection)) parts.push(t('weather.windFrom', { direction: compass(d.windDirection) }));
   return parts.join(' · ');
 }
 

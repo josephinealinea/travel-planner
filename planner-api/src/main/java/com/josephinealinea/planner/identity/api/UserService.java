@@ -43,7 +43,7 @@ public class UserService {
     public Invited findOrCreate(String email) {
         String normalised = YamlUserRepository.normalise(email);
         if (normalised == null || !normalised.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
-            throw ApiException.badRequest("That does not look like an email address.");
+            throw ApiException.badRequest("error.email.invalid");
         }
         return users.findByEmail(normalised)
                 .map(existing -> new Invited(existing, null, false))
@@ -62,7 +62,7 @@ public class UserService {
     }
 
     public User require(String id) {
-        return users.findById(id).orElseThrow(() -> ApiException.notFound("User"));
+        return users.findById(id).orElseThrow(() -> ApiException.notFound("error.user.notFound"));
     }
 
     public Map<String, User> byId(List<String> ids) {
@@ -80,25 +80,40 @@ public class UserService {
         if (email != null && !email.isBlank()) changeEmail(user, email);
         String trimmed = screenName == null ? null : screenName.trim();
         if (trimmed != null && trimmed.length() > 60) {
-            throw ApiException.badRequest("Screen name must be 60 characters or fewer.");
+            throw ApiException.badRequest("error.screenName.tooLong");
         }
         user.setScreenName(trimmed == null || trimmed.isBlank() ? null : trimmed);
         String code = homeCountryCode == null ? null : homeCountryCode.trim().toUpperCase();
         if (code != null && !code.isEmpty() && !CountryTable.isKnown(code)) {
-            throw ApiException.badRequest("Choose a country from the list.");
+            throw ApiException.badRequest("error.country.invalid");
         }
         user.setHomeCountryCode(code == null || code.isEmpty() ? null : code);
+        return users.save(user);
+    }
+
+    /**
+     * @param supported the languages that have a messages file; passed in so
+     *                  the service does not need to know where they come from
+     * @param code      blank clears the choice (back to the browser's language)
+     */
+    public User updateLanguage(String userId, String code, java.util.Set<String> supported) {
+        User user = require(userId);
+        String normalised = code == null ? "" : code.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!normalised.isEmpty() && !supported.contains(normalised)) {
+            throw ApiException.badRequest("error.language.unsupported");
+        }
+        user.setLanguageCode(normalised.isEmpty() ? null : normalised);
         return users.save(user);
     }
 
     private void changeEmail(User user, String email) {
         String normalised = YamlUserRepository.normalise(email);
         if (!normalised.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
-            throw ApiException.badRequest("That does not look like an email address.");
+            throw ApiException.badRequest("error.email.invalid");
         }
         if (normalised.equals(user.getEmail())) return;
         if (users.findByEmail(normalised).isPresent()) {
-            throw ApiException.conflict("email_taken", "That email address is already in use.");
+            throw ApiException.conflict("email_taken", "error.email.taken");
         }
         user.setEmail(normalised);
     }
@@ -116,6 +131,7 @@ public class UserService {
         copy.setEmail(YamlUserRepository.normalise("left-" + copy.getId() + "-" + original.getEmail()));
         copy.setScreenName(original.getScreenName());
         copy.setHomeCountryCode(original.getHomeCountryCode());
+        copy.setLanguageCode(original.getLanguageCode());
         copy.setTierLevel(original.getTierLevel());
         copy.setCurrencies(new ArrayList<>(original.getCurrencies()));
         copy.setDisplayCurrency(original.getDisplayCurrency());
@@ -147,15 +163,15 @@ public class UserService {
     public User updateCurrencies(String userId, List<String> currencies) {
         User user = require(userId);
         if (currencies == null || currencies.isEmpty()) {
-            throw ApiException.badRequest("Choose at least one currency.");
+            throw ApiException.badRequest("error.currencies.none");
         }
         if (currencies.size() > 20) {
-            throw ApiException.badRequest("That is too many currencies — choose 20 or fewer.");
+            throw ApiException.badRequest("error.currencies.tooMany");
         }
         List<String> normalised = new ArrayList<>();
         for (String code : currencies) {
             if (code == null || !code.trim().matches("[A-Za-z]{3}")) {
-                throw ApiException.badRequest("\"" + code + "\" does not look like a currency code.");
+                throw ApiException.badRequest("error.currency.invalid", code);
             }
             String upper = code.trim().toUpperCase();
             if (!normalised.contains(upper)) normalised.add(upper);
@@ -194,7 +210,7 @@ public class UserService {
     public User updateDisplayCurrency(String userId, String currency) {
         User user = require(userId);
         if (currency == null || !currency.trim().matches("[A-Za-z]{3}")) {
-            throw ApiException.badRequest("\"" + currency + "\" does not look like a currency code.");
+            throw ApiException.badRequest("error.currency.invalid", currency);
         }
         user.setDisplayCurrency(currency.trim().toUpperCase());
         return users.save(user);
@@ -209,13 +225,13 @@ public class UserService {
         User user = require(userId);
         if (!encoder.matches(currentPassword, user.getPasswordHash())) {
             throw new ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,
-                    "current_password_wrong", "That current password is not right.");
+                    "current_password_wrong", "error.password.currentWrong");
         }
         if (newPassword == null || newPassword.length() < 8) {
-            throw ApiException.badRequest("Your new password needs at least 8 characters.");
+            throw ApiException.badRequest("error.password.tooShort");
         }
         if (encoder.matches(newPassword, user.getPasswordHash())) {
-            throw ApiException.badRequest("Please choose a password you have not used here before.");
+            throw ApiException.badRequest("error.password.reused");
         }
         user.setPasswordHash(encoder.encode(newPassword));
         user.setMustChangePassword(false);

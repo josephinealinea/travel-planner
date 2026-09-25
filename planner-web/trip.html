@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trip — Travelling Llama</title>
+<title data-i18n="trip.tripTravellingLlama">Trip — Travelling Llama</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/css/minima.css?v=78"     id="minima-css">
 <link rel="stylesheet" href="assets/css/y2k.css?v=78"        id="y2k-css"        disabled>
@@ -27,7 +27,7 @@
 <header id="site-header"></header>
 
 <main class="page" x-data="tripPage()" x-init="init()" x-cloak>
-  <p class="loading" x-show="loading">Loading the trip…</p>
+  <p class="loading" x-show="loading" data-i18n="trip.loadingTheTrip"></p>
   <div class="alert alert-error" x-show="error && !loading" x-text="error" x-cloak></div>
 
   <template x-if="!loading && !error">
@@ -38,33 +38,32 @@
           <h1 class="trip-head-title">
             <span x-text="trip.title"></span>
             <span class="badge" :class="trip.status === 'PUBLISHED' ? 'badge-published' : 'badge-draft'"
-                  x-text="trip.status === 'PUBLISHED' ? 'Published' : 'Draft'"></span>
+                  x-text="trip.status === 'PUBLISHED' ? $t('status.published') : $t('status.draft')"></span>
             <span class="badge" :class="isOwner ? 'badge-owner' : ''"
-                  x-text="isOwner ? 'Owner' : 'Travel buddy'"></span>
+                  x-text="isOwner ? $t('role.owner') : $t('role.travelBuddy')"></span>
           </h1>
           <div class="trip-head-meta">
             <span x-text="tripDates()"></span>
             <!--<span x-show="ownerName()"> · owned by <span x-text="ownerName()"></span>--></span>
-            <span> · <span x-text="members.length"></span>
-              travel <span x-text="members.length === 1 ? 'buddy' : 'buddies'"></span></span>
-            <span class="scope-switch" role="group" aria-label="Show" x-show="canSeeWholeTrip">
+            <span> · <span x-text="$t('trip.travelBuddiesCount', { count: members.length })"></span></span>
+            <span class="scope-switch" role="group" data-i18n-aria-label="trip.show" x-show="canSeeWholeTrip">
               <button type="button" class="chip" :aria-pressed="scope === 'mine'"
-                      @click="setScope('mine')">Show only my Activities</button>
+                      @click="setScope('mine')" data-i18n="trip.showOnlyMyActivities"></button>
               <button type="button" class="chip" :aria-pressed="scope === 'trip'"
-                      @click="setScope('trip')">Show whole trip</button>
+                      @click="setScope('trip')" data-i18n="trip.showWholeTrip"></button>
             </span>
           </div>
         </div>
         <div class="trip-head-actions">
-          <a class="btn btn-sm" href="trips.html">← All trips</a>
-          <button type="button" class="btn btn-sm" @click="openEdit()">Edit trip</button>
+          <a class="btn btn-sm" href="trips.html" data-i18n="trip.allTrips"></a>
+          <button type="button" class="btn btn-sm" @click="openEdit()" data-i18n="trip.editTrip"></button>
           <button type="button" class="btn btn-sm btn-danger" x-show="isOwner"
-                  @click="deletingTrip = true; deleteConfirm = ''">Delete trip</button>
+                  @click="deletingTrip = true; deleteConfirm = ''" data-i18n="trip.deleteTrip"></button>
         </div>
       </div>
 
       <!-- ── tabs ───────────────────────────────── -->
-      <div class="tabs" role="tablist" aria-label="Trip sections"
+      <div class="tabs" role="tablist" data-i18n-aria-label="trip.tripSections"
            @keydown="onTabKeydown($event)">
         <template x-for="t in tabs" :key="t.id">
           <button type="button" class="tab" role="tab"
@@ -91,8 +90,8 @@
 
         <div class="grid grid-2">
           <div class="card">
-            <div class="card-header"><h2 class="card-title">Up next</h2></div>
-            <p class="small muted" x-show="!upNext().length">Nothing scheduled yet.</p>
+            <div class="card-header"><h2 class="card-title" data-i18n="trip.upNext"></h2></div>
+            <p class="small muted" x-show="!upNext().length" data-i18n="trip.nothingScheduledYet"></p>
             <template x-for="item in upNext()" :key="item.id">
               <div class="needs-planning-row">
                 <span x-text="categoryOf(item.category).icon"></span>
@@ -106,21 +105,17 @@
 
           <div class="card">
             <div class="card-header">
-              <h2 class="card-title">Needs planning</h2>
+              <h2 class="card-title" data-i18n="trip.needsPlanning"></h2>
               <span class="badge" x-text="needsPlanning().length"></span>
             </div>
             <!-- With no destination there is nothing to plan yet, and nothing
                  on this card to act on — so it offers the first step instead. -->
             <div x-show="!destinations.length">
-              <p class="small muted">
-                Nothing to plan yet — adding a destination seeds its own checklist items.
-              </p>
+              <p class="small muted" data-i18n="trip.nothingToPlanYet"></p>
               <button type="button" class="btn btn-sm btn-primary"
-                      @click="addFirstDestination()">Add your first destination</button>
+                      @click="addFirstDestination()" data-i18n="trip.addYourFirstDestination"></button>
             </div>
-            <p class="small muted" x-show="destinations.length && !needsPlanning().length">
-              Everything on the checklist has a plan against it.
-            </p>
+            <p class="small muted" x-show="destinations.length && !needsPlanning().length" data-i18n="trip.everythingOnTheChecklist"></p>
             <template x-for="item in needsPlanning()" :key="item.id">
               <div class="needs-planning-row">
                 <span x-text="categoryOf(item.category).icon"></span>
@@ -130,7 +125,7 @@
                        x-text="countryLabel(item.countryCodes)"></div>
                 </div>
                 <button type="button" class="btn btn-sm" @click="planFromOverview(item)"
-                        :aria-label="`Plan: ${item.description}`">Plan</button>
+                        :aria-label="$t('trip.planNamed', { name: item.description })" data-i18n="trip.plan"></button>
               </div>
             </template>
           </div>
@@ -141,36 +136,34 @@
       <section x-show="tab === 'members'" role="tabpanel" id="panel-members"
                aria-labelledby="tab-members" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">🦙 The Herd</h2>
+          <h2 class="section-title" data-i18n="trip.theHerd"></h2>
         </div>
 
         <div class="card" style="margin-bottom:16px">
           <div class="alert alert-error" x-show="memberError" x-text="memberError" x-cloak></div>
           <form class="field-inline" @submit.prevent="addMember()">
             <div class="field grow">
-              <label for="member-email">Add a travel buddy 🦙 to the herd</label>
+              <label for="member-email" data-i18n="trip.addATravelBuddy"></label>
               <input id="member-email" type="email" x-model="memberEmail"
-                     placeholder="name@example.com" required>
-              <p class="field-hint">
-                They will get an email with a temporary password.
-              </p>
+                     data-i18n-placeholder="trip.nameExampleCom" required>
+              <p class="field-hint" data-i18n="trip.theyWillGetAn"></p>
             </div>
             <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
               <button type="submit" class="btn btn-primary" :disabled="addingMember"
-                      x-text="addingMember ? 'Sending…' : 'Send invite'"></button>
+                      x-text="addingMember ? $t('common.sending') : $t('trip.sendInvite')"></button>
             </div>
           </form>
         </div>
 
         <!-- Only you so far: the one screen where inviting is the obvious next step. -->
         <p class="solo-hint" x-show="members.length === 1" x-cloak>
-          <span aria-hidden="true">🦙</span> Travelling solo so far — add a travel buddy by email above.
+          <span aria-hidden="true">🦙</span> <span data-i18n="trip.travellingSoloSoFar"></span>
         </p>
 
         <div class="table-wrap">
           <table class="table table-cards table-cards-plain">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Residence country</th><th>Added</th><th class="actions"></th></tr>
+              <tr><th data-i18n="trip.name"></th><th data-i18n="common.email"></th><th data-i18n="trip.residenceCountry"></th><th data-i18n="trip.added"></th><th class="actions"></th></tr>
             </thead>
             <tbody>
               <template x-for="member in membersSignedInFirst" :key="member.userId">
@@ -179,8 +172,8 @@
                     <span class="member-name">
                       <span :class="member.screenName ? '' : 'member-email-only'"
                             x-text="member.displayName"></span>
-                      <span class="badge" x-show="!member.hasSignedIn">Not signed in yet</span>
-                      <span class="badge" x-show="member.userId === currentUserId">You</span>
+                      <span class="badge" x-show="!member.hasSignedIn" data-i18n="trip.notSignedInYet"></span>
+                      <span class="badge" x-show="member.userId === currentUserId" data-i18n="trip.you"></span>
                     </span>
                   </td>
                   <td class="muted" data-label="Email" x-text="member.emailLabel"></td>
@@ -190,11 +183,11 @@
                     <button type="button" class="btn btn-sm btn-danger"
                             x-show="member.role !== 'OWNER' && (isOwner || isSelf(member))"
                             @click="askRemoveMember(member)"
-                            :aria-label="isSelf(member) ? 'Leave the Herd' : `Remove ${member.displayName} from the Herd`"
-                            x-text="isSelf(member) ? 'Leave the Herd 🦙' : 'Remove from the Herd'"></button>
+                            :aria-label="isSelf(member) ? $t('trip.leaveTheHerd') : $t('trip.removeNamedFromTheHerd', { name: member.displayName })"
+                            x-text="isSelf(member) ? $t('trip.leaveTheHerdWithLlama') : $t('trip.removeFromTheHerd')"></button>
                     <span class="tiny muted"
                           x-show="member.role === 'OWNER' || (!isOwner && !isSelf(member))"
-                          :title="member.role === 'OWNER' ? 'Delete the trip instead' : 'Only the trip owner can remove a travel buddy'">Part of the herd! 🦙</span>
+                          :title="member.role === 'OWNER' ? $t('trip.deleteTheTripInstead') : $t('trip.onlyOwnerRemovesBuddy')" data-i18n="trip.partOfTheHerd"></span>
                   </td>
                 </tr>
               </template>
@@ -207,8 +200,8 @@
       <section x-show="tab === 'destinations'" role="tabpanel" id="panel-destinations"
                aria-labelledby="tab-destinations" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">🗺️ Grazing Grounds
-            <span class="small muted"> - where the herd is going?</span>
+          <h2 class="section-title"><span data-i18n="trip.grazingGrounds"></span>
+            <span class="small muted" data-i18n="trip.whereTheHerdIs"></span>
           </h2>
           <div class="btn-row">
             <!-- Beside Add rather than in a row of its own: it stays put whether
@@ -220,12 +213,10 @@
                     x-show="scopedDestinations.length"
                     :disabled="!destSelected.length"
                     @click="destBulkOpen = true">
-              Delete selected<span x-show="destSelected.length"
+              <span data-i18n="trip.deleteSelected"></span><span x-show="destSelected.length"
                                    x-text="` (${destSelected.length})`"></span>
             </button>
-            <button type="button" class="btn btn-primary btn-sm" @click="openAddDestination()">
-              + Add destination
-            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddDestination()" data-i18n="trip.addDestination"></button>
           </div>
         </div>
         <!--<p class="scope-hint" x-show="hiddenLabel('destinations')" x-cloak>
@@ -235,23 +226,18 @@
 
         <div class="empty-state" x-show="!scopedDestinations.length">
           <div class="empty-icon">📍</div>
-          <h3 class="empty-title">No destinations yet</h3>
-          <p class="empty-body">
-            Adding one auto-creates three checklist items — transportation,
-            lodging and activities.
-          </p>
-          <button type="button" class="btn btn-primary" @click="openAddDestination()">
-            Add your first destination
-          </button>
+          <h3 class="empty-title" data-i18n="trip.noDestinationsYet"></h3>
+          <p class="empty-body" data-i18n="trip.addingOneAutoCreates"></p>
+          <button type="button" class="btn btn-primary" @click="openAddDestination()" data-i18n="trip.addYourFirstDestination"></button>
         </div>
 
         <div class="table-wrap" x-show="scopedDestinations.length">
           <table class="table table-cards">
             <thead>
               <tr>
-                <th class="select-cell"><span class="sr-only">Select</span></th>
-                <th>Name</th><th>Country</th><th>Lat / Lon</th><th>Dates</th>
-                <th class="num">Days</th><th class="num">Checklist</th><th class="actions"></th>
+                <th class="select-cell"><span class="sr-only" data-i18n="trip.select"></span></th>
+                <th data-i18n="trip.name"></th><th data-i18n="trip.country"></th><th data-i18n="trip.latLon"></th><th data-i18n="trip.dates"></th>
+                <th class="num" data-i18n="trip.days"></th><th class="num" data-i18n="common.checklist"></th><th class="actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -260,7 +246,7 @@
                   <td class="select-cell">
                     <label class="select-hit"><input type="checkbox" :checked="isDestSelected(destination.id)"
                            @change="toggleDestSelected(destination.id)"
-                           :aria-label="`Select ${destination.name}`"></label>
+                           :aria-label="$t('common.selectNamed', { name: destination.name })"></label>
                   </td>
                   <td class="strong cell-title"><span x-text="destination.name"></span>
                     <template x-for="pill in travellerPills('destinations', destination.id)" :key="pill.text">
@@ -285,7 +271,7 @@
                     <span class="btn-row">
                       <button type="button" class="btn btn-sm"
                               @click="openEditDestination(destination)"
-                              :aria-label="`Edit ${destination.name}`">Edit</button>
+                              :aria-label="$t('common.editNamed', { name: destination.name })" data-i18n="trip.edit"></button>
                     </span>
                   </td>
                 </tr>
@@ -300,20 +286,18 @@
                aria-labelledby="tab-checklist" tabindex="0">
         <div class="section-head">
           <h2 class="section-title">
-            🎯 Travel Checklist
+            <span data-i18n="trip.travelChecklist"></span>
             <span class="small muted"
-                  x-text="`— ${checkProgress().done} of ${checkProgress().total} ready for the adventure`"></span>
+                  x-text="$t('trip.checklistProgress', { done: checkProgress().done, total: checkProgress().total })"></span>
           </h2>
           <div class="btn-row">
             <button type="button" class="btn btn-sm btn-danger"
                     :disabled="!checkSelected.length"
                     @click="checkBulkOpen = true">
-              Delete selected<span x-show="checkSelected.length"
+              <span data-i18n="trip.deleteSelected"></span><span x-show="checkSelected.length"
                                    x-text="` (${checkSelected.length})`"></span>
             </button>
-            <button type="button" class="btn btn-primary btn-sm" @click="openAddCheck()">
-              + Add checklist item
-            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddCheck()" data-i18n="trip.addChecklistItem"></button>
           </div>
         </div>
         <!--<p class="scope-hint" x-show="hiddenLabel('checklist')" x-cloak>
@@ -322,7 +306,7 @@
         </p>-->
 
         <div class="toolbar">
-          <span class="toolbar-label" id="check-category-label">Category</span>
+          <span class="toolbar-label" id="check-category-label" data-i18n="trip.category"></span>
           <div class="chip-group" role="group" aria-labelledby="check-category-label">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
@@ -333,7 +317,7 @@
             </template>
           </div>
 
-          <span class="toolbar-label" id="check-group-by-label">Group By</span>
+          <span class="toolbar-label" id="check-group-by-label" data-i18n="trip.groupBy"></span>
           <div class="chip-group" role="group" aria-labelledby="check-group-by-label">
             <template x-for="option in checkGroupByOptions" :key="option.value">
               <button type="button" class="chip"
@@ -345,28 +329,24 @@
         </div>
 
         <div class="toolbar">
-          <span class="toolbar-label" id="check-status-label">Status</span>
+          <span class="toolbar-label" id="check-status-label" data-i18n="trip.status"></span>
           <div class="chip-group" role="group" aria-labelledby="check-status-label">
             <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
               <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
                       @click="checkStatusFilter = option"
-                      x-text="option === 'ALL' ? 'All' : (option === 'TODO' ? 'To do' : 'Completed')"></button>
+                      x-text="option === 'ALL' ? $t('common.all') : (option === 'TODO' ? $t('trip.toDo') : $t('trip.completed'))"></button>
             </template>
           </div>
         </div>
 
         <div class="empty-state" x-show="!scopedChecklist.length">
           <div class="empty-icon">🧳</div>
-          <h3 class="empty-title">Nothing on the checklist yet</h3>
-          <p class="empty-body">
-            Add a destination to have its items created for you, or add one here directly.
-          </p>
-          <button type="button" class="btn btn-primary" @click="openAddCheck()">Add an item</button>
+          <h3 class="empty-title" data-i18n="trip.nothingOnTheChecklist"></h3>
+          <p class="empty-body" data-i18n="trip.addADestinationTo"></p>
+          <button type="button" class="btn btn-primary" @click="openAddCheck()" data-i18n="trip.addAnItem"></button>
         </div>
 
-        <p class="small muted" x-show="scopedChecklist.length && !filteredChecklist.length">
-          Nothing matches those filters.
-        </p>
+        <p class="small muted" x-show="scopedChecklist.length && !filteredChecklist.length" data-i18n="trip.nothingMatchesThoseFilters"></p>
 
         <template x-for="group in checklistGroups" :key="group.title || 'all'">
           <div class="checklist" style="margin-bottom:16px">
@@ -376,15 +356,15 @@
                 <label class="select-box" @click.stop>
                   <input type="checkbox" :checked="isCheckSelected(item.id)"
                          @change="toggleCheckSelected(item.id)"
-                         :aria-label="`Select ${item.description}`">
+                         :aria-label="$t('common.selectNamed', { name: item.description })">
                 </label>
                 <!-- Beside the row, not in it, for the same reason as the
                      select box: the row owns an Edit button, and buttons
                      cannot nest. -->
                 <button type="button" class="check-status"
                         :aria-pressed="item.status === 'COMPLETED'"
-                        :aria-label="`Complete: ${item.description}`"
-                        :title="item.status === 'COMPLETED' ? 'Mark as to do' : 'Mark complete'"
+                        :aria-label="$t('trip.completeNamed', { name: item.description })"
+                        :title="item.status === 'COMPLETED' ? $t('trip.markAsToDo') : $t('trip.markComplete')"
                         @click="quickToggle(item, $event)"
                         x-text="item.status === 'COMPLETED' ? '✔️' : '▫️'"></button>
                 <!-- A div, not a button: the row carries its own Edit button
@@ -410,13 +390,13 @@
                       <span class="chip" x-text="label"></span>
                     </template>
                     <span class="chip" x-show="planCountFor(item)"
-                          x-text="`${planCountFor(item)} plan${planCountFor(item) === 1 ? '' : 's'}`"></span>
+                          x-text="$t('trip.plansCount', { count: planCountFor(item) })"></span>
                   </span>
                 </span>
                   <span class="check-side btn-row">
                     <button type="button" class="btn btn-sm"
                             @click.stop="openChecklistItem(item)"
-                            :aria-label="`Edit ${item.description}`">Edit</button>
+                            :aria-label="$t('common.editNamed', { name: item.description })" data-i18n="trip.edit"></button>
                   </span>
                 </div>
               </div>
@@ -429,20 +409,18 @@
       <section x-show="tab === 'itinerary'" role="tabpanel" id="panel-itinerary"
                aria-labelledby="tab-itinerary" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">✨ The Adventure Plan
-            <span class="small muted"> - herding</span>
+          <h2 class="section-title"><span data-i18n="trip.theAdventurePlan"></span>
+            <span class="small muted" data-i18n="trip.herding"></span>
           </h2>
           <div class="btn-row">
             <button type="button" class="btn btn-sm btn-danger"
                     x-show="itinShow !== 'WEATHER'"
                     :disabled="!itinSelected.length"
                     @click="itinBulkOpen = true">
-              Delete selected<span x-show="itinSelected.length"
+              <span data-i18n="trip.deleteSelected"></span><span x-show="itinSelected.length"
                                    x-text="` (${itinSelected.length})`"></span>
             </button>
-            <button type="button" class="btn btn-primary btn-sm" @click="openAddEntry()">
-              + Add itinerary item
-            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddEntry()" data-i18n="trip.addItineraryItem"></button>
           </div>
         </div>
         <!--<p class="scope-hint" x-show="hiddenLabel('itinerary')" x-cloak>
@@ -451,7 +429,7 @@
         </p>-->
 
         <div class="toolbar">
-          <span class="toolbar-label" id="itin-category-label">Category</span>
+          <span class="toolbar-label" id="itin-category-label" data-i18n="trip.category"></span>
           <div class="chip-group" role="group" aria-labelledby="itin-category-label">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
@@ -463,40 +441,33 @@
           </div>
         </div>
         <div class="toolbar">
-          <span class="toolbar-label" id="itin-show-label">Show</span>
+          <span class="toolbar-label" id="itin-show-label" data-i18n="trip.show"></span>
           <div class="chip-group" role="group" aria-labelledby="itin-show-label">
             <template x-for="option in ['ALL', 'WEATHER', 'ITINERARY']" :key="option">
               <button type="button" class="chip" :aria-pressed="itinShow === option"
                       @click="itinShow = option"
-                      x-text="option === 'ALL' ? 'All'
-                              : (option === 'WEATHER' ? 'Weather only' : 'Itinerary only')"></button>
+                      x-text="option === 'ALL' ? $t('common.all') : (option === 'WEATHER' ? $t('trip.weatherOnly') : $t('trip.itineraryOnly'))"></button>
             </template>
           </div>
         </div>
 
-        <p class="tiny muted" x-show="weatherLoading">Looking up the weather…</p>
-        <p class="tiny muted" x-show="weatherFailed">
-          The weather could not be looked up just now. Everything else is unaffected.
-        </p>
+        <p class="tiny muted" x-show="weatherLoading" data-i18n="trip.lookingUpTheWeather"></p>
+        <p class="tiny muted" x-show="weatherFailed" data-i18n="trip.theWeatherCouldNot"></p>
 
         <!-- Only when both halves are empty. With weather rows on screen the
              itinerary is not empty even with nothing planned. -->
         <div class="empty-state" x-show="!scopedItinerary.length && !filteredWeather.length">
           <div class="empty-icon">🗓</div>
-          <h3 class="empty-title">Nothing planned yet</h3>
-          <p class="empty-body">
-            Open a checklist item and start planning, or add an itinerary entry directly.
-          </p>
-          <button type="button" class="btn btn-primary" @click="openAddEntry()">Add an entry</button>
+          <h3 class="empty-title" data-i18n="trip.nothingPlannedYet"></h3>
+          <p class="empty-body" data-i18n="trip.openAChecklistItem"></p>
+          <button type="button" class="btn btn-primary" @click="openAddEntry()" data-i18n="trip.addAnEntry"></button>
         </div>
 
         <div class="empty-state" x-show="itinShow === 'WEATHER' && !filteredWeather.length
                                          && !weatherLoading">
           <div class="empty-icon">🌤</div>
-          <h3 class="empty-title">No days to show the weather for</h3>
-          <p class="empty-body">
-            A destination needs a start and an end date before its days appear here.
-          </p>
+          <h3 class="empty-title" data-i18n="trip.noDaysToShow"></h3>
+          <p class="empty-body" data-i18n="trip.aDestinationNeedsA"></p>
         </div>
 
         <template x-for="day in itineraryDays" :key="day.date || 'undated'">
@@ -538,7 +509,7 @@
                   <div class="weather-details" x-show="weatherHasReading(row.day) && weatherDetails(row.day).length"
                        :title="weatherDetailsTitle(row.day)">
                     <template x-for="chip in weatherDetails(row.day)" :key="chip.id">
-                      <span class="weather-detail" :title="chip.title" :aria-label="chip.text + ' (' + chip.title + ')'">
+                      <span class="weather-detail" :title="chip.title" :aria-label="$t('trip.chipLabel', { text: chip.text, title: chip.title })">
                         <span class="weather-detail-icon" aria-hidden="true" x-text="chip.icon"></span>
                         <span x-text="chip.text"></span>
                       </span>
@@ -562,7 +533,7 @@
                   <label class="select-box select-box-tight">
                     <input type="checkbox" :checked="isItinSelected(entry.item.id)"
                            @change="toggleItinSelected(entry.item.id)"
-                           :aria-label="`Select ${entry.item.description}, ${planWhen(entry.item)}`">
+                           :aria-label="$t('common.selectNamedWhen', { name: entry.item.description, when: planWhen(entry.item) })">
                   </label>
                   <span class="timeline-time" x-text="entryTime(entry)"></span>
                   <div class="timeline-body">
@@ -580,15 +551,14 @@
                       <template x-for="label in countryLabels(entry.item.countryCodes)" :key="label">
                         <span class="chip" x-text="label"></span>
                       </template>
-                      <span x-show="sourceChecklist(entry.item)">
-                        from “<span x-text="sourceChecklist(entry.item)"></span>”
-                      </span>
+                      <span x-show="sourceChecklist(entry.item)"
+                            x-text="$t('trip.fromChecklistItem', { item: sourceChecklist(entry.item) })"></span>
                     </div>
                   </div>
                   <span class="timeline-cost" x-show="entry.cost" x-text="entryCost(entry)"></span>
                   <span class="timeline-actions btn-row">
                     <button type="button" class="btn btn-sm" @click="openEditEntry(entry.item)"
-                            :aria-label="`Edit ${entry.item.description}, ${planWhen(entry.item)}`">Edit</button>
+                            :aria-label="$t('common.editNamedWhen', { name: entry.item.description, when: planWhen(entry.item) })" data-i18n="trip.edit"></button>
                   </span>
                 </div>
               </template>
@@ -601,24 +571,22 @@
       <section x-show="tab === 'budget'" role="tabpanel" id="panel-budget"
                aria-labelledby="tab-budget" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">💰 The Herd Funds
-            <span class="small muted"> - keep track of what the herd spends</span>
+          <h2 class="section-title"><span data-i18n="trip.theHerdFunds"></span>
+            <span class="small muted" data-i18n="trip.keepTrackOfWhat"></span>
           </h2>
           <div class="btn-row">
             <button type="button" class="btn btn-sm btn-danger"
                     :disabled="!budgetSelected.length"
                     @click="budgetBulkOpen = true">
-              Delete selected<span x-show="budgetSelected.length"
+              <span data-i18n="trip.deleteSelected"></span><span x-show="budgetSelected.length"
                                    x-text="` (${budgetSelected.length})`"></span>
             </button>
-            <button type="button" class="btn btn-primary btn-sm" @click="openAddExpense()">
-              + Add expense
-            </button>
+            <button type="button" class="btn btn-primary btn-sm" @click="openAddExpense()" data-i18n="trip.addExpense"></button>
           </div>
         </div>
 
         <div class="toolbar">
-          <span class="toolbar-label" id="budget-category-label">Category</span>
+          <span class="toolbar-label" id="budget-category-label" data-i18n="trip.category"></span>
           <div class="chip-group" role="group" aria-labelledby="budget-category-label">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
@@ -630,12 +598,12 @@
           </div>
           <!-- One at a time, and it narrows the table only: the figures above
                it follow Group By, not this. -->
-          <span class="toolbar-label" id="budget-status-label">Status</span>
+          <span class="toolbar-label" id="budget-status-label" data-i18n="trip.status"></span>
           <div class="chip-group" role="group" aria-labelledby="budget-status-label">
             <template x-for="option in ['ALL', 'CHARGED', 'PENDING']" :key="option">
               <button type="button" class="chip" :aria-pressed="budgetStatusFilter === option"
                       @click="setBudgetStatusFilter(option)"
-                      x-text="option === 'ALL' ? 'All' : (option === 'CHARGED' ? 'Charged' : 'Pending')"></button>
+                      x-text="option === 'ALL' ? $t('common.all') : (option === 'CHARGED' ? $t('trip.charged') : $t('trip.pending'))"></button>
             </template>
           </div>
         </div>
@@ -645,7 +613,7 @@
                Forecast ones count the expenses nobody has paid yet alongside
                the charges; the plain two count charges only. Every figure on
                the panel below follows this one control. -->
-          <span class="toolbar-label" id="budget-show-label">Group By</span>
+          <span class="toolbar-label" id="budget-show-label" data-i18n="trip.groupBy"></span>
           <div class="chip-group" role="group" aria-labelledby="budget-show-label">
             <template x-for="option in budgetShowOptions" :key="option.value">
               <button type="button" class="chip"
@@ -661,17 +629,10 @@
              on a trip full of other people's. -->
         <div class="empty-state" x-show="!myBudgetItems.length">
           <div class="empty-icon">💳</div>
-          <h3 class="empty-title" x-text="budget.items.length
-                ? 'Hooray! No bills for you from the herd ..yet!'
-                : 'The herd has not spent any cent yet'"></h3>
-          <p class="empty-body" x-show="!budget.items.length">
-            Put a cost on a plan and it appears here automatically, or add an expense by hand.
-          </p>
-          <p class="empty-body" x-show="budget.items.length">
-            This trip has expenses, but none of them is for you.
-            Open one from the Itinerary tab, or add your own.
-          </p>
-          <button type="button" class="btn btn-primary" @click="openAddExpense()">Add an expense</button>
+          <h3 class="empty-title" x-text="budget.items.length ? $t('trip.noBillsForYou') : $t('trip.herdHasNotSpent')"></h3>
+          <p class="empty-body" x-show="!budget.items.length" data-i18n="trip.putACostOn"></p>
+          <p class="empty-body" x-show="budget.items.length" data-i18n="trip.thisTripHasExpenses"></p>
+          <button type="button" class="btn btn-primary" @click="openAddExpense()" data-i18n="trip.addAnExpense"></button>
         </div>
 
         <div x-show="myBudgetItems.length">
@@ -682,7 +643,7 @@
               <div class="budget-pie" x-effect="renderBudgetPie()"
                    x-show="budgetBreakdown.length">
                 <canvas x-ref="budgetPie" role="img"
-                        :aria-label="`${budgetForecast ? 'Forecast spend' : 'Spend'} by ${budgetShow.startsWith('country') ? 'country' : 'category'}`"></canvas>
+                        :aria-label="$t(budgetForecast ? (budgetShow.startsWith('country') ? 'trip.chart.forecastSpendByCountry' : 'trip.chart.forecastSpendByCategory') : (budgetShow.startsWith('country') ? 'trip.chart.spendByCountry' : 'trip.chart.spendByCategory'))"></canvas>
               </div>
 
               <div class="budget-details">
@@ -695,7 +656,7 @@
                 </div>
                 <div class="tiny muted" x-text="totalCaption()"></div>
                 <div class="budget-native-totals" x-show="nativeTotalsLabel"
-                     x-text="`Native: ${nativeTotalsLabel}`"></div>
+                     x-text="$t('trip.nativeTotals', { amounts: nativeTotalsLabel })"></div>
 
                 <ul class="budget-legend">
                   <template x-for="slice in budgetBreakdown" :key="slice.key">
@@ -718,29 +679,27 @@
                 </ul>
 
                 <div class="alert alert-warning" x-show="missingRates.length" style="margin-top:12px">
-                  Not included in the total — today's rates carry no quote for
+                  <span data-i18n="trip.notIncludedInTheTotal"></span>
                   <template x-for="code in missingRates" :key="code">
                     <span class="chip" x-text="code"></span>
-                  </template>.
+                  </template>
                 </div>
               </div>
             </div>
           </div>
 
-          <p class="small muted" x-show="!filteredBudgetItems.length">
-            Nothing matches those filters.
-          </p>
+          <p class="small muted" x-show="!filteredBudgetItems.length" data-i18n="trip.nothingMatchesThoseFilters"></p>
 
           <div class="table-wrap" x-show="filteredBudgetItems.length">
             <table class="table table-cards">
               <thead>
                 <tr>
-                  <th class="select-cell"><span class="sr-only">Select</span></th>
-                  <th>Description</th><th>Category</th>
-                  <th class="num">Amount</th>
-                  <th>Paid by</th>
-                  <th>Status</th>
-                  <th>Date</th><th>Source</th><th class="actions"></th>
+                  <th class="select-cell"><span class="sr-only" data-i18n="trip.select"></span></th>
+                  <th data-i18n="trip.description"></th><th data-i18n="trip.category"></th>
+                  <th class="num" data-i18n="trip.amount"></th>
+                  <th data-i18n="trip.paidBy"></th>
+                  <th data-i18n="trip.status"></th>
+                  <th data-i18n="trip.date"></th><th data-i18n="trip.source"></th><th class="actions"></th>
                 </tr>
               </thead>
               <tbody>
@@ -749,7 +708,7 @@
                     <td class="select-cell">
                       <label class="select-hit"><input type="checkbox" :checked="isBudgetSelected(item.id)"
                              @change="toggleBudgetSelected(item.id)"
-                             :aria-label="`Select ${item.description}`"></label>
+                             :aria-label="$t('common.selectNamed', { name: item.description })"></label>
                     </td>
                     <td class="wrap cell-title" x-text="item.description"></td>
                     <!-- Same icon-and-label chip the checklist and itinerary
@@ -773,8 +732,7 @@
                     <td class="num" data-label="Amount">
                       <div x-text="fmt(item.amount, item.currency)"></div>
                       <div class="cell-emphasis tiny" x-show="isSplit(item)"
-                           x-text="'(shared) ' + (convertedShareOf(item) == null
-                                   ? '—' : fmt(convertedShareOf(item), budget.totalsCurrency))"></div>
+                           x-text="$t('trip.sharedAmount', { amount: convertedShareOf(item) == null ? '—' : fmt(convertedShareOf(item), budget.totalsCurrency) })"></div>
                     </td>
                     <!-- Who put the money down. Informational only: the share
                          beside it is decided by "Shared by" alone. -->
@@ -788,14 +746,14 @@
                     <td class="muted" data-label="Date" x-text="expenseDate(item)"></td>
                     <td class="tiny muted" data-label="Source">
                       <span x-show="item.itineraryItemId"
-                            :title="sourcePlan(item)">From plan</span>
-                      <span x-show="!item.itineraryItemId">Manual</span>
+                            :title="sourcePlan(item)" data-i18n="trip.fromPlan"></span>
+                      <span x-show="!item.itineraryItemId" data-i18n="trip.manual"></span>
                     </td>
                     <td class="actions">
                       <span class="btn-row">
                         <button type="button" class="btn btn-sm"
                                 @click="openEditExpense(item)"
-                                :aria-label="`Edit ${item.description}`">Edit</button>
+                                :aria-label="$t('common.editNamed', { name: item.description })" data-i18n="trip.edit"></button>
                       </span>
                     </td>
                   </tr>
@@ -806,16 +764,16 @@
 
           <!-- Shown only when there is more than one page. The figures above
                the table cover every page; only the rows are paged. -->
-          <nav class="pager" x-show="budgetPageCount > 1" aria-label="Budget table pages">
+          <nav class="pager" x-show="budgetPageCount > 1" data-i18n-aria-label="trip.budgetTablePages">
             <span class="pager-status"
-                  x-text="`Showing ${budgetPageFrom}–${budgetPageTo} of ${filteredBudgetItems.length}`"></span>
+                  x-text="$t('trip.pageShowing', { from: budgetPageFrom, to: budgetPageTo, total: filteredBudgetItems.length })"></span>
             <span class="pager-controls">
               <button type="button" class="btn btn-sm" :disabled="budgetCurrentPage <= 1"
-                      @click="goToBudgetPage(budgetCurrentPage - 1)">← Previous</button>
+                      @click="goToBudgetPage(budgetCurrentPage - 1)" data-i18n="trip.previous"></button>
               <span class="pager-page" aria-live="polite"
-                    x-text="`Page ${budgetCurrentPage} of ${budgetPageCount}`"></span>
+                    x-text="$t('trip.pageOf', { page: budgetCurrentPage, count: budgetPageCount })"></span>
               <button type="button" class="btn btn-sm" :disabled="budgetCurrentPage >= budgetPageCount"
-                      @click="goToBudgetPage(budgetCurrentPage + 1)">Next →</button>
+                      @click="goToBudgetPage(budgetCurrentPage + 1)" data-i18n="trip.next"></button>
             </span>
           </nav>
         </div>
@@ -826,37 +784,31 @@
              nobody has spent. -->
         <div class="card settle">
           <div class="section-head">
-            <h3 class="section-title" id="settle-title">💸 Settle the herd</h3>
+            <h3 class="section-title" id="settle-title" data-i18n="trip.settleTheHerd"></h3>
             <!-- One button for the whole panel while debts are simplified: a
                  simplified payment has no rows of its own, so what there is to
                  show is the member's balance — including when it is already
                  zero, which is the reassurance. -->
             <button type="button" class="btn btn-sm" x-show="settleSimplified" x-cloak
-                    aria-haspopup="dialog" aria-label="View details of your balance"
-                    @click="openSettleBalances()">View details</button>
+                    aria-haspopup="dialog" data-i18n-aria-label="trip.viewDetailsOfYour"
+                    @click="openSettleBalances()" data-i18n="trip.viewDetails"></button>
           </div>
-          <p class="settle-note" x-show="!settleSimplified">
-            Based on the charged expenses only, in the same currency each was paid in.
-          </p>
-          <p class="settle-note" x-show="settleSimplified" x-cloak>
-            Based on the charged expenses only, in the same currency each was paid in.
-            Payments are simplified across the whole trip to keep the number of
-            transfers down.
-          </p>
+          <p class="settle-note" x-show="!settleSimplified" data-i18n="trip.basedOnTheCharged"></p>
+          <p class="settle-note" x-show="settleSimplified" x-cloak data-i18n="trip.basedOnTheChargedExpenses"></p>
 
           <p class="empty" x-show="!hasOpenSettlements" x-cloak>
-            All settled! The herd is square. <span aria-hidden="true">🦙</span>
+            <span data-i18n="trip.allSettledTheHerd"></span> <span aria-hidden="true">🦙</span>
           </p>
 
           <div class="table-wrap" x-show="hasSettlements" x-cloak>
             <table class="table table-cards table-cards-plain" aria-labelledby="settle-title">
               <thead>
                 <tr>
-                  <th>Travel Buddy</th>
-                  <th class="num" x-show="!settleSimplified">Owes you</th>
-                  <th class="num" x-show="!settleSimplified">You owe</th>
-                  <th class="num">Net</th>
-                  <th class="actions"><span class="sr-only">Actions</span></th>
+                  <th data-i18n="trip.travelBuddy"></th>
+                  <th class="num" x-show="!settleSimplified" data-i18n="trip.owesYou"></th>
+                  <th class="num" x-show="!settleSimplified" data-i18n="trip.youOwe"></th>
+                  <th class="num" data-i18n="trip.net"></th>
+                  <th class="actions"><span class="sr-only" data-i18n="trip.actions"></span></th>
                 </tr>
               </thead>
               <tbody>
@@ -883,15 +835,11 @@
                       <span class="btn-row">
                         <button type="button" class="btn btn-sm" x-show="!settleSimplified"
                                 @click="openSettleDetails(row)"
-                                :aria-label="`View details: ${settleSummaryLine(row)}`">
-                          View details
-                        </button>
+                                :aria-label="$t('trip.viewDetailsNamed', { name: settleSummaryLine(row) })" data-i18n="trip.viewDetails"></button>
                         <!-- Nothing to record against a pair that is square. -->
                         <button type="button" class="btn btn-sm btn-primary" x-show="settleRowOwing(row)"
                                 @click="openRecordPayment(row)"
-                                :aria-label="`Record payment: ${settleSummaryLine(row)}`">
-                          Record payment
-                        </button>
+                                :aria-label="$t('trip.recordPaymentNamed', { name: settleSummaryLine(row) })" data-i18n="trip.recordPayment"></button>
                       </span>
                     </td>
                   </tr>
@@ -903,7 +851,7 @@
           <!-- Payments already made. They settle debts and change no figure
                anywhere else, so they live here and not in the expense table. -->
           <div class="settle-payments" x-show="settlePayments.length" x-cloak>
-            <h3 class="settle-payments-title" id="settle-payments-title">💵 Herd payments</h3>
+            <h3 class="settle-payments-title" id="settle-payments-title" data-i18n="trip.herdPayments"></h3>
             <ul class="settle-lines" aria-labelledby="settle-payments-title">
               <template x-for="payment in settlePayments" :key="payment.id">
                 <li class="settle-line">
@@ -917,9 +865,7 @@
                   <span class="settle-line-amount" x-text="fmt(payment.amount, payment.currency)"></span>
                   <button type="button" class="btn btn-sm" x-show="canManagePayment(payment)"
                           @click="askDeletePayment(payment)"
-                          :aria-label="`Delete payment: ${settlePaymentLine(payment)}, ${fmt(payment.amount, payment.currency)}`">
-                    Undo
-                  </button>
+                          :aria-label="$t('trip.deletePaymentNamed', { name: settlePaymentLine(payment), amount: fmt(payment.amount, payment.currency) })" data-i18n="trip.undo"></button>
                 </li>
               </template>
             </ul>
@@ -931,59 +877,49 @@
       <section x-show="tab === 'publish'" role="tabpanel" id="panel-publish"
                aria-labelledby="tab-publish" tabindex="0">
         <div class="section-head">
-          <h2 class="section-title">🚀 Share the Journey</h2>
+          <h2 class="section-title" data-i18n="trip.shareTheJourney"></h2>
         </div>
 
         <!-- Published -->
         <div class="card" x-show="isPublished" style="margin-bottom:16px">
           <div class="card-header">
-            <h3 class="card-title">This trip is published</h3>
-            <span class="badge badge-published">Live</span>
+            <h3 class="card-title" data-i18n="trip.thisTripIsPublished"></h3>
+            <span class="badge badge-published" data-i18n="trip.live"></span>
           </div>
           <div class="publish-actions">
             <button type="button" class="btn btn-sm" x-show="canPublish" :disabled="publishBusy"
-                    @click="doPublish()" x-text="publishBusy ? 'Working…' : 'Re-publish (update)'"></button>
+                    @click="doPublish()" x-text="publishBusy ? $t('common.working') : $t('trip.republishUpdate')"></button>
             <button type="button" class="btn btn-sm btn-danger" x-show="isOwner"
-                    @click="confirmingUnpublish = true">Unpublish</button>
+                    @click="confirmingUnpublish = true" data-i18n="trip.unpublish"></button>
           </div>
           <br />
-          <p class="small muted">
-            Anyone with this link can see the trip — no sign-in needed.
-            Last published <span x-text="publishedAtLabel()"></span>.
+          <p class="small muted" x-text="$t('trip.publicLinkNote', { when: publishedAtLabel() })">
           </p>
           <div class="publish-url">
             <span x-ref="publicUrl" class="grow" x-text="publish.publicUrl"></span>
-            <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener">
-              Open public page
-            </a>
-            <button type="button" class="btn btn-sm" @click="copyLink('publicUrl')" aria-label="Copy link to the trip page"
-                    x-text="copied === 'publicUrl' ? 'Copied ✓' : 'Copy link'"></button>
+            <a class="btn btn-sm" :href="publish.publicUrl" target="_blank" rel="noopener" data-i18n="trip.openPublicPage"></a>
+            <button type="button" class="btn btn-sm" @click="copyLink('publicUrl')" data-i18n-aria-label="trip.copyLinkToThe"
+                    x-text="copied === 'publicUrl' ? $t('trip.copied') : $t('trip.copyLink')"></button>
           </div>
-          <p class="small muted publish-own-page" x-show="publish.myPublicUrl">
-            Your trip page, showing only your destinations, checklist, itinerary
-            and share of the expenses instead of the whole trip.
-          </p>
+          <p class="small muted publish-own-page" x-show="publish.myPublicUrl" data-i18n="trip.yourTripPageShowing"></p>
           <div class="publish-url" x-show="publish.myPublicUrl">
             <span x-ref="myPublicUrl" class="grow" x-text="publish.myPublicUrl"></span>
             <a class="btn btn-sm" :href="publish.myPublicUrl"
-               target="_blank" rel="noopener">
-              Open my page
-            </a>
-            <button type="button" class="btn btn-sm" @click="copyLink('myPublicUrl')" aria-label="Copy link to my page"
-                    x-text="copied === 'myPublicUrl' ? 'Copied ✓' : 'Copy link'"></button>
+               target="_blank" rel="noopener" data-i18n="trip.openMyPage"></a>
+            <button type="button" class="btn btn-sm" @click="copyLink('myPublicUrl')" data-i18n-aria-label="trip.copyLinkToMy"
+                    x-text="copied === 'myPublicUrl' ? $t('trip.copied') : $t('trip.copyLink')"></button>
           </div>
           <div x-show="(publish.personalPageUrls || []).length">
-            <p class="small muted publish-own-page">
-              Other pages (<span x-text="publish.personalPageUrls.length"></span>).
+            <p class="small muted publish-own-page" x-text="$t('trip.otherPages', { count: publish.personalPageUrls.length })">
             </p>
             <template x-for="url in publish.personalPageUrls" :key="url">
               <div class="publish-url">
                 <span class="grow" x-text="url"></span>
                 <a class="btn btn-sm" :href="url" target="_blank" rel="noopener"
-                   :aria-label="`Open ${url.split('/').pop()}'s page`">Open</a>
+                   :aria-label="$t('trip.openPersonalPage', { name: url.split('/').pop() })" data-i18n="common.open"></a>
                 <button type="button" class="btn btn-sm" @click="copyPageUrl(url)"
-                        :aria-label="`Copy link to ${url.split('/').pop()}'s page`"
-                        x-text="copied === url ? 'Copied ✓' : 'Copy link'"></button>
+                        :aria-label="$t('trip.copyLinkToPersonalPage', { name: url.split('/').pop() })"
+                        x-text="copied === url ? $t('trip.copied') : $t('trip.copyLink')"></button>
               </div>
             </template>
           </div>
@@ -991,41 +927,34 @@
 
         <!-- Draft, owner -->
         <div class="card" x-show="!isPublished && canPublish" style="margin-bottom:16px">
-          <div class="card-header"><h3 class="card-title">ᯓ➤ Ready to share?</h3></div>
-          <p class="small muted">
-            You can publish at any point — publishing again later updates the page.
-          </p>
-          <button type="button" class="btn btn-primary" @click="confirmingPublish = true">
-            Publish trip
-          </button>
+          <div class="card-header"><h3 class="card-title" data-i18n="trip.readyToShare"></h3></div>
+          <p class="small muted" data-i18n="trip.youCanPublishAt"></p>
+          <button type="button" class="btn btn-primary" @click="confirmingPublish = true" data-i18n="trip.publishTrip"></button>
         </div>
 
         <!-- Draft, non-owner -->
         <div class="card" x-show="!isPublished && !canPublish" style="margin-bottom:16px">
-          <div class="card-header"><h3 class="card-title">ᯓ➤ Ready to share?</h3></div>
-          <p class="small muted">
-            Send a request to publish the trip. You can publish at any point — publishing again later updates the page.
-          </p>
+          <div class="card-header"><h3 class="card-title" data-i18n="trip.readyToShare"></h3></div>
+          <p class="small muted" data-i18n="trip.sendARequestTo"></p>
 
           <template x-if="myPendingRequest">
             <div>
-              <div class="alert alert-info">
-                Requested — waiting for <span x-text="ownerName()"></span>.
+              <div class="alert alert-info" x-text="$t('trip.requestedWaitingFor', { owner: ownerName() })">
               </div>
               <button type="button" class="btn btn-sm"
-                      @click="cancelRequest(myPendingRequest)">Cancel request</button>
+                      @click="cancelRequest(myPendingRequest)" data-i18n="trip.cancelRequest"></button>
             </div>
           </template>
 
           <template x-if="!myPendingRequest">
             <form @submit.prevent="requestPublish()">
               <div class="field">
-                <label for="request-note">Note (optional)</label>
+                <label for="request-note" data-i18n="trip.noteOptional"></label>
                 <input id="request-note" x-model="requestNote"
-                       placeholder="Ready to share with the herd? ">
+                       data-i18n-placeholder="trip.readyToShareWith">
               </div>
               <button type="submit" class="btn btn-primary" :disabled="publishBusy"
-                      x-text="publishBusy ? 'Sending…' : 'Request to Publish'"></button>
+                      x-text="publishBusy ? $t('common.sending') : $t('trip.requestToPublish')"></button>
             </form>
           </template>
         </div>
@@ -1033,7 +962,7 @@
         <!-- Pending requests, owner -->
         <div class="card" x-show="isOwner && pendingRequests.length">
           <div class="card-header">
-            <h3 class="card-title">Publish requests</h3>
+            <h3 class="card-title" data-i18n="trip.publishRequests"></h3>
             <span class="badge badge-pending" x-text="pendingRequests.length"></span>
           </div>
           <template x-for="request in pendingRequests" :key="request.id">
@@ -1049,18 +978,18 @@
                      goes public. Members only, and not the public URL — there
                      is no public URL until it is approved. -->
                 <a class="btn btn-sm" :href="publishPreviewUrl"
-                   target="_blank" rel="noopener">Preview</a>
+                   target="_blank" rel="noopener" data-i18n="trip.preview"></a>
                 <button type="button" class="btn btn-sm btn-primary" :disabled="publishBusy"
-                        @click="approveRequest(request)">Approve &amp; publish</button>
+                        @click="approveRequest(request)" data-i18n="trip.approvePublish"></button>
                 <button type="button" class="btn btn-sm btn-danger"
-                        @click="rejectRequest(request)">Reject</button>
+                        @click="rejectRequest(request)" data-i18n="trip.reject"></button>
               </span>
             </div>
           </template>
         </div>
 
         <div class="card" x-show="requireOwnerApproval && recentRequests.length" style="margin-top:16px">
-          <div class="card-header"><h3 class="card-title">📥 Recent requests</h3></div>
+          <div class="card-header"><h3 class="card-title" data-i18n="trip.recentRequests"></h3></div>
           <template x-for="request in recentRequests" :key="request.id">
             <div class="publish-request-row">
               <div class="grow small">
@@ -1071,7 +1000,7 @@
             </div>
           </template>
           <p class="tiny muted" x-show="decidedRequests.length > recentRequests.length"
-             x-text="`Showing the ${recentRequests.length} most recent of ${decidedRequests.length}.`"></p>
+             x-text="$t('trip.recentRequestsShowing', { shown: recentRequests.length, total: decidedRequests.length })"></p>
         </div>
       </section>
 
@@ -1089,9 +1018,9 @@
                   <div class="drawer-eyebrow" x-text="categoryOf(openItem?.category).label"></div>
                   <h2 class="drawer-title" id="drawer-title" x-text="openItem?.description"></h2>
                   <span class="badge" :class="openItem?.status === 'COMPLETED' ? 'badge-done' : 'badge-todo'"
-                        x-text="openItem?.status === 'COMPLETED' ? 'Completed' : 'To do'"></span>
+                        x-text="openItem?.status === 'COMPLETED' ? $t('trip.completed') : $t('trip.toDo')"></span>
                 </div>
-                <button type="button" class="modal-close" @click="requestCloseDrawer()" aria-label="Close">✕</button>
+                <button type="button" class="modal-close" @click="requestCloseDrawer()" data-i18n-aria-label="common.close">✕</button>
               </div>
 
               <div class="alert alert-error" x-show="drawerError" x-text="drawerError" x-cloak></div>
@@ -1099,11 +1028,11 @@
               <!-- Raised by requestCloseDrawer(): Escape, the backdrop and ✕
                    used to throw a half-written note away without a word. -->
               <div class="alert alert-warning" role="alert" x-show="drawerDiscardAsk" x-cloak>
-                You have unsaved changes to this item.
+                <span data-i18n="trip.youHaveUnsavedChanges"></span>
                 <div class="row row-end" style="margin-top:8px">
                   <button type="button" class="btn btn-sm" x-ref="drawerKeepEditing"
-                          @click="drawerDiscardAsk = false">Keep editing</button>
-                  <button type="button" class="btn btn-sm btn-danger" @click="closeDrawer()">Discard</button>
+                          @click="drawerDiscardAsk = false" data-i18n="trip.keepEditing"></button>
+                  <button type="button" class="btn btn-sm btn-danger" @click="closeDrawer()" data-i18n="trip.discard"></button>
                 </div>
               </div>
 
@@ -1111,18 +1040,18 @@
               <div class="drawer-section">
                 <h3 class="drawer-section-title"></h3>
                 <div class="field">
-                  <label for="drawer-description">Description</label>
+                  <label for="drawer-description" data-i18n="trip.description"></label>
                   <textarea id="drawer-description" x-model="drawerForm.description"
                             maxlength="300"></textarea>
                 </div>
                 <div class="field">
-                  <label for="drawer-note">Note (optional)</label>
+                  <label for="drawer-note" data-i18n="trip.noteOptional"></label>
                   <textarea id="drawer-note" x-model="drawerForm.note"
-                            placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+                            data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
                 </div>
                 <div class="field-row">
                   <div class="field">
-                    <label for="drawer-category">Category</label>
+                    <label for="drawer-category" data-i18n="trip.category"></label>
                     <select id="drawer-category" x-model="drawerForm.category">
                       <template x-for="cat in categories" :key="cat.value">
                         <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
@@ -1131,7 +1060,7 @@
                   </div>
                 </div>
                 <div class="field">
-                  <label id="drawer-destination-label">Location (optional)</label>
+                  <label id="drawer-destination-label" data-i18n="trip.locationOptional"></label>
                   <div class="chip-group" role="group" aria-labelledby="drawer-destination-label">
                     <template x-for="country in tripCountries" :key="country.code">
                       <button type="button" class="chip"
@@ -1139,15 +1068,15 @@
                               @click="toggleLocation(drawerForm.countryCodes, country.code)"
                               x-text="country.label"></button>
                     </template>
-                    <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+                    <span class="tiny muted" x-show="!tripCountries.length" data-i18n="trip.noCountriesYet"></span>
                   </div>
                 </div>
                 <div class="field">
-                  <label id="drawer-going-label">Who's carrying the load? <span aria-hidden="true">🦙</span></label>
+                  <label id="drawer-going-label"><span data-i18n="trip.whoSCarryingThe"></span> <span aria-hidden="true">🦙</span></label>
                   <div class="chip-group" role="group" aria-labelledby="drawer-going-label">
                     <button type="button" class="chip"
                             :aria-pressed="!effectiveTravellers(drawerForm.travellers, checklistInherited(openItem)).length"
-                            @click="everyoneGoes(drawerForm.travellers)">Everyone</button>
+                            @click="everyoneGoes(drawerForm.travellers)" data-i18n="trip.everyone"></button>
                     <template x-for="person in tripSharers" :key="person.userId">
                       <button type="button" class="chip"
                               :aria-pressed="effectiveTravellers(drawerForm.travellers, checklistInherited(openItem)).includes(person.userId)"
@@ -1157,28 +1086,27 @@
                   </div>
                   <p class="field-hint" x-show="drawerForm.travellers.mode !== 'inherit'">
                     <button type="button" class="btn btn-ghost btn-sm" @click="followParent(drawerForm.travellers)"
-                x-text="'Back to ' + checklistParentLabel(openItem) + '\'s'"></button>
+                x-text="$t('trip.backTo', { name: checklistParentLabel(openItem) })"></button>
                   </p>
                 </div>
 
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn" :disabled="drawerBusy"
-                        @click="saveDrawer()" x-text="drawerBusy ? 'Saving…' : 'Save changes'"></button>
+                        @click="saveDrawer()" x-text="drawerBusy ? $t('common.saving') : $t('common.saveChanges')"></button>
               </div>
 
               <!-- plans -->
               <div class="drawer-section">
                 <h3 class="drawer-section-title">
-                  Tasks<span x-show="openItemPlans.length" x-text="` (${openItemPlans.length})`"></span>
+                  <span data-i18n="trip.tasks"></span><span x-show="openItemPlans.length" x-text="` (${openItemPlans.length})`"></span>
                 </h3>
 
                 <p class="small muted" x-show="!openItemPlans.length && !planOpen">
-                  <span aria-hidden="true">🦙</span> The Llama is ready to roam! -
-                  there are no tasks yet, add a flight, booking or activity to create an itinerary.
+                  <span aria-hidden="true">🦙</span> <span data-i18n="trip.theLlamaIsReady"></span>
                 </p>
                 <p class="small muted" x-show="!openItemPlans.length && !planOpen">
-                  <span aria-hidden="true">⚠️</span> Directly Mark as Complete if there is no related itinerary.
+                  <span aria-hidden="true">⚠️</span> <span data-i18n="trip.directlyMarkAsComplete"></span>
                 </p>
 
                 <template x-for="plan in openItemPlans" :key="plan.id">
@@ -1193,10 +1121,10 @@
                       <span class="plan-cost" x-show="plan.cost" x-text="planCost(plan)"></span>
                       <span class="btn-row">
                         <button type="button" class="btn btn-sm" @click="editPlan(plan)"
-                                :aria-label="`Edit plan: ${plan.description}`">Edit</button>
+                                :aria-label="$t('trip.editPlanNamed', { name: plan.description })" data-i18n="trip.edit"></button>
                         <button type="button" class="btn btn-sm btn-danger"
                                 @click="deletePlan(plan)"
-                                :aria-label="`Delete plan: ${plan.description}`">Delete</button>
+                                :aria-label="$t('trip.deletePlanNamed', { name: plan.description })" data-i18n="common.delete"></button>
                       </span>
                     </div>
                   </div>
@@ -1207,14 +1135,14 @@
                   <div class="alert alert-error" x-show="planError" x-text="planError" x-cloak></div>
 
                   <div class="field">
-                    <label for="plan-description">Description</label>
+                    <label for="plan-description" data-i18n="trip.description"></label>
                     <input id="plan-description" x-ref="planDescription"
                            x-model="planForm.description" maxlength="300">
-                    <p class="field-hint">Pre-filled as a starting point.</p>
+                    <p class="field-hint" data-i18n="trip.preFilledAsA"></p>
                   </div>
 
                   <div class="field">
-                    <label id="plan-destination-label">Location (optional)</label>
+                    <label id="plan-destination-label" data-i18n="trip.locationOptional"></label>
                     <div class="chip-group" role="group" aria-labelledby="plan-destination-label">
                       <template x-for="country in tripCountries" :key="country.code">
                         <button type="button" class="chip"
@@ -1222,37 +1150,37 @@
                                 @click="toggleLocation(planForm.countryCodes, country.code)"
                                 x-text="country.label"></button>
                       </template>
-                      <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+                      <span class="tiny muted" x-show="!tripCountries.length" data-i18n="trip.noCountriesYet"></span>
                     </div>
                   </div>
 
                   <div class="field-row">
                     <div class="field">
-                      <label for="plan-start-date">Start date</label>
+                      <label for="plan-start-date" data-i18n="common.startDate"></label>
                       <input id="plan-start-date" type="date" x-model="planForm.startDate">
                     </div>
                     <div class="field">
-                      <label for="plan-start-time">Start time</label>
+                      <label for="plan-start-time" data-i18n="trip.startTime"></label>
                       <input id="plan-start-time" type="time" x-model="planForm.startTime">
                     </div>
                   </div>
                   <div class="field-row">
                     <div class="field">
-                      <label for="plan-end-date">End date</label>
+                      <label for="plan-end-date" data-i18n="common.endDate"></label>
                       <input id="plan-end-date" type="date" x-model="planForm.endDate">
                     </div>
                     <div class="field">
-                      <label for="plan-end-time">End time</label>
+                      <label for="plan-end-time" data-i18n="trip.endTime"></label>
                       <input id="plan-end-time" type="time" x-model="planForm.endTime">
                     </div>
                   </div>
 
                   <div class="field">
-                    <label id="plan-going-label">Who's taking this trail? <span aria-hidden="true">🦙</span></label>
+                    <label id="plan-going-label"><span data-i18n="trip.whoSTakingThis"></span> <span aria-hidden="true">🦙</span></label>
                     <div class="chip-group" role="group" aria-labelledby="plan-going-label">
                       <button type="button" class="chip"
                               :aria-pressed="!effectiveTravellers(planForm.travellers, planInherited()).length"
-                              @click="everyoneGoes(planForm.travellers)">Everyone</button>
+                              @click="everyoneGoes(planForm.travellers)" data-i18n="trip.everyone"></button>
                       <template x-for="person in tripSharers" :key="person.userId">
                         <button type="button" class="chip"
                                 :aria-pressed="effectiveTravellers(planForm.travellers, planInherited()).includes(person.userId)"
@@ -1265,11 +1193,11 @@
                   <div class="field">
                     <div class="field-row">
                       <div class="field">
-                        <label for="plan-cost">Total Cost (optional)</label>
+                        <label for="plan-cost" data-i18n="trip.totalCostOptional"></label>
                         <input id="plan-cost" type="number" step="0.01" min="0" x-model="planForm.cost">
                       </div>
                       <div class="field">
-                        <label for="plan-currency">Currency</label>
+                        <label for="plan-currency" data-i18n="trip.currency"></label>
                         <select id="plan-currency" x-model="planForm.currency">
                           <template x-for="code in entryCurrencies" :key="code">
                             <option :value="code" x-text="code"></option>
@@ -1277,13 +1205,11 @@
                         </select>
                       </div>
                     </div>
-                    <p class="field-hint" style="margin-top:-8px">
-                      Added cost creates a matching budget.
-                    </p>
+                    <p class="field-hint" style="margin-top:-8px" data-i18n="trip.addedCostCreatesA"></p>
                   </div>
 
                   <div class="field" x-show="planForm.cost">
-                    <label id="plan-paid-by-label">Paid by</label>
+                    <label id="plan-paid-by-label" data-i18n="trip.paidBy"></label>
                     <div class="chip-group" role="group" aria-labelledby="plan-paid-by-label">
                       <template x-for="person in tripSharers" :key="person.userId">
                         <button type="button" class="chip"
@@ -1297,18 +1223,18 @@
                       <label class="checkbox">
                         <input type="checkbox" x-model="planForm.costCharged"
                                @change="chargedToggled(planForm, currentUserId, $event.target.checked)">
-                        Expense already charged
+                        <span data-i18n="trip.expenseAlreadyCharged"></span>
                       </label>
                     </div>
                   </div>
 
                   <div class="field" x-show="planForm.cost">
                     <!-- <label id="plan-shared-label">Shared by</label> -->
-                    <label id="plan-shared-label">Who's chipping in? <span aria-hidden="true">🦙</span> </label>
+                    <label id="plan-shared-label"><span data-i18n="trip.whoSChippingIn"></span> <span aria-hidden="true">🦙</span> </label>
                     <div class="chip-group" role="group" aria-labelledby="plan-shared-label">
                       <button type="button" class="chip"
                               :aria-pressed="sharedWithEveryone(planSharersShown())"
-                              @click="planForm.sharedTouched = true; shareWithEveryone(planForm.sharedByUserIds)">Everyone</button>
+                              @click="planForm.sharedTouched = true; shareWithEveryone(planForm.sharedByUserIds)" data-i18n="trip.everyone"></button>
                       <template x-for="person in tripSharers" :key="person.userId">
                         <button type="button" class="chip"
                                 :aria-pressed="planSharersShown().includes(person.userId)"
@@ -1319,15 +1245,15 @@
                   </div>
 
                   <div class="field">
-                    <label for="plan-note">Note (optional)</label>
+                    <label for="plan-note" data-i18n="trip.noteOptional"></label>
                     <textarea id="plan-note" x-model="planForm.note"
-                              placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+                              data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
                   </div>
 
                   <div class="row row-end" style="margin-top:12px">
-                    <button type="button" class="btn" @click="planOpen = false">Cancel</button>
+                    <button type="button" class="btn" @click="planOpen = false" data-i18n="common.cancel"></button>
                     <button type="button" class="btn btn-primary" :disabled="planBusy"
-                            @click="savePlan()" x-text="planBusy ? 'Saving…' : 'Save plan'"></button>
+                            @click="savePlan()" x-text="planBusy ? $t('common.saving') : $t('trip.savePlan')"></button>
                   </div>
                 </div>
               </div>
@@ -1339,22 +1265,22 @@
                 <button type="button" class="btn"
                         x-show="!planOpen && openItem?.status !== 'COMPLETED'"
                         @click="openPlanForm()"
-                        x-text="openItemPlans.length ? 'Add another' : 'Start to add'"></button>
+                        x-text="openItemPlans.length ? $t('trip.addAnother') : $t('trip.startToAdd')"></button>
                 <!-- <button type="button" class="btn btn-danger" @click="deletingCheck = true">Delete</button> -->
                 <button type="button" class="btn btn-primary"
                         x-show="openItem?.status !== 'COMPLETED'"
-                        @click="askComplete(openItem)">Mark this Checklist to Complete</button>
+                        @click="askComplete(openItem)" data-i18n="trip.markThisChecklistTo"></button>
                 <button type="button" class="btn"
                         x-show="openItem?.status === 'COMPLETED'"
-                        @click="setCheckStatus('TODO')">Reopen</button>
+                        @click="setCheckStatus('TODO')" data-i18n="trip.reopen"></button>
               </div>
 
               <div class="alert alert-error" x-show="deletingCheck" x-cloak style="margin-top:12px">
-                Delete this checklist item? Its plans stay on the itinerary.
+                <span data-i18n="trip.deleteThisChecklistItemItsPlans"></span>
                 <div class="row row-end" style="margin-top:8px">
-                  <button type="button" class="btn btn-sm" @click="deletingCheck = false">Keep it</button>
+                  <button type="button" class="btn btn-sm" @click="deletingCheck = false" data-i18n="trip.keepIt"></button>
                   <button type="button" class="btn btn-sm btn-danger"
-                          @click="confirmDeleteCheck()">Delete</button>
+                          @click="confirmDeleteCheck()" data-i18n="common.delete"></button>
                 </div>
               </div>
             </div>
@@ -1370,26 +1296,26 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-trip-title"
              x-dialog="editOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="edit-trip-title">Edit trip</h2>
-            <button type="button" class="modal-close" @click="editOpen = false" aria-label="Close">✕</button>
+            <h2 class="modal-title" id="edit-trip-title" data-i18n="trip.editTrip"></h2>
+            <button type="button" class="modal-close" @click="editOpen = false" data-i18n-aria-label="common.close">✕</button>
           </div>
           <div class="alert alert-error" x-show="editError" x-text="editError" x-cloak></div>
           <form @submit.prevent="saveEdit()">
             <div class="field">
-              <label for="edit-title">Title</label>
+              <label for="edit-title" data-i18n="common.title"></label>
               <input id="edit-title" x-model="editForm.title" maxlength="120" required>
             </div>
             <div class="field-row">
               <div class="field">
-                <label for="edit-start">Start date</label>
+                <label for="edit-start" data-i18n="common.startDate"></label>
                 <input id="edit-start" type="date" x-model="editForm.startDate" required>
               </div>
               <div class="field">
-                <label for="edit-end">End date</label>
+                <label for="edit-end" data-i18n="common.endDate"></label>
                 <input id="edit-end" type="date" x-model="editForm.endDate" required>
               </div>
               <div class="field">
-                <label for="edit-currency">Budget currency</label>
+                <label for="edit-currency" data-i18n="trip.budgetCurrency"></label>
                 <select id="edit-currency" x-model="editForm.displayCurrency">
                   <template x-for="code in entryCurrencies" :key="code">
                     <option :value="code" x-text="code"></option>
@@ -1398,9 +1324,9 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn" @click="editOpen = false">Cancel</button>
+              <button type="button" class="btn" @click="editOpen = false" data-i18n="common.cancel"></button>
               <button type="submit" class="btn btn-primary" :disabled="editBusy"
-                      x-text="editBusy ? 'Saving…' : 'Save changes'"></button>
+                      x-text="editBusy ? $t('common.saving') : $t('common.saveChanges')"></button>
             </div>
           </form>
         </div>
@@ -1412,21 +1338,18 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-trip-title"
              x-dialog="deletingTrip">
           <div class="modal-header">
-            <h2 class="modal-title" id="delete-trip-title">Delete this trip?</h2>
-            <button type="button" class="modal-close" @click="deletingTrip = false" aria-label="Close">✕</button>
+            <h2 class="modal-title" id="delete-trip-title" data-i18n="common.deleteThisTrip"></h2>
+            <button type="button" class="modal-close" @click="deletingTrip = false" data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">
-            This permanently removes <strong x-text="trip.title"></strong> and everything in it,
-            for every travel buddy. It cannot be undone.
-          </p>
+          <p class="small" x-html="$th('trip.deleteTripWarning', { title: trip.title })"></p>
           <div class="field">
-            <label for="delete-confirm">Type the trip title to confirm</label>
+            <label for="delete-confirm" data-i18n="common.typeTheTripTitle"></label>
             <input id="delete-confirm" x-model="deleteConfirm" :placeholder="trip.title">
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="deletingTrip = false">Cancel</button>
+            <button type="button" class="btn" @click="deletingTrip = false" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" :disabled="deleteConfirm !== trip.title"
-                    @click="confirmDeleteTrip()">Delete trip</button>
+                    @click="confirmDeleteTrip()" data-i18n="trip.deleteTrip"></button>
           </div>
         </div>
       </div>
@@ -1438,20 +1361,16 @@
              x-dialog="removingMember">
           <div class="modal-header">
             <h2 class="modal-title" id="remove-member-title"
-                x-text="isSelf(removingMember || {}) ? 'Leave this trip?' : 'Remove this travel buddy?'"></h2>
-            <button type="button" class="modal-close" @click="removingMember = null" aria-label="Close">✕</button>
+                x-text="isSelf(removingMember || {}) ? $t('trip.leaveThisTrip') : $t('trip.removeThisTravelBuddy')"></h2>
+            <button type="button" class="modal-close" @click="removingMember = null" data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small" x-show="removingMember && !isSelf(removingMember)">
-            <strong x-text="removingMember?.displayName"></strong> will lose access to this trip.
-            Their account and their other trips are unaffected.
-          </p>
-          <p class="small" x-show="removingMember && isSelf(removingMember)">
-            You will lose access to this trip. Another travel buddy can add you again.
-          </p>
+          <p class="small" x-show="removingMember && !isSelf(removingMember)"
+             x-html="$th('trip.removeMemberWarning', { name: removingMember?.displayName ?? '' })"></p>
+          <p class="small" x-show="removingMember && isSelf(removingMember)" data-i18n="trip.youWillLoseAccess"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="removingMember = null">Cancel</button>
+            <button type="button" class="btn" @click="removingMember = null" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" @click="confirmRemoveMember()"
-                    x-text="isSelf(removingMember || {}) ? 'Leave trip' : 'Remove'"></button>
+                    x-text="isSelf(removingMember || {}) ? $t('trip.leaveTrip') : $t('trip.remove')"></button>
           </div>
         </div>
       </div>
@@ -1463,21 +1382,21 @@
              x-dialog="destFormOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="dest-title"
-                x-text="destForm.id ? 'Edit destination' : 'Add destination'"></h2>
+                x-text="destForm.id ? $t('trip.editDestination') : $t('trip.addDestinationTitle')"></h2>
             <button type="button" class="modal-close" @click="closeDestinationForm()"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
           <div class="alert alert-error" x-show="destError" x-text="destError" x-cloak></div>
 
           <form @submit.prevent="saveDestination()">
             <div class="field autocomplete">
-              <label for="dest-name">Name</label>
+              <label for="dest-name" data-i18n="trip.name"></label>
               <input id="dest-name" x-ref="destName" x-model="destForm.name"
                      @input="onDestNameInput()"
                      @keydown.escape.prevent.stop="dismissSuggestions()"
                      @blur="dismissSuggestions()"
                      autocomplete="off" maxlength="120"
-                     placeholder="Cusco" required>
+                     data-i18n-placeholder="trip.cusco" required>
 
               <!-- Suggestions are a convenience: free text always saves.
                    The list sits over the fields below it, so it has to be
@@ -1502,16 +1421,13 @@
                 <li>
                   <button type="button" class="autocomplete-freetext" tabindex="-1"
                           @mousedown.prevent @click="keepTypedName()">
-                    Not here? Keep “<span x-text="destForm.name"></span>” as typed
+                    <span x-text="$t('trip.keepTypedName', { name: destForm.name })"></span>
                   </button>
                 </li>
               </ul>
 
-              <p class="autocomplete-status" x-show="lookupBusy">Looking up places…</p>
-              <p class="field-hint" x-show="lookupRan && !suggestions.length && !lookupBusy">
-                No match found — that is fine. Save the name as you typed it and
-                fill in the coordinates below if you want them.
-              </p>
+              <p class="autocomplete-status" x-show="lookupBusy" data-i18n="trip.lookingUpPlaces"></p>
+              <p class="field-hint" x-show="lookupRan && !suggestions.length && !lookupBusy" data-i18n="trip.noMatchFoundThat"></p>
             </div>
 
             <!-- Typed like the name field above, but unlike it only a real
@@ -1521,13 +1437,13 @@
                  typed, so the two can never disagree. -->
             <div class="field-row">
               <div class="field autocomplete">
-                <label for="dest-country">Country</label>
+                <label for="dest-country" data-i18n="trip.country"></label>
                 <input id="dest-country" x-model="countryQuery"
                        @input="onCountryInput()"
                        @focus="onCountryInput()"
                        @keydown.escape.prevent.stop="resolveCountry()"
                        @blur="resolveCountry()"
-                       autocomplete="off" placeholder="Start typing — Peru">
+                       autocomplete="off" data-i18n-placeholder="common.startTypingPeru">
 
                 <ul class="autocomplete-list" x-show="countryListOpen && countryMatches.length" x-cloak>
                   <template x-for="option in countryMatches" :key="option.code">
@@ -1545,27 +1461,25 @@
                 </ul>
 
                 <p class="field-hint"
-                   x-show="countryQuery.trim() && !destForm.countryCode" x-cloak>
-                  Pick one from the list — the code comes from it.
-                </p>
+                   x-show="countryQuery.trim() && !destForm.countryCode" x-cloak data-i18n="trip.pickOneFromThe"></p>
               </div>
               <div class="field">
-                <label for="dest-country-code">Country code</label>
+                <label for="dest-country-code" data-i18n="trip.countryCode"></label>
                 <input id="dest-country-code" x-model="destForm.countryCode"
                        readonly tabindex="-1" placeholder="—"
                        style="text-transform:uppercase">
-                <p class="field-hint">Comes from the country you pick.</p>
+                <p class="field-hint" data-i18n="trip.comesFromTheCountry"></p>
               </div>
             </div>
 
             <div class="coord-inputs">
               <div class="field">
-                <label for="dest-lat">Latitude</label>
+                <label for="dest-lat" data-i18n="trip.latitude"></label>
                 <input id="dest-lat" type="number" step="any" min="-90" max="90"
                        x-model="destForm.latitude" placeholder="-13.53188">
               </div>
               <div class="field">
-                <label for="dest-lon">Longitude</label>
+                <label for="dest-lon" data-i18n="trip.longitude"></label>
                 <input id="dest-lon" type="number" step="any" min="-180" max="180"
                        x-model="destForm.longitude" placeholder="-71.96701">
               </div>
@@ -1573,20 +1487,20 @@
 
             <div class="field-row">
               <div class="field">
-                <label for="dest-start">Start date (optional)</label>
+                <label for="dest-start" data-i18n="trip.startDateOptional"></label>
                 <input id="dest-start" type="date" x-model="destForm.startDate">
               </div>
               <div class="field">
-                <label for="dest-end">End date (optional)</label>
+                <label for="dest-end" data-i18n="trip.endDateOptional"></label>
                 <input id="dest-end" type="date" x-model="destForm.endDate">
               </div>
             </div>
 
             <div class="field">
-              <label id="dest-going-label">Assemble the herd <span aria-hidden="true">🦙</span></label>
+              <label id="dest-going-label"><span data-i18n="trip.assembleTheHerd"></span> <span aria-hidden="true">🦙</span></label>
               <div class="chip-group" role="group" aria-labelledby="dest-going-label">
                 <button type="button" class="chip" :aria-pressed="destForm.travellers.mode !== 'named'"
-                        @click="everyoneGoes(destForm.travellers)">Everyone</button>
+                        @click="everyoneGoes(destForm.travellers)" data-i18n="trip.everyone"></button>
                 <template x-for="person in tripSharers" :key="person.userId">
                   <button type="button" class="chip" :aria-pressed="destForm.travellers.ids.includes(person.userId)"
                           @click="toggleTraveller(destForm.travellers, person.userId)" x-text="person.label"></button>
@@ -1596,23 +1510,21 @@
             <div class="field">
               <label class="checkbox">
                 <input type="checkbox" x-model="destForm.suppressChecklist">
-                Skip automatic checklists
+                <span data-i18n="trip.skipAutomaticChecklists"></span>
               </label>
-              <p class="field-hint" x-show="destForm.suppressChecklist">
-                Checklist will not be generated for this destination.
-              </p>
+              <p class="field-hint" x-show="destForm.suppressChecklist" data-i18n="trip.checklistWillNotBe"></p>
             </div>
 
             <div class="field">
-              <label for="dest-note">Note (optional)</label>
+              <label for="dest-note" data-i18n="trip.noteOptional"></label>
               <textarea id="dest-note" x-model="destForm.note"
-                        placeholder="Anything worth remembering — season, altitude, emergency numbers, how to get around, etc."></textarea>
+                        data-i18n-placeholder="trip.anythingWorthRememberingSeason"></textarea>
             </div>
 
             <div class="modal-footer">
-              <button type="button" class="btn" @click="closeDestinationForm()">Cancel</button>
+              <button type="button" class="btn" @click="closeDestinationForm()" data-i18n="common.cancel"></button>
               <button type="submit" class="btn btn-primary" :disabled="destBusy"
-                      x-text="destBusy ? 'Saving…' : (destForm.id ? 'Save destination' : 'Add destination')"></button>
+                      x-text="destBusy ? $t('common.saving') : (destForm.id ? $t('trip.saveDestination') : $t('trip.addDestinationTitle'))"></button>
             </div>
           </form>
         </div>
@@ -1624,28 +1536,19 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-dest-title"
              x-dialog="destBulkOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="bulk-dest-title">
-              Delete <span x-text="destSelected.length"></span>
-              destination<span x-show="destSelected.length !== 1">s</span>?
-            </h2>
+            <h2 class="modal-title" id="bulk-dest-title"
+                x-text="$t('trip.deleteDestinationsTitle', { count: destSelected.length })"></h2>
             <button type="button" class="modal-close" @click="destBulkOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">
-            This removes the selected destinations. Their checklist items are
-            <strong>kept</strong> — they simply stop being linked to a destination,
-            so no planning already done against them is lost.
-          </p>
-          <p class="small muted" x-show="destSelectedChecklistCount">
-            <span x-text="destSelectedChecklistCount"></span>
-            checklist item<span x-show="destSelectedChecklistCount !== 1">s</span>
-            will be kept and simply stop being linked.
-          </p>
+          <p class="small" data-i18n-html="trip.deleteDestinationsBody"></p>
+          <p class="small muted" x-show="destSelectedChecklistCount"
+             x-text="$t('trip.destinationsKeepChecklist', { count: destSelectedChecklistCount })"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="destBulkOpen = false">Cancel</button>
+            <button type="button" class="btn" @click="destBulkOpen = false" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" :disabled="destBulkBusy"
                     @click="confirmBulkDeleteDestinations()"
-                    x-text="destBulkBusy ? 'Deleting…' : 'Delete selected'"></button>
+                    x-text="destBulkBusy ? $t('common.deleting') : $t('trip.deleteSelected')"></button>
           </div>
         </div>
       </div>
@@ -1656,20 +1559,20 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-check-title"
              x-dialog="addCheckOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="add-check-title">Add checklist item</h2>
+            <h2 class="modal-title" id="add-check-title" data-i18n="trip.addChecklistItem2"></h2>
             <button type="button" class="modal-close" @click="addCheckOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
           <div class="alert alert-error" x-show="addCheckError" x-text="addCheckError" x-cloak></div>
           <form @submit.prevent="addCheck()">
             <div class="field">
-              <label for="new-check-description">Description</label>
+              <label for="new-check-description" data-i18n="trip.description"></label>
               <input id="new-check-description" x-ref="newCheckDescription"
                      x-model="newCheck.description" maxlength="300"
-                     placeholder="Purchase a travel insurance" required>
+                     data-i18n-placeholder="trip.purchaseATravelInsurance" required>
             </div>
             <div class="field">
-              <label for="new-check-category">Category</label>
+              <label for="new-check-category" data-i18n="trip.category"></label>
               <select id="new-check-category" x-model="newCheck.category">
                 <template x-for="cat in categories" :key="cat.value">
                   <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
@@ -1677,7 +1580,7 @@
               </select>
             </div>
             <div class="field">
-              <label id="new-check-destination-label">Location (optional)</label>
+              <label id="new-check-destination-label" data-i18n="trip.locationOptional"></label>
               <div class="chip-group" role="group" aria-labelledby="new-check-destination-label">
                 <template x-for="country in tripCountries" :key="country.code">
                   <button type="button" class="chip"
@@ -1685,15 +1588,15 @@
                           @click="toggleLocation(newCheck.countryCodes, country.code)"
                           x-text="country.label"></button>
                 </template>
-                <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+                <span class="tiny muted" x-show="!tripCountries.length" data-i18n="trip.noCountriesYet"></span>
               </div>
             </div>
             <div class="field">
-              <label id="new-check-going-label">Who's carrying the load? <span aria-hidden="true">🦙</span></label>
+              <label id="new-check-going-label"><span data-i18n="trip.whoSCarryingThe"></span> <span aria-hidden="true">🦙</span></label>
               <div class="chip-group" role="group" aria-labelledby="new-check-going-label">
                 <button type="button" class="chip"
                         :aria-pressed="!effectiveTravellers(newCheck.travellers, []).length"
-                        @click="everyoneGoes(newCheck.travellers)">Everyone</button>
+                        @click="everyoneGoes(newCheck.travellers)" data-i18n="trip.everyone"></button>
                 <template x-for="person in tripSharers" :key="person.userId">
                   <button type="button" class="chip"
                           :aria-pressed="effectiveTravellers(newCheck.travellers, []).includes(person.userId)"
@@ -1703,14 +1606,14 @@
               </div>
             </div>
             <div class="field">
-              <label for="new-check-note">Note (optional)</label>
+              <label for="new-check-note" data-i18n="trip.noteOptional"></label>
               <textarea id="new-check-note" x-model="newCheck.note"
-                        placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+                        data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn" @click="addCheckOpen = false">Cancel</button>
+              <button type="button" class="btn" @click="addCheckOpen = false" data-i18n="common.cancel"></button>
               <button type="submit" class="btn btn-primary" :disabled="addCheckBusy"
-                      x-text="addCheckBusy ? 'Adding…' : 'Add'"></button>
+                      x-text="addCheckBusy ? $t('common.adding') : $t('trip.add')"></button>
             </div>
           </form>
         </div>
@@ -1723,20 +1626,20 @@
              x-dialog="entryOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="entry-title"
-                x-text="entryForm.id ? 'Edit itinerary item' : 'Add itinerary item'"></h2>
+                x-text="entryForm.id ? $t('trip.editItineraryItem') : $t('trip.addItineraryItemTitle')"></h2>
             <button type="button" class="modal-close" @click="entryOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
           <div class="alert alert-error" x-show="entryError" x-text="entryError" x-cloak></div>
           <form @submit.prevent="saveEntry()">
             <div class="field">
-              <label for="entry-description">Description</label>
+              <label for="entry-description" data-i18n="trip.description"></label>
               <input id="entry-description" x-ref="entryDescription"
                      x-model="entryForm.description" maxlength="300"
-                     placeholder="Delta flight (DL 6071) from LAX to LIM" required>
+                     data-i18n-placeholder="trip.deltaFlightDl6071" required>
             </div>
             <div class="field">
-              <label for="entry-category">Category</label>
+              <label for="entry-category" data-i18n="trip.category"></label>
               <select id="entry-category" x-model="entryForm.category">
                 <template x-for="cat in categories" :key="cat.value">
                   <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
@@ -1744,7 +1647,7 @@
               </select>
             </div>
             <div class="field">
-              <label id="entry-destination-label">Location (optional)</label>
+              <label id="entry-destination-label" data-i18n="trip.locationOptional"></label>
               <div class="chip-group" role="group" aria-labelledby="entry-destination-label">
                 <template x-for="country in tripCountries" :key="country.code">
                   <button type="button" class="chip"
@@ -1752,36 +1655,36 @@
                           @click="toggleLocation(entryForm.countryCodes, country.code)"
                           x-text="country.label"></button>
                 </template>
-                <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+                <span class="tiny muted" x-show="!tripCountries.length" data-i18n="trip.noCountriesYet"></span>
               </div>
             </div>
             <div class="field-row">
               <div class="field">
-                <label for="entry-start-date">Start date</label>
+                <label for="entry-start-date" data-i18n="common.startDate"></label>
                 <input id="entry-start-date" type="date" x-model="entryForm.startDate" :min="trip.startDate" :max="trip.endDate">
               </div>
               <div class="field">
-                <label for="entry-start-time">Start time</label>
+                <label for="entry-start-time" data-i18n="trip.startTime"></label>
                 <input id="entry-start-time" type="time" x-model="entryForm.startTime">
               </div>
             </div>
             <div class="field-row">
               <div class="field">
-                <label for="entry-end-date">End date</label>
+                <label for="entry-end-date" data-i18n="common.endDate"></label>
                 <input id="entry-end-date" type="date" x-model="entryForm.endDate" :min="trip.startDate" :max="trip.endDate">
               </div>
               <div class="field">
-                <label for="entry-end-time">End time</label>
+                <label for="entry-end-time" data-i18n="trip.endTime"></label>
                 <input id="entry-end-time" type="time" x-model="entryForm.endTime">
               </div>
             </div>
             <div class="field">
-              <label id="entry-going-label">Who's taking this trail? <span aria-hidden="true">🦙</span></label>
+              <label id="entry-going-label"><span data-i18n="trip.whoSTakingThis"></span> <span aria-hidden="true">🦙</span></label>
               <div class="chip-group" role="group" aria-labelledby="entry-going-label">
                 <button type="button" class="chip"
                         :aria-pressed="!effectiveTravellers(entryForm.travellers, entryInherited()).length"
                         :disabled="!!entryForm.planId"
-                        @click="everyoneGoes(entryForm.travellers)">Everyone</button>
+                        @click="everyoneGoes(entryForm.travellers)" data-i18n="trip.everyone"></button>
                 <template x-for="person in tripSharers" :key="person.userId">
                   <button type="button" class="chip"
                           :aria-pressed="effectiveTravellers(entryForm.travellers, entryInherited()).includes(person.userId)"
@@ -1794,11 +1697,11 @@
             <div class="field">
               <div class="field-row">
                 <div class="field">
-                  <label for="entry-cost">Total Cost (optional)</label>
+                  <label for="entry-cost" data-i18n="trip.totalCostOptional"></label>
                   <input id="entry-cost" type="number" step="0.01" min="0" x-model="entryForm.cost">
                 </div>
                 <div class="field">
-                  <label for="entry-currency">Currency</label>
+                  <label for="entry-currency" data-i18n="trip.currency"></label>
                   <select id="entry-currency" x-model="entryForm.currency">
                     <template x-for="code in entryCurrencies" :key="code">
                       <option :value="code" x-text="code"></option>
@@ -1806,12 +1709,10 @@
                   </select>
                 </div>
               </div>
-              <p class="field-hint" style="margin-top:-8px">
-                Added cost creates a matching budget.
-              </p>
+              <p class="field-hint" style="margin-top:-8px" data-i18n="trip.addedCostCreatesA"></p>
             </div>
             <div class="field" x-show="entryForm.cost">
-              <label id="entry-paid-by-label">Paid by</label>
+              <label id="entry-paid-by-label" data-i18n="trip.paidBy"></label>
               <div class="chip-group" role="group" aria-labelledby="entry-paid-by-label">
                 <template x-for="person in tripSharers" :key="person.userId">
                   <button type="button" class="chip"
@@ -1822,18 +1723,18 @@
                 <label class="checkbox">
                   <input type="checkbox" x-model="entryForm.costCharged"
                          @change="chargedToggled(entryForm, currentUserId, $event.target.checked)">
-                  Expense already charged
+                  <span data-i18n="trip.expenseAlreadyCharged"></span>
                 </label>
               </div>
             </div>
 
             <div class="field" x-show="entryForm.cost">
               <!-- <label id="entry-shared-label">Shared by</label> -->
-              <label id="entry-shared-label">Who's chipping in? <span aria-hidden="true">🦙</span> </label>
+              <label id="entry-shared-label"><span data-i18n="trip.whoSChippingIn"></span> <span aria-hidden="true">🦙</span> </label>
               <div class="chip-group" role="group" aria-labelledby="entry-shared-label">
                 <button type="button" class="chip"
                         :aria-pressed="sharedWithEveryone(entrySharersShown())"
-                        @click="entryForm.sharedTouched = true; shareWithEveryone(entryForm.sharedByUserIds)">Everyone</button>
+                        @click="entryForm.sharedTouched = true; shareWithEveryone(entryForm.sharedByUserIds)" data-i18n="trip.everyone"></button>
                 <template x-for="person in tripSharers" :key="person.userId">
                   <button type="button" class="chip"
                           :aria-pressed="entrySharersShown().includes(person.userId)"
@@ -1844,15 +1745,15 @@
             </div>
 
             <div class="field">
-              <label for="entry-note">Note (optional)</label>
+              <label for="entry-note" data-i18n="trip.noteOptional"></label>
               <textarea id="entry-note" x-model="entryForm.note"
-                        placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+                        data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
             </div>
 
             <div class="modal-footer">
-              <button type="button" class="btn" @click="entryOpen = false">Cancel</button>
+              <button type="button" class="btn" @click="entryOpen = false" data-i18n="common.cancel"></button>
               <button type="submit" class="btn btn-primary" :disabled="entryBusy"
-                      x-text="entryBusy ? 'Saving…' : 'Save'"></button>
+                      x-text="entryBusy ? $t('common.saving') : $t('common.save')"></button>
             </div>
           </form>
         </div>
@@ -1864,28 +1765,19 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-check-title"
              x-dialog="checkBulkOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="bulk-check-title">
-              Delete <span x-text="checkSelected.length"></span>
-              checklist item<span x-show="checkSelected.length !== 1">s</span>?
-            </h2>
+            <h2 class="modal-title" id="bulk-check-title"
+                x-text="$t('trip.deleteChecklistTitle', { count: checkSelected.length })"></h2>
             <button type="button" class="modal-close" @click="checkBulkOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">
-            This removes the selected items. Their plans
-            <strong>stay on the itinerary</strong> — deleting a checklist item never
-            deletes the planning done against it.
-          </p>
-          <p class="small muted" x-show="checkSelectedPlanCount">
-            <span x-text="checkSelectedPlanCount"></span>
-            plan<span x-show="checkSelectedPlanCount !== 1">s</span>
-            will be kept and simply stop being linked.
-          </p>
+          <p class="small" data-i18n-html="trip.deleteChecklistBody"></p>
+          <p class="small muted" x-show="checkSelectedPlanCount"
+             x-text="$t('trip.checklistPlansKept', { count: checkSelectedPlanCount })"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="checkBulkOpen = false">Cancel</button>
+            <button type="button" class="btn" @click="checkBulkOpen = false" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" :disabled="checkBulkBusy"
                     @click="confirmBulkDeleteChecks()"
-                    x-text="checkBulkBusy ? 'Deleting…' : 'Delete selected'"></button>
+                    x-text="checkBulkBusy ? $t('common.deleting') : $t('trip.deleteSelected')"></button>
           </div>
         </div>
       </div>
@@ -1898,21 +1790,16 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="complete-check-title"
              x-dialog="completingItem">
           <div class="modal-header">
-            <h2 class="modal-title" id="complete-check-title">Mark this item complete?</h2>
+            <h2 class="modal-title" id="complete-check-title" data-i18n="trip.markThisItemComplete"></h2>
             <button type="button" class="modal-close" @click="completingItem = null"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">
-            <strong x-text="completingItem?.description"></strong> will be ticked off.
-            You can reopen it at any time.
-          </p>
-          <p class="small muted" x-show="!completingItemPlans.length">
-            No tasks created — marking as Complete is fine if this is Done.
-          </p>
+          <p class="small" x-html="$th('trip.completeItemBody', { item: completingItem?.description ?? '' })"></p>
+          <p class="small muted" x-show="!completingItemPlans.length" data-i18n="trip.noTasksCreatedMarking"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="completingItem = null">Cancel</button>
+            <button type="button" class="btn" @click="completingItem = null" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-primary"
-                    @click="confirmSetComplete()">Mark complete</button>
+                    @click="confirmSetComplete()" data-i18n="trip.markComplete"></button>
           </div>
         </div>
       </div>
@@ -1923,26 +1810,19 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-itin-title"
              x-dialog="itinBulkOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="bulk-itin-title">
-              Remove <span x-text="itinSelected.length"></span>
-              itinerary item<span x-show="itinSelected.length !== 1">s</span>?
-            </h2>
+            <h2 class="modal-title" id="bulk-itin-title"
+                x-text="$t('trip.removeItineraryTitle', { count: itinSelected.length })"></h2>
             <button type="button" class="modal-close" @click="itinBulkOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">This removes the selected entries from the itinerary.</p>
-          <p class="small muted" x-show="itinSelectedCostCount">
-            <span x-text="itinSelectedCostCount"></span>
-            of them carr<span x-text="itinSelectedCostCount === 1 ? 'ies' : 'y'"></span>
-            a cost, so the matching budget
-            entr<span x-text="itinSelectedCostCount === 1 ? 'y' : 'ies'"></span>
-            will be removed too.
-          </p>
+          <p class="small" data-i18n="trip.thisRemovesTheSelected"></p>
+          <p class="small muted" x-show="itinSelectedCostCount"
+             x-text="$t('trip.itineraryCostNote', { count: itinSelectedCostCount })"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="itinBulkOpen = false">Cancel</button>
+            <button type="button" class="btn" @click="itinBulkOpen = false" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" :disabled="itinBulkBusy"
                     @click="confirmBulkDeleteEntries()"
-                    x-text="itinBulkBusy ? 'Removing…' : 'Remove selected'"></button>
+                    x-text="itinBulkBusy ? $t('common.removing') : $t('trip.removeSelected')"></button>
           </div>
         </div>
       </div>
@@ -1953,23 +1833,19 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bulk-budget-title"
              x-dialog="budgetBulkOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="bulk-budget-title">
-              Remove <span x-text="budgetSelected.length"></span>
-              expense<span x-show="budgetSelected.length !== 1">s</span>?
-            </h2>
+            <h2 class="modal-title" id="bulk-budget-title"
+                x-text="$t('trip.removeExpensesTitle', { count: budgetSelected.length })"></h2>
             <button type="button" class="modal-close" @click="budgetBulkOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">This removes the selected rows from the budget.</p>
-          <p class="small muted" x-show="budgetSelectedFromPlanCount">
-            <span x-text="budgetSelectedFromPlanCount"></span>
-            of them came from a plan. Those plans stay on the itinerary, but lose their cost.
-          </p>
+          <p class="small" data-i18n="trip.thisRemovesTheSelectedRows"></p>
+          <p class="small muted" x-show="budgetSelectedFromPlanCount"
+             x-text="$t('trip.expensesFromPlans', { count: budgetSelectedFromPlanCount })"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="budgetBulkOpen = false">Cancel</button>
+            <button type="button" class="btn" @click="budgetBulkOpen = false" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" :disabled="budgetBulkBusy"
                     @click="confirmBulkDeleteExpenses()"
-                    x-text="budgetBulkBusy ? 'Removing…' : 'Remove selected'"></button>
+                    x-text="budgetBulkBusy ? $t('common.removing') : $t('trip.removeSelected')"></button>
           </div>
         </div>
       </div>
@@ -1981,20 +1857,20 @@
              x-dialog="expenseOpen">
           <div class="modal-header">
             <h2 class="modal-title" id="expense-title"
-                x-text="expenseForm.id ? 'Edit expense' : 'Add expense'"></h2>
+                x-text="expenseForm.id ? $t('trip.editExpense') : $t('trip.addExpenseTitle')"></h2>
             <button type="button" class="modal-close" @click="expenseOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
           <div class="alert alert-error" x-show="expenseError" x-text="expenseError" x-cloak></div>
           <form @submit.prevent="saveExpense()">
             <div class="field">
-              <label for="expense-description">Description</label>
+              <label for="expense-description" data-i18n="trip.description"></label>
               <input id="expense-description" x-ref="expenseDescription"
                      x-model="expenseForm.description"
-                     placeholder="Worldwide Travel Insurance" required>
+                     data-i18n-placeholder="trip.worldwideTravelInsurance" required>
             </div>
             <div class="field">
-              <label for="expense-category">Category</label>
+              <label for="expense-category" data-i18n="trip.category"></label>
               <select id="expense-category" x-model="expenseForm.category">
                 <template x-for="cat in categories" :key="cat.value">
                   <option :value="cat.value" x-text="`${cat.icon} ${cat.label}`"></option>
@@ -2003,7 +1879,7 @@
             </div>
 
             <div class="field">
-              <label id="expense-destination-label">Location (optional)</label>
+              <label id="expense-destination-label" data-i18n="trip.locationOptional"></label>
               <div class="chip-group" role="group" aria-labelledby="expense-destination-label">
                 <template x-for="country in tripCountries" :key="country.code">
                   <button type="button" class="chip"
@@ -2011,11 +1887,11 @@
                           @click="toggleLocation(expenseForm.countryCodes, country.code)"
                           x-text="country.label"></button>
                 </template>
-                <span class="tiny muted" x-show="!tripCountries.length">No countries yet</span>
+                <span class="tiny muted" x-show="!tripCountries.length" data-i18n="trip.noCountriesYet"></span>
               </div>
             </div>
             <div class="field">
-              <label for="expense-date">Date (optional)</label>
+              <label for="expense-date" data-i18n="trip.dateOptional"></label>
               <input id="expense-date" type="date" x-model="expenseForm.date">
             </div>
 
@@ -2024,12 +1900,12 @@
                  budget row. -->
             <div class="field-row">
               <div class="field">
-                <label for="expense-cost">Total Cost</label>
+                <label for="expense-cost" data-i18n="trip.totalCost"></label>
                 <input id="expense-cost" type="number" step="0.01" min="0"
                        x-model="expenseForm.amount" required>
               </div>
               <div class="field">
-                <label for="expense-currency">Currency</label>
+                <label for="expense-currency" data-i18n="trip.currency"></label>
                 <select id="expense-currency" x-model="expenseForm.currency">
                   <template x-for="code in entryCurrencies" :key="code">
                     <option :value="code" x-text="code"></option>
@@ -2041,7 +1917,7 @@
             <!-- Paid by comes first: who handed the money over is the plain
                  fact, and whose money it is follows from it. -->
             <div class="field">
-              <label id="expense-paid-by-label">Paid by</label>
+              <label id="expense-paid-by-label" data-i18n="trip.paidBy"></label>
               <div class="chip-group" role="group" aria-labelledby="expense-paid-by-label">
                 <template x-for="person in tripSharers" :key="person.userId">
                   <button type="button" class="chip"
@@ -2052,13 +1928,13 @@
                 <label class="checkbox">
                   <input type="checkbox" x-model="expenseForm.charged"
                          @change="chargedToggled(expenseForm, currentUserId, $event.target.checked)">
-                  Expense already charged
+                  <span data-i18n="trip.expenseAlreadyCharged"></span>
                 </label>
               </div>
             </div>
             <div class="field">
               <!-- <label id="expense-shared-label">Shared by</label> -->
-              <label id="expense-shared-label">Who's chipping in? <span aria-hidden="true">🦙</span> </label>
+              <label id="expense-shared-label"><span data-i18n="trip.whoSChippingIn"></span> <span aria-hidden="true">🦙</span> </label>
               <div class="chip-group" role="group" aria-labelledby="expense-shared-label">
                 <!-- Before the template, because x-for inserts its members as
                      siblings *after* the template node. "Everyone" is the empty
@@ -2066,7 +1942,7 @@
                      included and one leaving drops out. -->
                 <button type="button" class="chip"
                         :aria-pressed="sharedWithEveryone(expenseForm.sharedByUserIds)"
-                        @click="shareWithEveryone(expenseForm.sharedByUserIds)">Everyone</button>
+                        @click="shareWithEveryone(expenseForm.sharedByUserIds)" data-i18n="trip.everyone"></button>
                 <template x-for="person in tripSharers" :key="person.userId">
                   <button type="button" class="chip"
                           :aria-pressed="expenseForm.sharedByUserIds.includes(person.userId)"
@@ -2077,15 +1953,15 @@
             </div>
 
             <div class="field">
-              <label for="expense-note">Note (optional)</label>
+              <label for="expense-note" data-i18n="trip.noteOptional"></label>
               <textarea id="expense-note" x-model="expenseForm.note"
-                        placeholder="Anything worth remembering — booking references, who is handling it, website links to check"></textarea>
+                        data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
             </div>
 
             <div class="modal-footer">
-              <button type="button" class="btn" @click="expenseOpen = false">Cancel</button>
+              <button type="button" class="btn" @click="expenseOpen = false" data-i18n="common.cancel"></button>
               <button type="submit" class="btn btn-primary" :disabled="expenseBusy"
-                      x-text="expenseBusy ? 'Saving…' : 'Save'"></button>
+                      x-text="expenseBusy ? $t('common.saving') : $t('common.save')"></button>
             </div>
           </form>
         </div>
@@ -2102,7 +1978,7 @@
             <h2 class="modal-title" id="settle-detail-title"
                 x-text="settleDetail ? settleSummaryLine(settleDetail) : ''"></h2>
             <button type="button" class="modal-close" @click="closeSettleDetails()"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
 
           <template x-if="settleDetail">
@@ -2126,23 +2002,23 @@
 
               <dl class="settle-totals">
                 <div>
-                  <dt x-text="`${settleMemberName(settleDetail.otherUserId)} owes you`"></dt>
+                  <dt x-text="$t('trip.owesYouNamed', { name: settleMemberName(settleDetail.otherUserId) })"></dt>
                   <dd x-text="fmt(settleDetail.owesYou, settleDetail.currency)"></dd>
                 </div>
                 <div>
-                  <dt x-text="`You owe ${settleMemberName(settleDetail.otherUserId)}`"></dt>
+                  <dt x-text="$t('trip.youOweNamed', { name: settleMemberName(settleDetail.otherUserId) })"></dt>
                   <dd x-text="fmt(settleDetail.youOwe, settleDetail.currency)"></dd>
                 </div>
                 <div x-show="Number(settleDetail.paidYou) > 0">
-                  <dt x-text="`${settleMemberName(settleDetail.otherUserId)} has paid you`"></dt>
+                  <dt x-text="$t('trip.hasPaidYouNamed', { name: settleMemberName(settleDetail.otherUserId) })"></dt>
                   <dd x-text="fmt(settleDetail.paidYou, settleDetail.currency)"></dd>
                 </div>
                 <div x-show="Number(settleDetail.youPaid) > 0">
-                  <dt x-text="`You have paid ${settleMemberName(settleDetail.otherUserId)}`"></dt>
+                  <dt x-text="$t('trip.youHavePaidNamed', { name: settleMemberName(settleDetail.otherUserId) })"></dt>
                   <dd x-text="fmt(settleDetail.youPaid, settleDetail.currency)"></dd>
                 </div>
                 <div class="settle-totals-net">
-                  <dt>Net</dt>
+                  <dt data-i18n="trip.net"></dt>
                   <dd>
                     <span class="settle-net">
                       <span class="settle-pill" :class="settleNetClass(settleDetail)"
@@ -2157,7 +2033,7 @@
           </template>
 
           <div class="modal-actions">
-            <button type="button" class="btn" @click="closeSettleDetails()">Close</button>
+            <button type="button" class="btn" @click="closeSettleDetails()" data-i18n="common.close"></button>
           </div>
         </div>
       </div>
@@ -2169,18 +2045,16 @@
         <div class="modal settle-modal" role="dialog" aria-modal="true" aria-labelledby="settle-balance-title"
              x-dialog="settleBalancesOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="settle-balance-title">Your balance</h2>
+            <h2 class="modal-title" id="settle-balance-title" data-i18n="trip.yourBalance"></h2>
             <button type="button" class="modal-close" @click="closeSettleBalances()"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
 
-          <p class="empty" x-show="settleBalanceSections.length === 0">
-            Nothing to balance yet — no charged expense involves you.
-          </p>
+          <p class="empty" x-show="settleBalanceSections.length === 0" data-i18n="trip.nothingToBalanceYet"></p>
 
           <template x-for="section in settleBalanceSections" :key="section.currency">
             <div class="settle-balance">
-              <h3 class="section-title" x-text="`Balance in ${section.currency}`"></h3>
+              <h3 class="section-title" x-text="$t('trip.balanceIn', { currency: section.currency })"></h3>
               <ul class="settle-lines">
                 <template x-for="line in section.lines" :key="line.itemId">
                   <li class="settle-line">
@@ -2199,18 +2073,16 @@
               </ul>
               <dl class="settle-totals">
                 <div class="settle-totals-net">
-                  <dt>Net balance</dt>
+                  <dt data-i18n="trip.netBalance"></dt>
                   <dd :class="section.netClass" x-text="section.summary"></dd>
                 </div>
               </dl>
-              <p class="settle-note" x-text="section.net === 0
-                    ? 'No payments needed.'
-                    : 'Settled by the payments in the table.'"></p>
+              <p class="settle-note" x-text="section.net === 0 ? $t('trip.noPaymentsNeeded') : $t('trip.settledByPayments')"></p>
             </div>
           </template>
 
           <div class="modal-actions">
-            <button type="button" class="btn" @click="closeSettleBalances()">Close</button>
+            <button type="button" class="btn" @click="closeSettleBalances()" data-i18n="common.close"></button>
           </div>
         </div>
       </div>
@@ -2223,18 +2095,18 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pay-title"
              x-dialog="payOpen">
           <div class="modal-header">
-            <h2 class="modal-title" id="pay-title">Record payment</h2>
+            <h2 class="modal-title" id="pay-title" data-i18n="trip.recordPayment"></h2>
             <button type="button" class="modal-close" @click="payOpen = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
           <div class="alert alert-error" x-show="payError" x-text="payError" x-cloak></div>
           <form @submit.prevent="savePayment()">
             <p class="settle-pay-summary"
-               x-text="`${settleWho(payForm.fromUserId)} paid ${payForm.toUserId === currentUserId ? 'you' : settleMemberName(payForm.toUserId)}`"></p>
+               x-text="$t(payForm.toUserId === currentUserId ? 'trip.paidYou' : 'trip.paidNamed', { who: settleWho(payForm.fromUserId), name: settleMemberName(payForm.toUserId) })"></p>
             <!-- The currency is fixed by the line, so it is part of the label
                  rather than a field that looks editable and is not. -->
             <div class="field">
-              <label for="pay-amount" x-text="`Amount (${payForm.currency})`"></label>
+              <label for="pay-amount" x-text="$t('trip.amountIn', { currency: payForm.currency })"></label>
               <input id="pay-amount" type="number" step="0.01" min="0.01" inputmode="decimal"
                      x-ref="payAmount" x-model="payForm.amount" required
                      aria-describedby="pay-outcome">
@@ -2243,20 +2115,20 @@
                  announced politely so it is not read out on every keystroke. -->
             <p id="pay-outcome" class="settle-pay-outcome" aria-live="polite"
                :class="payOutcome ? `settle-pay-outcome-${payOutcome.kind}` : ''"
-               x-text="payOutcome ? payOutcome.text : 'Lower the amount for a part payment.'"></p>
+               x-text="payOutcome ? payOutcome.text : $t('trip.lowerTheAmount')"></p>
             <div class="field">
-              <label for="pay-date">Date</label>
+              <label for="pay-date" data-i18n="trip.date"></label>
               <input id="pay-date" type="date" x-model="payForm.date">
             </div>
             <div class="field">
-              <label for="pay-note">Note (optional)</label>
+              <label for="pay-note" data-i18n="trip.noteOptional"></label>
               <input id="pay-note" x-model="payForm.note" maxlength="200"
-                     placeholder="Paid in cash">
+                     data-i18n-placeholder="trip.paidInCash">
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn" @click="payOpen = false">Cancel</button>
+              <button type="button" class="btn" @click="payOpen = false" data-i18n="common.cancel"></button>
               <button type="submit" class="btn btn-primary" :disabled="payBusy"
-                      x-text="payBusy ? 'Saving…' : 'Record payment'"></button>
+                      x-text="payBusy ? $t('common.saving') : $t('trip.recordPayment')"></button>
             </div>
           </form>
         </div>
@@ -2268,19 +2140,19 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pay-delete-title"
              x-dialog="payDeleteTarget">
           <div class="modal-header">
-            <h2 class="modal-title" id="pay-delete-title">Delete this payment?</h2>
+            <h2 class="modal-title" id="pay-delete-title" data-i18n="trip.deleteThisPayment"></h2>
             <button type="button" class="modal-close" @click="payDeleteTarget = null"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
           <template x-if="payDeleteTarget">
             <p class="small"
-               x-text="`${settlePaymentLine(payDeleteTarget)}, ${fmt(payDeleteTarget.amount, payDeleteTarget.currency)}. The debt it settled comes back.`"></p>
+               x-text="$t('trip.deletePaymentBody', { name: settlePaymentLine(payDeleteTarget), amount: fmt(payDeleteTarget.amount, payDeleteTarget.currency) })"></p>
           </template>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="payDeleteTarget = null">Cancel</button>
+            <button type="button" class="btn" @click="payDeleteTarget = null" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" :disabled="payDeleteBusy"
                     @click="confirmDeletePayment()"
-                    x-text="payDeleteBusy ? 'Deleting…' : 'Delete payment'"></button>
+                    x-text="payDeleteBusy ? $t('common.deleting') : $t('trip.deletePayment')"></button>
           </div>
         </div>
       </div>
@@ -2291,20 +2163,17 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="publish-title"
              x-dialog="confirmingPublish">
           <div class="modal-header">
-            <h2 class="modal-title" id="publish-title">Publish this trip?</h2>
+            <h2 class="modal-title" id="publish-title" data-i18n="trip.publishThisTrip"></h2>
             <button type="button" class="modal-close" @click="confirmingPublish = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">
-            Anyone with the link will be able to see this trip — its destinations,
-            itinerary, checklist and budget. No sign-in required.
-          </p>
-          <p class="small muted" x-show="isOwner">You can unpublish at any time.</p>
-          <p class="small muted" x-show="!isOwner">Only the trip owner can unpublish it.</p>
+          <p class="small" data-i18n="trip.anyoneWithTheLink"></p>
+          <p class="small muted" x-show="isOwner" data-i18n="trip.youCanUnpublishAt"></p>
+          <p class="small muted" x-show="!isOwner" data-i18n="trip.onlyTheTripOwner"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="confirmingPublish = false">Cancel</button>
+            <button type="button" class="btn" @click="confirmingPublish = false" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-primary" :disabled="publishBusy"
-                    @click="doPublish()" x-text="publishBusy ? 'Publishing…' : 'Publish'"></button>
+                    @click="doPublish()" x-text="publishBusy ? $t('trip.publishing') : $t('trip.publish')"></button>
           </div>
         </div>
       </div>
@@ -2315,18 +2184,15 @@
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="unpublish-title"
              x-dialog="confirmingUnpublish">
           <div class="modal-header">
-            <h2 class="modal-title" id="unpublish-title">Unpublish this trip?</h2>
+            <h2 class="modal-title" id="unpublish-title" data-i18n="trip.unpublishThisTrip"></h2>
             <button type="button" class="modal-close" @click="confirmingUnpublish = false"
-                    aria-label="Close">✕</button>
+                    data-i18n-aria-label="common.close">✕</button>
           </div>
-          <p class="small">
-            The public page will be taken down and its link will stop working.
-            Nothing in the trip itself is deleted, and you can publish again later.
-          </p>
+          <p class="small" data-i18n="trip.thePublicPageWill"></p>
           <div class="modal-footer">
-            <button type="button" class="btn" @click="confirmingUnpublish = false">Cancel</button>
+            <button type="button" class="btn" @click="confirmingUnpublish = false" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-danger" :disabled="publishBusy"
-                    @click="doUnpublish()" x-text="publishBusy ? 'Working…' : 'Unpublish'"></button>
+                    @click="doUnpublish()" x-text="publishBusy ? $t('common.working') : $t('trip.unpublish')"></button>
           </div>
         </div>
       </div>

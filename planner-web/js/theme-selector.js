@@ -1,3 +1,4 @@
+import { t } from './i18n/index.js';
 /**
  * Theme switching, following the same mechanism as the main site: one compiled
  * stylesheet per theme, all present as <link> elements with every one but the
@@ -17,9 +18,9 @@
  * localStorage, or a trip published in it, simply gets Minima.
  */
 export const THEME_REGISTRY = {
-  minima:       { stylesheetId: 'minima-css',     labelFull: 'Minima Theme',   labelShort: 'Minima', swatch: '#b45309' },
-  y2k:          { stylesheetId: 'y2k-css',        labelFull: 'Y2K Theme',      labelShort: 'Y2K',    swatch: '#000080' },
-  dark:         { stylesheetId: 'dark-css',       labelFull: 'Dark Theme',     labelShort: 'Dark',   swatch: '#5ad1ff' },
+  minima:       { stylesheetId: 'minima-css',     get labelFull() { return t('theme.minima.full'); }, get labelShort() { return t('theme.minima.short'); }, swatch: '#b45309' },
+  y2k:          { stylesheetId: 'y2k-css',        get labelFull() { return t('theme.y2k.full'); }, get labelShort() { return t('theme.y2k.short'); }, swatch: '#000080' },
+  dark:         { stylesheetId: 'dark-css',       get labelFull() { return t('theme.dark.full'); }, get labelShort() { return t('theme.dark.short'); }, swatch: '#5ad1ff' },
 };
 
 export const THEME_NAMES = Object.keys(THEME_REGISTRY);
@@ -78,7 +79,7 @@ export function renderSelector(container) {
   container.innerHTML = `
     <div class="theme-selector">
       <button id="theme-toggle" class="theme-toggle" aria-haspopup="true" aria-expanded="false">
-        🎨 <span id="current-theme">Theme</span>
+        🎨 <span id="current-theme">${t('theme.label')}</span>
       </button>
       <div id="theme-dropdown" class="theme-dropdown" role="menu">${options}</div>
     </div>`;

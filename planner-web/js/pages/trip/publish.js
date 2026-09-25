@@ -1,6 +1,7 @@
 import { toast } from '../../toast.js';
 import { THEME_REGISTRY, savedTheme } from '../../theme-selector.js';
 import { dateTimeLabel } from '../../format.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * The Publish tab.
@@ -123,7 +124,7 @@ export function publishTab() {
         this.publish = await this.api.publish(this.trip.id, this.themeToPublish);
         this.trip.status = 'PUBLISHED';
         this.confirmingPublish = false;
-        toast.success('🦙 Your trip is live!');
+        toast.success(t('publish.live'));
         await this.reload();
       } catch (error) {
         toast.error(error.fullMessage);
@@ -137,7 +138,7 @@ export function publishTab() {
       try {
         this.publish = await this.api.unpublish(this.trip.id);
         this.confirmingUnpublish = false;
-        toast.success('Trip unpublished — the public link no longer works');
+        toast.success(t('publish.unpublished'));
         await this.reload();
       } catch (error) {
         toast.error(error.fullMessage);
@@ -154,7 +155,7 @@ export function publishTab() {
         this.publish = await this.api.requestPublish(
           this.trip.id, this.requestNote.trim(), this.themeToPublish);
         this.requestNote = '';
-        toast.success('Request sent to the trip owner');
+        toast.success(t('publish.requestSent'));
       } catch (error) {
         toast.error(error.fullMessage);
       } finally {
@@ -165,7 +166,7 @@ export function publishTab() {
     async cancelRequest(request) {
       try {
         this.publish = await this.api.cancelPublishRequest(this.trip.id, request.id);
-        toast.success('Request withdrawn');
+        toast.success(t('publish.requestWithdrawn'));
       } catch (error) {
         toast.error(error.fullMessage);
       }
@@ -178,7 +179,7 @@ export function publishTab() {
         // one publishing it.
         this.publish = await this.api.approvePublish(this.trip.id, request.id,
           this.themeToPublish);
-        toast.success('🦙 Your trip is live!');
+        toast.success(t('publish.live'));
         await this.reload();
       } catch (error) {
         toast.error(error.fullMessage);
@@ -190,7 +191,7 @@ export function publishTab() {
     async rejectRequest(request) {
       try {
         this.publish = await this.api.rejectPublish(this.trip.id, request.id);
-        toast.success('Request declined');
+        toast.success(t('publish.requestDeclined'));
       } catch (error) {
         toast.error(error.fullMessage);
       }
@@ -244,8 +245,9 @@ export function publishTab() {
 
     /** PublishRequest.Status as words; the enum name is not copy. */
     requestStatusLabel(status) {
-      return { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected',
-               CANCELLED: 'Cancelled' }[status] || status;
+      const key = { PENDING: 'publish.status.pending', APPROVED: 'publish.status.approved',
+                    REJECTED: 'publish.status.rejected', CANCELLED: 'publish.status.cancelled' }[status];
+      return key ? t(key) : status;
     },
   };
 }

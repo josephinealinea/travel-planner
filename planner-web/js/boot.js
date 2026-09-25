@@ -2,6 +2,7 @@ import { api } from './api.js';
 import { renderChrome } from './chrome.js';
 import { registerDialogFocus } from './dialog.js';
 import { requireUser } from './session.js';
+import { initI18n, useAccountLanguage, registerAlpineMagics } from './i18n/index.js';
 
 /**
  * Page startup for the Alpine-driven pages.
@@ -13,10 +14,16 @@ import { requireUser } from './session.js';
  * removes the race entirely rather than trying to win it.
  */
 export async function bootPage({ active = '', component = {} } = {}) {
+  // Before the first request, so it can ask the API for the right language,
+  // and before anything is drawn.
+  await initI18n();
   await api.initCsrf();
 
   const user = await requireUser();
   if (!user) return null;               // requireUser is already redirecting
+
+  // The member's own choice beats what this browser last used.
+  await useAccountLanguage(user);
 
   renderChrome({ user, active });
 
@@ -27,6 +34,7 @@ export async function bootPage({ active = '', component = {} } = {}) {
 
   // Directives, like components, have to exist before Alpine starts.
   registerDialogFocus();
+  registerAlpineMagics();
 
   // Alpine's CDN build starts itself on load, including when the document has
   // already finished parsing.

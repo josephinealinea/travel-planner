@@ -5,7 +5,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -32,8 +31,10 @@ public class ProxySecretFilter extends OncePerRequestFilter {
     public static final String HEADER = "X-Proxy-Secret";
 
     private final byte[] secret;
+    private final FilterErrors errors;
 
-    public ProxySecretFilter(ProxyProperties props) {
+    public ProxySecretFilter(ProxyProperties props, FilterErrors errors) {
+        this.errors = errors;
         this.secret = props.enforced() ? props.secret().getBytes(StandardCharsets.UTF_8) : null;
     }
 
@@ -46,11 +47,7 @@ public class ProxySecretFilter extends OncePerRequestFilter {
                 && MessageDigest.isEqual(header.getBytes(StandardCharsets.UTF_8), secret);
 
         if (!matches) {
-            response.setStatus(HttpStatus.FORBIDDEN.value());
-            response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-            response.getWriter().write("""
-                    {"status":403,"code":"proxy_required",\
-                    "detail":"This API is only reachable through the planner's own site."}""");
+            errors.write(request, response, HttpStatus.FORBIDDEN, "proxy_required", "error.proxy.required");
             return;
         }
 

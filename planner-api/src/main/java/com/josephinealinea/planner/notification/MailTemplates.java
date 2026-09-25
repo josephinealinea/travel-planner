@@ -1,20 +1,41 @@
 package com.josephinealinea.planner.notification;
 
 import com.josephinealinea.planner.config.AppProperties;
+import com.josephinealinea.planner.i18n.Messages;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 
-/** Every message the app sends, in one readable place. */
+/**
+ * Every message the app sends. The words live in {@code messages_<language>.properties}
+ * under {@code email.<name>.subject} and {@code .body}; this class only says
+ * which arguments go where.
+ *
+ * Each method takes the recipient's saved language first (null for none). With
+ * none, the email is written in the language of the request that caused it — for
+ * a brand-new invitee that is the person who invited them, the only language we
+ * know anything about.
+ */
 @Component
 public class MailTemplates {
 
+    private final Messages messages;
     private final String siteUrl;
     private final String signInUrl;
 
-    public MailTemplates(AppProperties props) {
+    public MailTemplates(AppProperties props, Messages messages) {
+        this.messages = messages;
         this.siteUrl = props.cors().siteUrl();
         this.signInUrl = siteUrl + "/login.html";
+    }
+
+    private Locale localeFor(String recipientLanguage) {
+        if (recipientLanguage != null && messages.supported().contains(recipientLanguage.toLowerCase(Locale.ROOT))) {
+            return Locale.forLanguageTag(recipientLanguage);
+        }
+        return LocaleContextHolder.getLocale();
     }
 
     /**
@@ -22,79 +43,43 @@ public class MailTemplates {
      * sign-off: somebody reading an email about a trip should be able to tell
      * where it came from. The subject stays about the trip.
      */
-    private Email email(String to, String subject, String body) {
+    private Email email(String language, String to, String name, Object... args) {
+        Locale locale = localeFor(language);
+        String subject = messages.get(locale, "email." + name + ".subject", args);
+        String body = messages.get(locale, "email." + name + ".body", args);
         String text = body.endsWith("\n") ? body : body + "\n";
-        return new Email(to, subject, text + "\n— 🦙 Travelling Llama\n" + siteUrl + "\n");
+        return new Email(to, subject, text + "\n" + messages.get(locale, "email.signoff") + "\n" + siteUrl + "\n");
     }
 
     /** New account: carries the default password they will be asked to change. */
-    public Email invitedNewMember(String to, String tripTitle, String invitedBy, String defaultPassword) {
-        return email(to,
-                "You have been added to " + tripTitle,
-                """
-                %s added you to the trip "%s".
-
-                Sign in at %s
-
-                  Email:    %s
-                  Password: %s
-
-                You will be asked to choose your own password and a screen name the
-                first time you sign in. Your screen name is what your
-                travel buddies will see.
-                """.formatted(invitedBy, tripTitle, signInUrl, to, defaultPassword));
+    public Email invitedNewMember(String language, String to, String tripTitle, String invitedBy,
+                                  String defaultPassword) {
+        return email(language, to, "invitedNewMember", invitedBy, tripTitle, signInUrl, to, defaultPassword);
     }
 
     /** Existing account: no credentials, just the news. */
-    public Email addedExistingMember(String to, String tripTitle, String invitedBy) {
-        return email(to,
-                "You have been added to " + tripTitle,
-                """
-                %s added you to the trip "%s".
-
-                Open it at %s
-                """.formatted(invitedBy, tripTitle, signInUrl));
+    public Email addedExistingMember(String language, String to, String tripTitle, String invitedBy) {
+        return email(language, to, "addedExistingMember", invitedBy, tripTitle, signInUrl);
     }
 
-    public Email removedFromTrip(String to, String tripTitle) {
-        return email(to,
-                "You have been removed from " + tripTitle,
-                "You no longer have access to the trip \"%s\".".formatted(tripTitle));
+    public Email removedFromTrip(String language, String to, String tripTitle) {
+        return email(language, to, "removedFromTrip", tripTitle);
     }
 
-    public Email publishRequested(String to, String tripTitle, String requestedBy) {
-        return email(to,
-                "%s wants to publish %s".formatted(requestedBy, tripTitle),
-                """
-                %s has asked to publish the trip "%s".
-
-                Open the trip's Publish tab at %s to approve or reject it.
-                """.formatted(requestedBy, tripTitle, signInUrl));
+    public Email publishRequested(String language, String to, String tripTitle, String requestedBy) {
+        return email(language, to, "publishRequested", requestedBy, tripTitle, signInUrl);
     }
 
-    public Email publishApproved(String to, String tripTitle, String publicUrl) {
-        return email(to,
-                "%s is now published".formatted(tripTitle),
-                """
-                Your request to publish "%s" was approved.
-
-                The public page is at %s
-                """.formatted(tripTitle, publicUrl));
+    public Email publishApproved(String language, String to, String tripTitle, String publicUrl) {
+        return email(language, to, "publishApproved", tripTitle, publicUrl);
     }
 
-    public Email publishRejected(String to, String tripTitle) {
-        return email(to,
-                "Publish request for %s was declined".formatted(tripTitle),
-                "The owner declined the request to publish \"%s\" for now.".formatted(tripTitle));
+    public Email publishRejected(String language, String to, String tripTitle) {
+        return email(language, to, "publishRejected", tripTitle);
     }
 
-    public Email tripPublished(List<String> to, String tripTitle, String publicUrl) {
-        return email(String.join(", ", to),
-                "%s is now published".formatted(tripTitle),
-                """
-                "%s" has been published.
-
-                The public page is at %s
-                """.formatted(tripTitle, publicUrl));
+    /** One message to several people, so it is written in the language of whoever published. */
+    public Email tripPublished(String language, List<String> to, String tripTitle, String publicUrl) {
+        return email(language, String.join(", ", to), "tripPublished", tripTitle, publicUrl);
     }
 }

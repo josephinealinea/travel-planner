@@ -5,6 +5,7 @@ import com.josephinealinea.planner.identity.domain.TierLevel;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.notification.EmailSender;
 import com.josephinealinea.planner.notification.MailTemplates;
+import com.josephinealinea.planner.i18n.Msg;
 import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.publish.api.StaticSiteRenderer;
 import com.josephinealinea.planner.shared.Audit;
@@ -68,8 +69,7 @@ public class TripService {
         User owner = users.require(userId);
         if (atTripLimit(owner)) {
             throw ApiException.conflict("trip_limit_reached",
-                    "In your current tier you can only have %d trips. Delete or leave a trip to create a new one."
-                            .formatted(limits.basicMaxTrips()));
+                    "error.trip.limitReached", limits.basicMaxTrips());
         }
 
         Trip trip = new Trip();
@@ -143,14 +143,13 @@ public class TripService {
 
         if (trip.isMember(invited.user().getId())) {
             throw ApiException.conflict("already_a_member",
-                    "%s is already on this trip.".formatted(invited.user().displayName()));
+                    "error.trip.alreadyMember", invited.user().displayName());
         }
 
         // A brand-new account is on no trips, so only an existing one can be full.
         if (!invited.created() && atTripLimit(invited.user())) {
             throw ApiException.conflict("member_trip_limit_reached",
-                    "%s is already on %d trips, the most their current tier allows. Ask them to delete or leave another trip before you add them."
-                            .formatted(invited.user().displayName(), limits.basicMaxTrips()));
+                    "error.trip.memberLimitReached", invited.user().displayName(), limits.basicMaxTrips());
         }
 
         trip.getMembers().add(new TripMember(
@@ -160,9 +159,9 @@ public class TripService {
 
         String invitedBy = users.require(actingUserId).displayName();
         email.send(invited.created()
-                ? templates.invitedNewMember(invited.user().getEmail(), trip.getTitle(),
+                ? templates.invitedNewMember(invited.user().getLanguageCode(), invited.user().getEmail(), trip.getTitle(),
                                              invitedBy, invited.defaultPassword())
-                : templates.addedExistingMember(invited.user().getEmail(), trip.getTitle(), invitedBy));
+                : templates.addedExistingMember(invited.user().getLanguageCode(), invited.user().getEmail(), trip.getTitle(), invitedBy));
 
         return saved;
     }
@@ -177,15 +176,15 @@ public class TripService {
 
         // Anyone may leave; only the owner may remove somebody else.
         if (!memberUserId.equals(actingUserId) && !trip.isOwner(actingUserId)) {
-            throw ApiException.forbidden("Only the trip owner can remove a travel buddy.");
+            throw ApiException.forbidden("error.trip.ownerRemovesBuddy");
         }
 
         TripMember member = trip.member(memberUserId)
-                .orElseThrow(() -> ApiException.notFound("Member"));
+                .orElseThrow(() -> ApiException.notFound("error.member.notFound"));
 
         if (member.isOwner()) {
             throw ApiException.conflict("owner_cannot_be_removed",
-                    "The trip owner cannot be removed. Delete the trip instead.");
+                    "error.trip.ownerCannotBeRemoved");
         }
 
         boolean leaving = memberUserId.equals(actingUserId);
@@ -195,8 +194,7 @@ public class TripService {
             List<String> areas = links.areasLinkedTo(trip.getSlug(), memberUserId);
             if (!areas.isEmpty()) {
                 throw ApiException.conflict("member_still_linked",
-                        "%s is still linked to the %s. Unlink them first, then remove them from the trip."
-                                .formatted(users.require(memberUserId).displayName(), joined(areas)));
+                        "error.trip.memberStillLinked", users.require(memberUserId).displayName(), joined(areas));
             }
             trip.getMembers().removeIf(m -> m.getUserId().equals(memberUserId));
         } else if (links.inBudget(trip.getSlug(), memberUserId)) {
@@ -213,23 +211,28 @@ public class TripService {
 
         // Do not email somebody who just chose to leave.
         if (!memberUserId.equals(actingUserId)) {
-            email.send(templates.removedFromTrip(users.require(memberUserId).getEmail(), trip.getTitle()));
+            var removed = users.require(memberUserId);
+            email.send(templates.removedFromTrip(removed.getLanguageCode(), removed.getEmail(), trip.getTitle()));
         }
         return saved;
     }
 
     /** "budget", "destinations" and "checklist" */
-    private static String joined(List<String> areas) {
-        if (areas.size() == 1) return areas.get(0);
-        return String.join(", ", areas.subList(0, areas.size() - 1)) + " and " + areas.get(areas.size() - 1);
+    private static Msg joined(List<String> areas) {
+        Msg result = new Msg("area." + areas.get(0));
+        for (int i = 1; i < areas.size(); i++) {
+            String join = i == areas.size() - 1 ? "list.and" : "list.comma";
+            result = new Msg(join, result, new Msg("area." + areas.get(i)));
+        }
+        return result;
     }
 
     private static void requireDateOrder(LocalDate start, LocalDate end) {
         if (start == null || end == null) {
-            throw ApiException.badRequest("A trip needs both a start and an end date.");
+            throw ApiException.badRequest("error.trip.datesRequired");
         }
         if (end.isBefore(start)) {
-            throw ApiException.badRequest("The end date cannot be before the start date.");
+            throw ApiException.badRequest("error.dates.endBeforeStart");
         }
     }
 }

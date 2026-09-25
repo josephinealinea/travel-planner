@@ -2,15 +2,16 @@ package com.josephinealinea.planner.itinerary.api;
 
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.destinations.domain.Destination;
+import com.josephinealinea.planner.i18n.I18nConfig;
+import com.josephinealinea.planner.i18n.Messages;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -21,8 +22,17 @@ import java.util.Optional;
 @Component
 public class PlanTemplates {
 
-    private static final DateTimeFormatter DAY_MONTH =
-            DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH);
+    private final Messages messages;
+
+    @Autowired
+    public PlanTemplates(Messages messages) {
+        this.messages = messages;
+    }
+
+    /** English, for tests that build the templates by hand. */
+    public PlanTemplates() {
+        this(I18nConfig.standalone());
+    }
 
     /** What the Plan form opens with. */
     public record Template(String description,
@@ -50,8 +60,8 @@ public class PlanTemplates {
                         .map(Destination::getName)
                         .orElse(null);
                 String description = previous == null
-                        ? "Transport to %s".formatted(name)
-                        : "Flight (XX 000) from %s to %s".formatted(previous, name);
+                        ? messages.get("plan.transport", name)
+                        : messages.get("plan.flight", previous, name);
                 yield new Template(description, at(start, LocalTime.MIDNIGHT), null, currency);
             }
             case LODGING -> {
@@ -59,20 +69,20 @@ public class PlanTemplates {
                 //        ? "Hotel in %s — check-in %s, check-out %s"
                 //                .formatted(name, DAY_MONTH.format(start), DAY_MONTH.format(end))
                 //        : "Hotel in %s".formatted(name);
-                String description = "Hotel accommodation in %s".formatted(name);
+                String description = messages.get("plan.hotel", name);
                 yield new Template(description,
                         at(start, LocalTime.of(15, 0)),
                         at(end, LocalTime.of(11, 0)),
                         currency);
             }
-            case ACTIVITIES -> new Template("Activity in %s".formatted(name),
+            case ACTIVITIES -> new Template(messages.get("plan.activity", name),
                     at(start, LocalTime.of(9, 0)), null, currency);
             // No sensible default hour for either — you shop and eat whenever —
             // so these pre-fill the place and leave the time to the member,
             // the way OTHERS does.
-            case SHOPPING -> new Template("Shopping in %s".formatted(name),
+            case SHOPPING -> new Template(messages.get("plan.shopping", name),
                     at(start, LocalTime.of(9, 0)), null, currency);
-            case FOOD -> new Template("Dinner at %s".formatted(name),
+            case FOOD -> new Template(messages.get("plan.food", name),
                     at(start, LocalTime.of(18, 0)), null, currency);
             case OTHERS -> new Template(item.getDescription(), at(start, LocalTime.MIDNIGHT), null, currency);
         };

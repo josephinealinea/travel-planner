@@ -1,5 +1,9 @@
 package com.josephinealinea.planner.publish.api;
 
+import com.josephinealinea.planner.i18n.I18nConfig;
+import com.josephinealinea.planner.i18n.Messages;
+import java.util.Locale;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
@@ -92,6 +96,7 @@ public class StaticSiteRenderer {
     private final ObjectMapper json;
     /** Where the "Planned with Travelling Llama" line links: the website, not the API. */
     private final String siteUrl;
+    private final Messages messages;
 
     /** Without a catalog no country details are looked up; the panel shows what it has. */
     public StaticSiteRenderer(DestinationRepository destinations,
@@ -103,7 +108,7 @@ public class StaticSiteRenderer {
         this(destinations, checklist, itinerary, budgets, pages, props, null);
     }
 
-    @Autowired
+    /** English message files, for tests that build the renderer by hand. */
     public StaticSiteRenderer(DestinationRepository destinations,
                               ChecklistRepository checklist,
                               ItineraryRepository itinerary,
@@ -111,6 +116,20 @@ public class StaticSiteRenderer {
                               PageStore pages,
                               AppProperties props,
                               CountryCatalog catalog) {
+        this(destinations, checklist, itinerary, budgets, pages, props, catalog,
+                I18nConfig.standalone());
+    }
+
+    @Autowired
+    public StaticSiteRenderer(DestinationRepository destinations,
+                              ChecklistRepository checklist,
+                              ItineraryRepository itinerary,
+                              BudgetService budgets,
+                              PageStore pages,
+                              AppProperties props,
+                              CountryCatalog catalog,
+                              Messages messages) {
+        this.messages = messages;
         this.catalog = catalog;
         this.siteUrl = props.cors().siteUrl();
         this.destinations = destinations;
@@ -204,7 +223,7 @@ public class StaticSiteRenderer {
                 .map(code -> code.trim().toUpperCase())
                 .distinct().toList();
         return new PublishOptions(options.itineraryCost(), options.destinationDays(),
-                options.forecastExpenses(), false, homes);
+                options.forecastExpenses(), false, homes, options.languageCode());
     }
 
     /**
@@ -245,10 +264,14 @@ public class StaticSiteRenderer {
     private void write(Trip trip, PublishOptions options, String theme, Area area,
                        String memberSlug,
                        com.josephinealinea.planner.identity.domain.User viewer) {
-        PublishedTrip snapshot = snapshot(trip, options, viewer);
+        // Whose page this is decides its language, like everything else about
+        // it: a static file cannot ask its reader, and the request that
+        // triggered the publish belongs to somebody else.
+        Locale locale = messages.localeOrDefault(options.languageCode());
+        PublishedTrip snapshot = snapshot(trip, options, viewer, locale);
         String payload = writeJson(snapshot);
         pages.write(area, trip.getSlug(), memberSlug, PageFile.INDEX,
-                page(trip, snapshot, payload, theme));
+                page(trip, snapshot, payload, theme, locale));
         pages.write(area, trip.getSlug(), memberSlug, PageFile.DATA, payload);
     }
 
@@ -284,7 +307,8 @@ public class StaticSiteRenderer {
     // ── snapshot ────────────────────────────────────────────────────────────
 
     private PublishedTrip snapshot(Trip trip, PublishOptions options,
-                                   com.josephinealinea.planner.identity.domain.User viewer) {
+                                   com.josephinealinea.planner.identity.domain.User viewer,
+                                   Locale locale) {
         String slug = trip.getSlug();
         var tripDestinations = destinations.findAllOrdered(slug);
         var tripChecklist = checklist.findAllOrdered(slug);
@@ -332,11 +356,11 @@ public class StaticSiteRenderer {
                 String.join(" → ", route),
                 allDestinations.stream().map(d -> toView(d, options)).toList(),
                 days(allItinerary, allDestinations, options.itineraryCost(),
-                        trip.getStartDate(), trip.getEndDate()),
+                        trip.getStartDate(), trip.getEndDate(), locale),
                 allChecklist.stream()
-                        .map(this::toView)
+                        .map(item -> toView(item, locale))
                         .toList(),
-                options.displayBudget() ? toView(budget, options) : null);
+                options.displayBudget() ? toView(budget, options, locale) : null);
     }
 
     /**
@@ -423,11 +447,11 @@ public class StaticSiteRenderer {
     }
 
     /** Items carry country codes; the page turns them into names (see page.js). */
-    private PublishedTrip.Checklist toView(ChecklistItem item) {
+    private PublishedTrip.Checklist toView(ChecklistItem item, Locale locale) {
         List<String> codes = List.copyOf(item.getCountryCodes());
         return new PublishedTrip.Checklist(
                 item.getCategory().dataKey(),
-                item.getCategory().label(),
+                messages.get(locale, item.getCategory().messageKey()),
                 PublishStyle.icon(item.getCategory()),
                 item.getDescription(),
                 item.getNote(),
@@ -440,7 +464,8 @@ public class StaticSiteRenderer {
     private List<PublishedTrip.Day> days(List<ItineraryItem> items,
                                         List<Destination> allDestinations,
                                         boolean showItineraryCost,
-                                        LocalDate tripStart, LocalDate tripEnd) {
+                                        LocalDate tripStart, LocalDate tripEnd,
+                                        Locale locale) {
         // Sorted by day rather than by insertion. The stream above already
         // walks items in start order and a stay only ever adds days forward
         // from its own first, so insertion order happens to come out
@@ -458,7 +483,7 @@ public class StaticSiteRenderer {
                 .sorted(Comparator.comparing(ItineraryItem::getStartAt))
                 .forEach(item -> byDay.computeIfAbsent(item.getStartAt().toLocalDate(),
                                 key -> new ArrayList<>())
-                        .add(entryFor(item, showItineraryCost)));
+                        .add(entryFor(item, showItineraryCost, locale)));
 
         // Where the trip is on each day, from the destinations' own dates —
         // both ends counted, the same reading as the app's Days column. This is
@@ -505,7 +530,7 @@ public class StaticSiteRenderer {
      * cost rides on the check-in entry alone, which is the only one that
      * carries it — one booking, one charge.
      */
-    private PublishedTrip.Entry entryFor(ItineraryItem item, boolean showItineraryCost) {
+    private PublishedTrip.Entry entryFor(ItineraryItem item, boolean showItineraryCost, Locale locale) {
         LocalTime shown = item.coversWholeDay() ? null : item.getStartAt().toLocalTime();
         LocalTime until = item.coversWholeDay() || item.getEndAt() == null
                 ? null
@@ -513,7 +538,7 @@ public class StaticSiteRenderer {
 
         return new PublishedTrip.Entry(
                 item.getCategory().dataKey(),
-                item.getCategory().label(),
+                messages.get(locale, item.getCategory().messageKey()),
                 PublishStyle.icon(item.getCategory()),
                 item.getDescription(),
                 time(shown),
@@ -524,7 +549,7 @@ public class StaticSiteRenderer {
                 showItineraryCost ? item.getCurrency() : null);
     }
 
-    private PublishedTrip.Budget toView(BudgetService.Summary summary, PublishOptions options) {
+    private PublishedTrip.Budget toView(BudgetService.Summary summary, PublishOptions options, Locale locale) {
         return new PublishedTrip.Budget(
                 // The currency the figures below are actually in, which is not
                 // the trip's own anchor. The two coincide on the trip's page
@@ -533,20 +558,20 @@ public class StaticSiteRenderer {
                 // labelling them with the trip's anchor would put "EUR" under
                 // a column of SGD.
                 summary.totalsCurrency(),
-                toView(summary.charged()),
+                toView(summary.charged(), locale),
                 // Off by default, and left null rather than shipped and then
                 // hidden — see render().
-                options.forecastExpenses() ? toView(summary.forecast()) : null);
+                options.forecastExpenses() ? toView(summary.forecast(), locale) : null);
     }
 
-    private PublishedTrip.Budget.Breakdown toView(BudgetService.Breakdown breakdown) {
+    private PublishedTrip.Budget.Breakdown toView(BudgetService.Breakdown breakdown, Locale locale) {
         List<PublishedTrip.Budget.Category> categories = new ArrayList<>();
         breakdown.byCategory().forEach((key, amount) -> {
             if (amount.signum() == 0) return;
             ChecklistCategory category = ChecklistCategory.valueOf(key);
             categories.add(new PublishedTrip.Budget.Category(
                     category.dataKey(),
-                    category.label(),
+                    messages.get(locale, category.messageKey()),
                     PublishStyle.icon(category),
                     PublishStyle.color(category),
                     amount));
@@ -581,7 +606,7 @@ public class StaticSiteRenderer {
      * would fail on the page's own markup. Straight replacement also means an
      * inlined stylesheet or a trip title can never be misread as a directive.
      */
-    private String page(Trip trip, PublishedTrip snapshot, String payload, String theme) {
+    private String page(Trip trip, PublishedTrip snapshot, String payload, String theme, Locale locale) {
         String flags = snapshot.countries().stream()
                 .map(PublishedTrip.Country::flag)
                 .filter(flag -> flag != null && !flag.isBlank())
@@ -589,12 +614,12 @@ public class StaticSiteRenderer {
 
         String template = """
                 <!doctype html>
-                <html lang="en" data-theme="{{theme}}" data-themes="{{themes}}">
+                <html lang="{{lang}}" data-theme="{{theme}}" data-themes="{{themes}}">
                 <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
                 <title>{{title}}</title>
-                <meta name="description" content="{{title}} — {{startDate}} to {{endDate}}">
+                <meta name="description" content="{{description}}">
                 <meta property="og:title" content="{{ogTitle}}">
                 <meta name="robots" content="index, follow">
                 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
@@ -604,11 +629,12 @@ public class StaticSiteRenderer {
                 </head>
                 <body>
                 <noscript>
-                  <div class="noscript">This trip page needs JavaScript to render its itinerary.</div>
+                  <div class="noscript">{{noscript}}</div>
                 </noscript>
                 <main id="app" class="page"></main>
-                <footer class="brand-footer">Planned with 🦙 <a href="{{siteUrl}}">Travelling Llama</a></footer>
+                <footer class="brand-footer">{{footerPrefix}} 🦙 <a href="{{siteUrl}}">Travelling Llama</a></footer>
                 <script>window.COUNTRIES = {{countries}};</script>
+                <script>window.I18N = {{i18n}};</script>
                 <script>window.TRIP = {{payload}};</script>
                 <script>
                 {{vendor}}
@@ -622,6 +648,14 @@ public class StaticSiteRenderer {
 
         Map<String, String> values = new LinkedHashMap<>();
         values.put("theme", theme);
+        values.put("lang", locale.getLanguage());
+        values.put("noscript", escapeHtml(messages.get(locale, "page.noscript")));
+        values.put("footerPrefix", escapeHtml(messages.get(locale, "page.footer.prefix")));
+        values.put("description", escapeHtml(fill(messages.get(locale, "page.meta.description"), Map.of(
+                "title", trip.getTitle(),
+                "start", snapshot.startDate() == null ? "" : snapshot.startDate(),
+                "end", snapshot.endDate() == null ? "" : snapshot.endDate()))));
+        values.put("i18n", i18nJson(locale));
         // Which themes the reader may switch to. Ordered, comma-separated, read
         // by page.js. Inlined rather than hardcoded in page.js so THEMES stays
         // the single source of what is on offer — withdraw a theme and newly
@@ -652,6 +686,35 @@ public class StaticSiteRenderer {
             out = out.replace("{{" + entry.getKey() + "}}", entry.getValue());
         }
         return out;
+    }
+
+    /**
+     * The words the page's script looks up: only {@code page.*} — a public file
+     * gets what it needs to draw itself, not the API's error messages or emails —
+     * with English filling anything the language lacks. Sits inside a
+     * &lt;script&gt; block, so "&lt;/" is escaped the way the payload's is.
+     */
+    private String i18nJson(Locale locale) {
+        Map<String, String> table = new LinkedHashMap<>();
+        table.put("_lang", locale.getLanguage());
+        table.putAll(messages.withPrefix(locale, "page."));
+        try {
+            return json.writeValueAsString(table).replace("</", "<\\/");
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not serialise the page's words", e);
+        }
+    }
+
+    /** Single-pass {name} substitution, so a value that itself contains "{start}" is left alone. */
+    private static String fill(String template, Map<String, String> values) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\{(\\w+)}").matcher(template);
+        StringBuilder out = new StringBuilder();
+        while (m.find()) {
+            String value = values.get(m.group(1));
+            m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(value == null ? m.group() : value));
+        }
+        m.appendTail(out);
+        return out.toString();
     }
 
     private String writeJson(PublishedTrip snapshot) {

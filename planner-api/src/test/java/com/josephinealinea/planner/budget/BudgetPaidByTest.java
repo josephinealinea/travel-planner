@@ -199,11 +199,11 @@ class BudgetPaidByTest {
     void aChargedExpenseMustNameWhoPaid() {
         assertThatThrownBy(() -> expense("80.00", List.of(), null))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Say who paid this");
+                .hasMessage("error.expense.payerRequired");
 
         assertThatThrownBy(() -> expense("80.00", List.of(), ""))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Say who paid this");
+                .hasMessage("error.expense.payerRequired");
     }
 
     /** Nobody has paid a pending row, so there is nobody to name. */
@@ -224,7 +224,7 @@ class BudgetPaidByTest {
         assertThatThrownBy(() -> service.update(TRIP_ID, ALEX, row.getId(),
                 new BudgetService.Input(null, null, null, null, null, null, null, null, true)))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Say who paid this");
+                .hasMessage("error.expense.payerRequired");
 
         assertThat(reload(row.getId()).isConfirmed()).isFalse();
     }
@@ -272,7 +272,7 @@ class BudgetPaidByTest {
 
         assertThatThrownBy(() -> patchPayer(row.getId(), ""))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Say who paid this");
+                .hasMessage("error.expense.payerRequired");
 
         assertThat(reload(row.getId()).getPaidByUserId()).isEqualTo(SAM);
     }
@@ -294,12 +294,12 @@ class BudgetPaidByTest {
     void aPayerWhoIsNotAMemberIsRejected() {
         assertThatThrownBy(() -> expense("80.00", List.of(), "user-nobody"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("isn't one of this trip's travel buddies");
+                .hasMessage("error.trip.notABuddy");
 
         BudgetItem row = expense("80.00", List.of(), SAM);
         assertThatThrownBy(() -> patchPayer(row.getId(), "user-nobody"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("isn't one of this trip's travel buddies");
+                .hasMessage("error.trip.notABuddy");
         assertThat(reload(row.getId()).getPaidByUserId()).isEqualTo(SAM);
     }
 
@@ -338,7 +338,7 @@ class BudgetPaidByTest {
 
         assertThatThrownBy(() -> planWithCost("user-nobody"))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("isn't one of this trip's travel buddies");
+                .hasMessage("error.trip.notABuddy");
     }
 
     /** Clearing stays available on a plan whose cost nobody has paid yet. */
@@ -362,14 +362,14 @@ class BudgetPaidByTest {
     void aPlansChargedCostMustNameWhoPaid() {
         assertThatThrownBy(() -> planWithCost(null, true))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Say who paid this");
+                .hasMessage("error.expense.payerRequired");
 
         ItineraryItem plan = planWithCost(SAM, false);
         assertThatThrownBy(() -> itineraryService.update(TRIP_ID, ALEX, plan.getId(),
                 new ItineraryService.Input(
                         null, null, null, null, null, null, null, null, true, null, "", null)))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("Say who paid this");
+                .hasMessage("error.expense.payerRequired");
     }
 
     // ── the payer is not a share ────────────────────────────────────────

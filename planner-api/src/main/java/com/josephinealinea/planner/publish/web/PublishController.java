@@ -70,7 +70,7 @@ public class PublishController {
     @GetMapping(value = "/publish/preview", produces = MediaType.TEXT_HTML_VALUE)
     ResponseEntity<String> preview(@PathVariable String tripId) {
         String html = publish.previewPending(tripId, currentUser.userId());
-        if (html == null) throw ApiException.notFound("Staged page");
+        if (html == null) throw ApiException.notFound("error.stagedPage.notFound");
         return ResponseEntity.ok()
                 // Never cached: a request can be re-sent, and a stale preview
                 // would show the owner something they are not approving.

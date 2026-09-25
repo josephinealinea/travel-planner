@@ -138,17 +138,17 @@ public class ChecklistService {
 
     public ChecklistItem require(Trip trip, String itemId) {
         return checklist.findById(trip.getSlug(), itemId)
-                .orElseThrow(() -> ApiException.notFound("Checklist item"));
+                .orElseThrow(() -> ApiException.notFound("error.checklistItem.notFound"));
     }
 
     /** Validates every id against this trip's destinations, de-duplicated, order preserved. */
 
     private static void requireDescription(String description) {
         if (description == null || description.isBlank()) {
-            throw ApiException.badRequest("A checklist item needs a description.");
+            throw ApiException.badRequest("error.checklist.descriptionRequired");
         }
         if (description.trim().length() > 300) {
-            throw ApiException.badRequest("That description is too long.");
+            throw ApiException.badRequest("error.description.tooLong");
         }
     }
 

@@ -57,17 +57,17 @@ public class SettlementService {
         String from = input.fromUserId();
         String to = input.toUserId();
         if (isBlank(from) || isBlank(to)) {
-            throw ApiException.badRequest("Say who paid and who was paid.");
+            throw ApiException.badRequest("error.settlement.parties");
         }
         if (from.equals(to)) {
-            throw ApiException.badRequest("Nobody can pay themselves.");
+            throw ApiException.badRequest("error.settlement.self");
         }
         if (!members.userIds().contains(from) || !members.userIds().contains(to)) {
-            throw ApiException.badRequest("Both people have to be travel buddies on this trip.");
+            throw ApiException.badRequest("error.settlement.notBuddies");
         }
         if (input.amount() == null
                 || input.amount().setScale(2, RoundingMode.HALF_UP).signum() <= 0) {
-            throw ApiException.badRequest("A payment needs an amount above zero.");
+            throw ApiException.badRequest("error.settlement.amount");
         }
         requireInvolved(trip, userId, from, to);
 
@@ -90,7 +90,7 @@ public class SettlementService {
     public void delete(String tripId, String userId, String paymentId) {
         Trip trip = access.requireMember(tripId, userId);
         SettlementPayment payment = payments.findById(trip.getSlug(), paymentId)
-                .orElseThrow(() -> ApiException.notFound("Payment"));
+                .orElseThrow(() -> ApiException.notFound("error.payment.notFound"));
         requireInvolved(trip, userId, payment.getFromUserId(), payment.getToUserId());
         payments.delete(trip.getSlug(), paymentId);
     }
@@ -98,7 +98,7 @@ public class SettlementService {
     private static void requireInvolved(Trip trip, String userId, String from, String to) {
         if (!trip.isOwner(userId) && !userId.equals(from) && !userId.equals(to)) {
             throw ApiException.forbidden(
-                    "Only the two people involved, or the trip owner, can do that.");
+                    "error.settlement.notInvolved");
         }
     }
 

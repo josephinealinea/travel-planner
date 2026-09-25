@@ -1,11 +1,12 @@
 import { toast } from '../../toast.js';
 import { dateRange, daysBetween } from '../../format.js';
-import { COUNTRY_OPTIONS, countryName } from '../../countries.js';
+import { countryOptions, countryName } from '../../countries.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import {
   newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
   toggleTraveller, everyoneGoes,
 } from '../../traveller-picker.js';
+import { t } from '../../i18n/index.js';
 
 const LOOKUP_DEBOUNCE_MS = 250;
 const COUNTRY_MATCH_LIMIT = 8;
@@ -76,11 +77,11 @@ export function destinationsTab() {
      */
     get countryMatches() {
       const query = this.countryQuery.trim().toLowerCase();
-      if (!query) return COUNTRY_OPTIONS.slice(0, COUNTRY_MATCH_LIMIT);
+      if (!query) return countryOptions().slice(0, COUNTRY_MATCH_LIMIT);
 
       const starts = [];
       const contains = [];
-      for (const option of COUNTRY_OPTIONS) {
+      for (const option of countryOptions()) {
         const name = option.name.toLowerCase();
         if (name.startsWith(query) || option.code.toLowerCase() === query) starts.push(option);
         else if (name.includes(query)) contains.push(option);
@@ -117,7 +118,7 @@ export function destinationsTab() {
         return;
       }
 
-      const exact = COUNTRY_OPTIONS.find(
+      const exact = countryOptions().find(
         (option) => option.name.toLowerCase() === query.toLowerCase()
           || option.code.toLowerCase() === query.toLowerCase());
       if (exact) {
@@ -257,7 +258,7 @@ export function destinationsTab() {
     suggestionMeta(place) {
       const bits = [];
       if (place.countryCode) bits.push(countryName(place.countryCode));
-      if (place.population) bits.push(`pop ${formatPopulation(place.population)}`);
+      if (place.population) bits.push(t('destinations.population', { n: formatPopulation(place.population) }));
       return bits.join(' · ');
     },
 
@@ -267,12 +268,12 @@ export function destinationsTab() {
 
       const name = this.destForm.name.trim();
       if (!name) {
-        this.destError = 'Give the destination a name.';
+        this.destError = t('destinations.giveAName');
         return;
       }
       if (this.destForm.startDate && this.destForm.endDate
           && this.destForm.endDate < this.destForm.startDate) {
-        this.destError = 'The end date cannot be before the start date.';
+        this.destError = t('trips.endBeforeStart');
         return;
       }
 
@@ -298,19 +299,19 @@ export function destinationsTab() {
         if (this.destForm.id) {
           await this.api.updateDestination(this.trip.id, this.destForm.id, payload);
           savedId = this.destForm.id;
-          message = `${name} updated`;
+          message = t('destinations.updated', { name });
         } else {
           const created = await this.api.addDestination(this.trip.id, payload);
           const seeded = created.seededChecklist?.length || 0;
           savedId = created.destination?.id;
-          message = `${name} added — ${seeded} checklist item${seeded === 1 ? '' : 's'} created`;
+          message = t('destinations.addedWithChecklist', { name, count: seeded });
         }
         this.destFormOpen = false;
         await this.reload();
         // Saved for somebody else while showing Mine: say where it went
         // rather than letting it silently vanish from the list.
         toast.success(this.showingMine && savedId && this.isHiddenByScope('destinations', savedId)
-          ? this.notOnListMessage(`${name} saved`)
+          ? this.notOnListMessage(t('destinations.saved', { name }))
           : message);
         this.warnIfBeyondTrip(this.destForm.startDate, this.destForm.endDate);
       } catch (error) {
@@ -361,8 +362,8 @@ export function destinationsTab() {
         this.destSelectedIds = [];
         this.destBulkOpen = false;
 
-        if (failed) toast.error(`Deleted ${deleted} — ${failed} could not be removed`);
-        else toast.success(`Deleted ${deleted} destination${deleted === 1 ? '' : 's'}`);
+        if (failed) toast.error(t('common.deletedPartial', { deleted, failed }));
+        else toast.success(t('destinations.deleted', { count: deleted }));
 
         await this.reload();
       } finally {

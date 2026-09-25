@@ -263,7 +263,7 @@ public class ItineraryService {
         // a list of its own would be stored and then ignored. Refused instead.
         if (plan.getPlanId() != null && Travellers.changes(input.travellerIds(), input.inheritTravellers())) {
             throw ApiException.badRequest(
-                    "This day follows its booking. Change who's going on the booking itself.");
+                    "error.itinerary.dayFollowsBooking");
         }
         plan.setTravellerIds(Travellers.change(trip, plan.getTravellerIds(),
                 input.travellerIds(), input.inheritTravellers()));
@@ -424,7 +424,7 @@ public class ItineraryService {
             return;
         }
         if (cost.signum() < 0) {
-            throw ApiException.badRequest("A cost cannot be negative.");
+            throw ApiException.badRequest("error.cost.negative");
         }
         plan.setCost(cost);
         plan.setCurrency(currency == null || currency.isBlank()
@@ -434,21 +434,21 @@ public class ItineraryService {
 
     private ItineraryItem require(Trip trip, String itemId) {
         return itinerary.findById(trip.getSlug(), itemId)
-                .orElseThrow(() -> ApiException.notFound("Itinerary item"));
+                .orElseThrow(() -> ApiException.notFound("error.itineraryItem.notFound"));
     }
 
     private static void requireDescription(String description) {
         if (description == null || description.isBlank()) {
-            throw ApiException.badRequest("A plan needs a description.");
+            throw ApiException.badRequest("error.plan.descriptionRequired");
         }
         if (description.trim().length() > 300) {
-            throw ApiException.badRequest("That description is too long.");
+            throw ApiException.badRequest("error.description.tooLong");
         }
     }
 
     private static void requireTimeOrder(LocalDateTime start, LocalDateTime end) {
         if (start != null && end != null && end.isBefore(start)) {
-            throw ApiException.badRequest("The end time cannot be before the start time.");
+            throw ApiException.badRequest("error.times.endBeforeStart");
         }
     }
 

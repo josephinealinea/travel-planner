@@ -14,23 +14,23 @@ package com.josephinealinea.planner.checklist.domain;
  */
 public enum ChecklistCategory {
 
-    TRANSPORTATION("transport", "Transportation"),
-    LODGING("lodging", "Lodging"),
-    ACTIVITIES("activities", "Activities"),
-    SHOPPING("shopping", "Shopping"),
-    FOOD("food", "Food"),
+    TRANSPORTATION("transport"),
+    LODGING("lodging"),
+    ACTIVITIES("activities"),
+    SHOPPING("shopping"),
+    FOOD("food"),
     // Also the fallback for any category a published page does not recognise,
     // which is why it stays last.
-    OTHERS("other", "Others");
+    OTHERS("other");
 
     private final String dataKey;
-    private final String label;
 
-    ChecklistCategory(String dataKey, String label) {
+    ChecklistCategory(String dataKey) {
         this.dataKey = dataKey;
-        this.label = label;
     }
 
     public String dataKey() { return dataKey; }
-    public String label() { return label; }
+
+    /** Where the name lives: {@code category.<dataKey>} in the message files, one per language. */
+    public String messageKey() { return "category." + dataKey; }
 }

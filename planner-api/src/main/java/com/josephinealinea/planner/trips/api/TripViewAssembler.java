@@ -1,5 +1,8 @@
 package com.josephinealinea.planner.trips.api;
 
+import com.josephinealinea.planner.i18n.I18nConfig;
+import com.josephinealinea.planner.i18n.Messages;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.rates.api.RatesService;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
@@ -36,7 +39,9 @@ public class TripViewAssembler {
     private final PageStore pages;
     private final String publicBaseUrl;
     private final PublishApprovalProperties approval;
+    private final Messages messages;
 
+    /** English, for tests that build the assembler by hand. */
     public TripViewAssembler(UserRepository users,
                              DestinationRepository destinations,
                              ChecklistRepository checklist,
@@ -46,6 +51,22 @@ public class TripViewAssembler {
                              PageStore pages,
                              AppProperties props,
                              PublishApprovalProperties approval) {
+        this(users, destinations, checklist, itinerary, budgets, rates, pages, props, approval,
+                I18nConfig.standalone());
+    }
+
+    @Autowired
+    public TripViewAssembler(UserRepository users,
+                             DestinationRepository destinations,
+                             ChecklistRepository checklist,
+                             ItineraryRepository itinerary,
+                             BudgetService budgets,
+                             RatesService rates,
+                             PageStore pages,
+                             AppProperties props,
+                             PublishApprovalProperties approval,
+                             Messages messages) {
+        this.messages = messages;
         this.approval = approval;
         this.users = users;
         this.destinations = destinations;
@@ -133,7 +154,7 @@ public class TripViewAssembler {
             return new TripViews.MemberView(
                     member.getUserId(),
                     user == null ? null : Emails.shorten(user.getEmail()),
-                    user == null ? "Former member" : user.displayName(),
+                    user == null ? messages.get("member.former") : user.displayName(),
                     user == null ? null : user.getScreenName(),
                     user == null ? null : user.getHomeCountryCode(),
                     member.getRole(),

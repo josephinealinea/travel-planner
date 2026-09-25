@@ -162,7 +162,7 @@ class PublishApprovalTest {
                 new PublishApprovalProperties(flag));
         views = assemblerWith.apply(true);
         userService = new UserService(users, new BCryptPasswordEncoder(), props);
-        mailTemplates = new MailTemplates(props);
+        mailTemplates = new MailTemplates(props, com.josephinealinea.planner.i18n.I18nConfig.standalone());
         publish = serviceWith(true);
     }
 

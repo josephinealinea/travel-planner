@@ -6,7 +6,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -26,9 +25,11 @@ public class CsrfFilter extends OncePerRequestFilter {
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
 
     private final AuthCookies cookies;
+    private final FilterErrors errors;
 
-    public CsrfFilter(AuthCookies cookies) {
+    public CsrfFilter(AuthCookies cookies, FilterErrors errors) {
         this.cookies = cookies;
+        this.errors = errors;
     }
 
     @Override
@@ -45,11 +46,7 @@ public class CsrfFilter extends OncePerRequestFilter {
         if (!SAFE_METHODS.contains(request.getMethod())) {
             String header = request.getHeader(AuthCookies.CSRF_HEADER);
             if (existing.isEmpty() || header == null || !constantTimeEquals(header, token)) {
-                response.setStatus(HttpStatus.FORBIDDEN.value());
-                response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-                response.getWriter().write("""
-                        {"status":403,"code":"csrf_failed",\
-                        "detail":"Your session could not be verified. Please reload the page and try again."}""");
+                errors.write(request, response, HttpStatus.FORBIDDEN, "csrf_failed", "error.csrf.failed");
                 return;
             }
         }

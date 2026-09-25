@@ -986,6 +986,76 @@ and Left/Right/Home/End move between them (`onTabKeydown`). `revealTab`
 scrolls the bar sideways rather than calling `scrollIntoView`, which would also
 scroll the page vertically.
 
+## Localisation
+
+**Every word a member reads lives in a message file, and code refers to keys.**
+Three files, three consumers, one rule: English is the default and the
+fallback, so a language missing a key shows English, and a key English lacks is
+a bug that a test catches first.
+
+- **API** — `planner-api/src/main/resources/messages_en.properties`, read
+  through `i18n/Messages`. `ApiException` carries a *key and its arguments*,
+  never prose, and `GlobalExceptionHandler` resolves it in the request's
+  language — which is why it works from static code (`Slugs`, `TripWindow`)
+  that has no `Messages` of its own. Validation annotations say
+  `message = "{validation.email.invalid}"`. Filters that write error JSON by
+  hand (`CsrfFilter`, `ProxySecretFilter`, `PasswordChangeGate`, the 401 entry
+  point) go through `config/FilterErrors`, because they run before MVC and
+  never reach the handler. `notFound` takes a whole-sentence key
+  (`error.trip.notFound`), not a noun to append "not found" to.
+- **Web** — `planner-web/js/i18n/en.js`, read through `t(key, params)`.
+  Markup names its words instead of holding them: `data-i18n`,
+  `data-i18n-html`, `data-i18n-<attribute>`; Alpine uses `$t` and `$th`.
+  Plurals are `key.one` / `key.other` picked by `{count}` through
+  `Intl.PluralRules`, never `"item" + (n === 1 ? "" : "s")`.
+- **Published pages** — the same `messages_en.properties`, `page.*` keys only,
+  inlined as `window.I18N` and read by `page.js`. Only `page.*` is shipped:
+  a public file gets what it needs to draw itself, not the API's errors or
+  emails (pinned by `onlyThePagesOwnWordsAreShipped`).
+
+**Which language.** `User.languageCode` (nullable, `V12`) — set from Account →
+Appearance. `RequestLocale` picks the member's choice, else `Accept-Language`,
+else English, and is also Spring's `LocaleResolver`. Null means "follow the
+browser", which is different from having chosen English. Three things follow
+the language, each by its own rule:
+
+- **Emails** go out in the *recipient's* language; a brand-new invitee has none,
+  so they get the inviter's request language (`MailTemplates`, via
+  `LocaleContextHolder`).
+- **A published page is written in the language of the member it is for**, decided
+  at publish time like everything else about whose page it is — a static file
+  cannot ask its reader. A personal page uses its member's, not the
+  publisher's (`PublishOptions.languageCode`).
+- **Text the server writes into a member's own lists** (`ChecklistSeeder`,
+  `PlanTemplates`) is stored once in the language of whoever's action created
+  it and is ordinary editable text afterwards, like every seeded item. It does
+  not change when somebody switches language.
+
+**Guardrails.** `MessageKeysTest` scans the API source: no prose in an
+`ApiException`, every key used exists in English, no translation has a key
+English lacks, and an apostrophe in a pattern that takes arguments is doubled.
+`npm run check` runs `scripts/i18n-check.mjs` (every key used is present and
+every key present is used; no toast, message or template literal holds a
+sentence) and `scripts/i18n.test.mjs`. `PageStringsTest` fails if an English
+sentence comes back into `page.js`. **Both guards are heuristics** — the first
+version of the web one missed a plural hiding in a template literal until a
+browser run found it — so the test language below is what proves the rest.
+
+**The test language `xx`** exists only in `planner-api/src/test/resources`, so
+nothing ships. To see a language end to end, temporarily copy an `xx` into
+`src/main/resources` (API) and `js/i18n` (web), every value prefixed
+`[xx] `, and anything on screen without the prefix is member data or a string
+that was missed. Remove both afterwards.
+
+Things that deliberately stay as they are: `IllegalStateException` texts and
+log lines (for operators), country names (English is the reviewed table in
+`countries.js`, pinned against the published copy by `npm run check`; every
+other language uses the browser's `Intl.DisplayNames`), and month names (the
+browser's `Intl`). `<title>` and `<meta>` keep their English in the HTML *and*
+carry `data-i18n-*`, because link previews and search engines read the file
+without running a script; `npm run i18n:head` writes them and the check keeps
+them honest.
+
 ## Traps
 
 Each of these cost a real debugging cycle. They are not visible from the code
@@ -1039,6 +1109,30 @@ trace.
 **A module script with top-level `await` can finish after `DOMContentLoaded`,**
 so a deferred Alpine tag would initialise before the page registered its
 component. `js/boot.js` imports Alpine *after* registration instead of racing it.
+
+**`MessageFormat` reads an apostrophe as a quote.** In a message that takes
+arguments, `it's` swallows everything up to the next `'`; write `it''s`.
+Messages with no arguments are returned as they are, and `page.*` messages are
+never formatted (the page fills `{name}` itself), so they take a single `'`.
+`MessageKeysTest` fails on the mistake. Arguments are never patterns: a trip
+called `50% off {sale}` or `O'Brien` is inserted literally, and the web `t()`
+uses a replacer *function* so `$&` in a title is not read by `replace()` as an
+instruction.
+
+**A `data-i18n` element is empty until a script runs.** That is the point (no
+English in the HTML), and it is also why a page needs `initI18n()` before its
+first render and `startTranslating()` after: `renderChrome` does the second, so
+every page that draws a header gets it. Elements Alpine creates later (an
+`x-for` row, an `x-if` block) carry their markers with them and are filled by
+the `MutationObserver` `startTranslating` installs — a one-off pass would leave
+those with no language at all. A new page with text and no chrome (`404.html`,
+`index.html`) needs its own small module script.
+
+**Two constructors on a class Spring builds need `@Autowired` on the real
+one** — see Traps below. `ChecklistSeeder`, `PlanTemplates`,
+`TripViewAssembler` and `StaticSiteRenderer` each keep the old constructor,
+which uses English, beside the `Messages` one, so tests that build them by
+hand did not have to change.
 
 **A `@Bean` method and a `@Service` class cannot share a bean name.** Spring
 derives the service's name from its class (`ExchangeRatesClient` →

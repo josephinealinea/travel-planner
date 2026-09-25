@@ -952,7 +952,7 @@ public class BudgetService {
     public BudgetItem update(String tripId, String userId, String itemId, Input input) {
         Trip trip = access.requireMember(tripId, userId);
         BudgetItem item = budget.findById(trip.getSlug(), itemId)
-                .orElseThrow(() -> ApiException.notFound("Budget item"));
+                .orElseThrow(() -> ApiException.notFound("error.budgetItem.notFound"));
 
         if (input.description() != null) {
             requireDescription(input.description());
@@ -1015,7 +1015,7 @@ public class BudgetService {
     public void delete(String tripId, String userId, String itemId) {
         Trip trip = access.requireMember(tripId, userId);
         BudgetItem item = budget.findById(trip.getSlug(), itemId)
-                .orElseThrow(() -> ApiException.notFound("Budget item"));
+                .orElseThrow(() -> ApiException.notFound("error.budgetItem.notFound"));
 
         budget.delete(trip.getSlug(), itemId);
 
@@ -1039,7 +1039,7 @@ public class BudgetService {
 
     private static void requireDescription(String description) {
         if (description == null || description.isBlank()) {
-            throw ApiException.badRequest("An expense needs a description.");
+            throw ApiException.badRequest("error.expense.descriptionRequired");
         }
     }
 
@@ -1048,8 +1048,8 @@ public class BudgetService {
     }
 
     private static void requireAmount(BigDecimal amount) {
-        if (amount == null) throw ApiException.badRequest("An expense needs an amount.");
-        if (amount.signum() < 0) throw ApiException.badRequest("An amount cannot be negative.");
+        if (amount == null) throw ApiException.badRequest("error.expense.amountRequired");
+        if (amount.signum() < 0) throw ApiException.badRequest("error.amount.negative");
     }
 
     /**
@@ -1071,7 +1071,7 @@ public class BudgetService {
      */
     public static void requirePayerWhenCharged(BudgetItem item) {
         if (item.isConfirmed() && isBlank(item.getPaidByUserId())) {
-            throw ApiException.badRequest("Say who paid this.");
+            throw ApiException.badRequest("error.expense.payerRequired");
         }
     }
 

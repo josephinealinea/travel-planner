@@ -64,8 +64,7 @@ public class TripCountries {
             String code = normalise(raw);
             if (code == null) continue;
             if (!available.contains(code)) {
-                throw ApiException.badRequest(
-                        "This trip has no destination in " + code + ".");
+                throw ApiException.badRequest("error.trip.noDestinationIn", code);
             }
             if (!valid.contains(code)) valid.add(code);
         }

@@ -19,9 +19,9 @@ import java.util.List;
 public class BudgetController {
 
     public record CreateRequest(
-            @NotBlank(message = "Describe the expense") String description,
-            @NotNull(message = "Pick a category") ChecklistCategory category,
-            @NotNull(message = "Enter an amount") BigDecimal amount,
+            @NotBlank(message = "{validation.expense.descriptionRequired}") String description,
+            @NotNull(message = "{validation.category.required}") ChecklistCategory category,
+            @NotNull(message = "{validation.amount.required}") BigDecimal amount,
             String currency,
             LocalDate date,
             List<String> countryCodes,

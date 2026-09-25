@@ -1,3 +1,4 @@
+import { t } from './i18n/index.js';
 /**
  * The show/hide eye control on every password input in the app.
  *
@@ -18,7 +19,7 @@ function attach(input) {
   button.type = 'button';
   button.className = 'password-toggle';
   button.textContent = SHOW_ICON;
-  button.setAttribute('aria-label', 'Show password');
+  button.setAttribute('aria-label', t('password.show'));
   button.setAttribute('aria-pressed', 'false');
   // Keyboard reachable, and its aria-pressed state announces whether the
   // password is currently visible.
@@ -30,7 +31,7 @@ function attach(input) {
 
     input.type = revealing ? 'text' : 'password';
     button.textContent = revealing ? HIDE_ICON : SHOW_ICON;
-    button.setAttribute('aria-label', revealing ? 'Hide password' : 'Show password');
+    button.setAttribute('aria-label', t(revealing ? 'password.hide' : 'password.show'));
     button.setAttribute('aria-pressed', String(revealing));
 
     // Changing type moves focus and caret in some browsers; put them back.

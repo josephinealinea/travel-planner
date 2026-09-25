@@ -25,7 +25,19 @@ public record PublishOptions(boolean itineraryCost,
                               * nothing and nothing about where they live
                               * reaches the file.
                               */
-                             java.util.List<String> homeCountryCodes) {
+                             java.util.List<String> homeCountryCodes,
+                             /**
+                              * The language of the member this page is written
+                              * for, or null for English. Decided when the file
+                              * is written, like everything else about whose
+                              * page it is: a static file cannot ask its reader.
+                              */
+                             String languageCode) {
+
+    public PublishOptions(boolean itineraryCost, boolean destinationDays, boolean forecastExpenses,
+                          boolean displayBudget, java.util.List<String> homeCountryCodes) {
+        this(itineraryCost, destinationDays, forecastExpenses, displayBudget, homeCountryCodes, null);
+    }
 
     public PublishOptions {
         homeCountryCodes = homeCountryCodes == null ? java.util.List.of() : java.util.List.copyOf(homeCountryCodes);

@@ -7,6 +7,7 @@ import {
   toggleTravellerFollowing, everyoneGoes, followParent, effectiveTravellers,
   defaultCostSharers,
 } from '../../traveller-picker.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * The Checklist tab and its detail drawer — the centre of the app.
@@ -62,8 +63,8 @@ export function checklistTab() {
 
     /** The Group by pills, in order — mirrors budgetShowOptions on the Budget tab. */
     checkGroupByOptions: [
-      { value: 'country',  label: 'Country' },
-      { value: 'category', label: 'Category' },
+      { value: 'country',  get label() { return t('checklist.groupBy.country'); } },
+      { value: 'category', get label() { return t('checklist.groupBy.category'); } },
     ],
 
     // bulk selection
@@ -133,7 +134,7 @@ export function checklistTab() {
           return;
         }
         const names = this.countryLabels(item.countryCodes);
-        if (!names.length) push('No country', item);
+        if (!names.length) push(t('checklist.noCountry'), item);
         else names.forEach((name) => push(name, item));
       });
 
@@ -166,7 +167,7 @@ export function checklistTab() {
     async addCheck() {
       const description = this.newCheck.description.trim();
       if (!description) {
-        this.addCheckError = 'Describe what needs doing.';
+        this.addCheckError = t('checklist.describeWhatNeedsDoing');
         return;
       }
       this.addCheckError = '';
@@ -182,8 +183,8 @@ export function checklistTab() {
         this.addCheckOpen = false;
         await this.reload();
         toast.success(this.showingMine && created?.id && this.isHiddenByScope('checklist', created.id)
-          ? this.notOnListMessage('Checklist item added')
-          : 'Checklist item added');
+          ? this.notOnListMessage(t('checklist.itemAdded'))
+          : t('checklist.itemAdded'));
       } catch (error) {
         this.addCheckError = error.fullMessage;
       } finally {
@@ -276,7 +277,7 @@ export function checklistTab() {
     async saveDrawer() {
       const description = this.drawerForm.description.trim();
       if (!description) {
-        this.drawerError = 'A checklist item needs a description.';
+        this.drawerError = t('checklist.itemNeedsDescription');
         return;
       }
       this.drawerError = '';
@@ -292,8 +293,8 @@ export function checklistTab() {
         });
         await this.reload();
         toast.success(this.showingMine && this.isHiddenByScope('checklist', this.openItem.id)
-          ? this.notOnListMessage('Saved')
-          : 'Saved');
+          ? this.notOnListMessage(t('checklist.saved'))
+          : t('checklist.saved'));
         this.refreshOpenItem();
       } catch (error) {
         this.drawerError = error.fullMessage;
@@ -333,7 +334,7 @@ export function checklistTab() {
     async applyStatus(item, status) {
       try {
         await this.api.setCheckStatus(this.trip.id, item.id, status);
-        toast.success(status === 'COMPLETED' ? 'Marked complete' : 'Reopened');
+        toast.success(t(status === 'COMPLETED' ? 'checklist.markedComplete' : 'checklist.reopened'));
         await this.reload();
 
         // Completing is the "this job is finished" call — it takes the Plan
@@ -366,7 +367,7 @@ export function checklistTab() {
     async confirmDeleteCheck() {
       try {
         await this.api.deleteCheck(this.trip.id, this.openItem.id);
-        toast.success('Checklist item deleted');
+        toast.success(t('checklist.itemDeleted'));
         this.closeDrawer();
         await this.reload();
       } catch (error) {
@@ -392,7 +393,7 @@ export function checklistTab() {
     checklistParentLabel(item) {
       const from = item?.seededFromDestinationId;
       const destination = from && this.destinations.find((d) => d.id === from);
-      return destination ? destination.name : 'the trip';
+      return destination ? destination.name : t('trip.theTrip');
     },
 
     /** What a plan follows while unset: its checklist item's resolved list. */
@@ -403,7 +404,7 @@ export function checklistTab() {
 
     planParentLabel() {
       const itemId = this.planForm.checklistItemId || this.openItem?.id;
-      return this.checklist.find((c) => c.id === itemId)?.description || 'the trip';
+      return this.checklist.find((c) => c.id === itemId)?.description || t('trip.theTrip');
     },
 
     /** Shared by, as shown and as sent: see defaultCostSharers. */
@@ -491,20 +492,20 @@ export function checklistTab() {
     async savePlan() {
       const description = this.planForm.description.trim();
       if (!description) {
-        this.planError = 'Describe the plan.';
+        this.planError = t('checklist.describeThePlan');
         return;
       }
 
       const startAt = combine(this.planForm.startDate, this.planForm.startTime);
       const endAt = combine(this.planForm.endDate, this.planForm.endTime);
       if (startAt && endAt && endAt < startAt) {
-        this.planError = 'The end time cannot be before the start time.';
+        this.planError = t('checklist.endTimeBeforeStart');
         return;
       }
 
       const cost = this.planForm.cost === '' ? null : Number(this.planForm.cost);
       if (cost != null && (!Number.isFinite(cost) || cost < 0)) {
-        this.planError = 'That cost does not look like a number.';
+        this.planError = t('checklist.costNotANumber');
         return;
       }
 
@@ -528,7 +529,7 @@ export function checklistTab() {
             countryCodes: this.planForm.countryCodes,
             ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
           });
-          toast.success('Plan updated');
+          toast.success(t('checklist.planUpdated'));
         } else {
           await this.api.addPlan(this.trip.id, {
             checklistItemId: this.openItem.id,
@@ -550,8 +551,8 @@ export function checklistTab() {
             ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
           });
           toast.success(cost == null
-            ? 'Plan added'
-            : `Plan added — a ${money(cost, this.planForm.currency)} budget entry was created`);
+            ? t('checklist.planAdded')
+            : t('checklist.planAddedWithBudget', { cost: money(cost, this.planForm.currency) }));
         }
         this.planOpen = false;
         await this.reload();
@@ -572,7 +573,7 @@ export function checklistTab() {
       const days = this.daysOfPlan(plan).length;
       try {
         await this.api.deletePlan(this.trip.id, plan.id);
-        toast.success(days > 1 ? `Plan removed — ${days} itinerary items` : 'Plan removed');
+        toast.success(days > 1 ? t('checklist.planRemovedDays', { count: days }) : t('checklist.planRemoved'));
         await this.reload();
         this.refreshOpenItem();
       } catch (error) {
@@ -616,8 +617,8 @@ export function checklistTab() {
         this.checkSelectedIds = [];
         this.checkBulkOpen = false;
 
-        if (failed) toast.error(`Deleted ${deleted} — ${failed} could not be removed`);
-        else toast.success(`Deleted ${deleted} checklist item${deleted === 1 ? '' : 's'}`);
+        if (failed) toast.error(t('common.deletedPartial', { deleted, failed }));
+        else toast.success(t('checklist.deleted', { count: deleted }));
 
         await this.reload();
       } finally {
@@ -628,7 +629,7 @@ export function checklistTab() {
     categoryOf: (value) => category(value),
 
     planWhen(plan) {
-      if (!plan.startAt) return 'No date set';
+      if (!plan.startAt) return t('checklist.noDateSet');
       // An all-day entry stores a placeholder T00:00 — not a departure time.
       const time = plan.allDay ? '' : timeRange(plan.startAt, plan.endAt);
       const day = longDate(plan.startAt.slice(0, 10));

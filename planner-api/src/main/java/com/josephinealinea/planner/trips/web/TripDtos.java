@@ -14,18 +14,18 @@ public final class TripDtos {
     private TripDtos() {}
 
     public record CreateTripRequest(
-            @NotBlank(message = "Give the trip a title")
-            @Size(max = 120, message = "That title is too long") String title,
-            @NotNull(message = "Pick a start date") LocalDate startDate,
-            @NotNull(message = "Pick an end date") LocalDate endDate) {}
+            @NotBlank(message = "{validation.trip.titleRequired}")
+            @Size(max = 120, message = "{validation.title.tooLong}") String title,
+            @NotNull(message = "{validation.startDate.required}") LocalDate startDate,
+            @NotNull(message = "{validation.endDate.required}") LocalDate endDate) {}
 
     public record UpdateTripRequest(
-            @Size(max = 120, message = "That title is too long") String title,
+            @Size(max = 120, message = "{validation.title.tooLong}") String title,
             LocalDate startDate,
             LocalDate endDate,
             String displayCurrency) {}
 
     public record AddMemberRequest(
-            @NotBlank(message = "Enter an email address")
-            @Email(message = "That does not look like an email address") String email) {}
+            @NotBlank(message = "{validation.email.enter}")
+            @Email(message = "{validation.email.invalid}") String email) {}
 }

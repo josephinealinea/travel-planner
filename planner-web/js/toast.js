@@ -1,3 +1,4 @@
+import { t } from './i18n/index.js';
 /**
  * Brief confirmations and failures, bottom-centre.
  *
@@ -47,7 +48,7 @@ function show(message, variant) {
   const dismiss = document.createElement('button');
   dismiss.type = 'button';
   dismiss.className = 'toast-close';
-  dismiss.setAttribute('aria-label', 'Dismiss');
+  dismiss.setAttribute('aria-label', t('common.dismiss'));
   dismiss.textContent = '✕';
   dismiss.addEventListener('click', () => toast.remove());
   toast.append(text, dismiss);

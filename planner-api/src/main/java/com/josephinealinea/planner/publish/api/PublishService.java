@@ -100,14 +100,14 @@ public class PublishService {
     public Trip requestPublish(String tripId, String userId, String note, String theme) {
         Trip trip = access.requireMember(tripId, userId);
         if (!approval.requireOwnerApproval()) {
-            throw ApiException.badRequest("Publishing does not need the owner's approval — publish it directly.");
+            throw ApiException.badRequest("error.publish.approvalNotNeeded");
         }
         if (trip.isOwner(userId)) {
-            throw ApiException.badRequest("You own this trip — publish it directly.");
+            throw ApiException.badRequest("error.publish.ownerPublishesDirectly");
         }
         if (pendingRequest(trip).isPresent()) {
             throw ApiException.conflict("request_already_pending",
-                    "There is already a publish request waiting for the owner.");
+                    "error.publish.alreadyPending");
         }
 
         PublishRequest request = new PublishRequest();
@@ -127,7 +127,7 @@ public class PublishService {
                 personalPagesFor(saved));
 
         var owner = users.require(trip.getOwnerUserId());
-        email.send(templates.publishRequested(
+        email.send(templates.publishRequested(owner.getLanguageCode(),
                 owner.getEmail(), trip.getTitle(), requester.displayName()));
         return saved;
     }
@@ -138,10 +138,10 @@ public class PublishService {
         PublishRequest request = require(trip, requestId);
 
         if (!request.getRequestedByUserId().equals(userId)) {
-            throw ApiException.forbidden("Only the travel buddy who asked can cancel that request.");
+            throw ApiException.forbidden("error.publish.onlyRequesterCancels");
         }
         if (!request.isPending()) {
-            throw ApiException.conflict("already_decided", "That request has already been decided.");
+            throw ApiException.conflict("already_decided", "error.publish.alreadyDecided");
         }
         request.setStatus(PublishRequest.Status.CANCELLED);
         request.setDecidedAt(Instant.now());
@@ -167,7 +167,7 @@ public class PublishService {
         Trip published = goLive(trip, request, userId);
 
         var requester = users.require(request.getRequestedByUserId());
-        email.send(templates.publishApproved(
+        email.send(templates.publishApproved(requester.getLanguageCode(),
                 requester.getEmail(), trip.getTitle(), views.publicUrl(published)));
         return published;
     }
@@ -184,7 +184,7 @@ public class PublishService {
         Trip saved = trips.save(trip);
 
         var requester = users.require(request.getRequestedByUserId());
-        email.send(templates.publishRejected(requester.getEmail(), trip.getTitle()));
+        email.send(templates.publishRejected(requester.getLanguageCode(), requester.getEmail(), trip.getTitle()));
         return saved;
     }
 
@@ -240,7 +240,8 @@ public class PublishService {
                 settings.isForecastExpenses(),
                 settings.isDisplayBudget(),
                 settings.isDisplayHomeCountry() && user.getHomeCountryCode() != null
-                        ? java.util.List.of(user.getHomeCountryCode()) : java.util.List.of());
+                        ? java.util.List.of(user.getHomeCountryCode()) : java.util.List.of(),
+                user.getLanguageCode());
     }
 
     /** The staged page's HTML for a members-only preview, or null if none. */
@@ -273,13 +274,13 @@ public class PublishService {
         return trip.getPublishRequests().stream()
                 .filter(request -> request.getId().equals(requestId))
                 .findFirst()
-                .orElseThrow(() -> ApiException.notFound("Publish request"));
+                .orElseThrow(() -> ApiException.notFound("error.publishRequest.notFound"));
     }
 
     private PublishRequest requirePending(Trip trip, String requestId) {
         PublishRequest request = require(trip, requestId);
         if (!request.isPending()) {
-            throw ApiException.conflict("already_decided", "That request has already been decided.");
+            throw ApiException.conflict("already_decided", "error.publish.alreadyDecided");
         }
         return request;
     }

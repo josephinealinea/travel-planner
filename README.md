@@ -119,6 +119,43 @@ that — the directory is a plain static site, so copying it to S3, Netlify or
 GitHub Pages is the whole of "put it on a CDN". You can confirm that by opening
 the file from any static server, with the API stopped.
 
+## Languages
+
+Every word the app says lives in a message file, one per language, and code
+refers to keys. English is the default and the fallback: a language that is
+missing a key shows English. A member picks their language in
+Account → Appearance; it applies to the planner, the emails they receive and the
+pages published for them.
+
+To change what the app says, edit the English file. To add a language, copy the
+English files and translate the values, leaving the keys alone. The API side
+is `messages_<language>.properties`, and the web side is `js/i18n/<language>.js`.
+A translation only needs the keys it changes.
+
+#### Copy the API's English messages
+```bash
+cp planner-api/src/main/resources/messages_en.properties planner-api/src/main/resources/messages_es.properties
+```
+#### Copy the web's English messages
+```bash
+cp planner-web/js/i18n/en.js planner-web/js/i18n/es.js
+```
+Then, in the API file, name the language in itself so the picker can show it
+(`language.name.es=Español`), and translate the values. In a message that takes
+arguments write a literal apostrophe twice (`it''s`); the tests fail if you do not.
+
+#### Check the web messages
+```bash
+cd planner-web && npm run check
+```
+#### Check the API messages
+```bash
+cd planner-api && ./gradlew test --tests 'MessageKeysTest'
+```
+
+A language appears in the picker as soon as its API file exists. The web file is
+what makes the pages read in it; without one the pages stay English.
+
 ## Permissions
 
 | Action | Who |

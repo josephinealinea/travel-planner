@@ -2,6 +2,7 @@ import { renderSelector, initThemeSelector, applyTheme, savedTheme } from './the
 import { applyPanelMode, savedPanelMode } from './panel-mode.js';
 import { initPasswordToggles } from './password-toggle.js';
 import { signOut } from './session.js';
+import { t, startTranslating } from './i18n/index.js';
 
 /**
  * The shared header and footer. Injected rather than duplicated into seven HTML
@@ -19,7 +20,7 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
     const skip = document.createElement('a');
     skip.className = 'skip-link';
     skip.href = `#${main.id}`;
-    skip.textContent = 'Skip to main content';
+    skip.textContent = t('chrome.skipToMain');
     // Move focus instead of following the link: the trip page routes its tabs
     // by location.hash, so navigating to #main-content would switch tab.
     skip.addEventListener('click', (event) => {
@@ -33,10 +34,10 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
   const header = document.querySelector('#site-header');
   if (header) {
     const links = (user && !minimal) ? `
-      <a class="nav-link${active === 'trips' ? ' active' : ''}" href="trips.html">My Trips</a>
-      <a class="nav-link${active === 'account' ? ' active' : ''}" href="account.html">Account</a>
+      <a class="nav-link${active === 'trips' ? ' active' : ''}" href="trips.html">${t('chrome.myTrips')}</a>
+      <a class="nav-link${active === 'account' ? ' active' : ''}" href="account.html">${t('chrome.account')}</a>
       <span class="nav-user" title="${escapeAttr(user.email)}">${escapeHtml(user.displayName)}</span>
-      <button type="button" class="btn btn-ghost btn-sm" id="sign-out">Sign out</button>` : '';
+      <button type="button" class="btn btn-ghost btn-sm" id="sign-out">${t('chrome.signOut')}</button>` : '';
 
     header.className = 'site-header';
     header.innerHTML = `
@@ -61,7 +62,7 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
   const footer = document.querySelector('#site-footer');
   if (footer) {
     footer.className = 'site-footer';
-    footer.textContent = 'Travelling Llama — your travel buddy for planning trips.';
+    footer.textContent = t('chrome.footer');
   }
 
   // Panels are hidden at load, so unlike the theme this needs no pre-paint
@@ -69,6 +70,11 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
   applyPanelMode(savedPanelMode());
 
   initPasswordToggles();
+
+  // The page's own markup names its words by key; fill it in now, and keep
+  // filling anything Alpine draws later. Every page reaches here once the
+  // language is settled, so this is the one place that starts it.
+  startTranslating();
 }
 
 export function escapeHtml(text) {

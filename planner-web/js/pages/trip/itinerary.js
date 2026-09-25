@@ -10,6 +10,7 @@ import {
   condition, temperatureRange, sourceNote, sourceBadge, hasReading, unavailableHint,
   detailChips, detailsTitle,
 } from '../../weather.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * One entry's row.
@@ -228,7 +229,7 @@ export function itineraryTab() {
 
       if (undated.length) {
         // Nowhere to put weather for a day that has no date.
-        days.push({ date: null, label: 'No date yet', entries: undated, weather: [] });
+        days.push({ date: null, label: t('itinerary.noDateYet'), entries: undated, weather: [] });
       }
       return days;
     },
@@ -237,12 +238,12 @@ export function itineraryTab() {
     dayCount(day) {
       const parts = [];
       if (day.entries.length) {
-        parts.push(`${day.entries.length} item${day.entries.length === 1 ? '' : 's'}`);
+        parts.push(t('itinerary.itemsCount', { count: day.entries.length }));
       }
       if (day.weather.length) {
         parts.push(day.weather.length === 1
           ? day.weather[0].day.destinationName
-          : `${day.weather.length} places`);
+          : t('itinerary.placesCount', { count: day.weather.length }));
       }
       return parts.join(' · ');
     },
@@ -304,7 +305,7 @@ export function itineraryTab() {
 
     entryParentLabel() {
       const item = this.checklist.find((c) => c.id === this.entryForm.checklistItemId);
-      return item ? item.description : 'the trip';
+      return item ? item.description : t('trip.theTrip');
     },
 
     /** Shared by, as shown and as sent: see defaultCostSharers. */
@@ -326,21 +327,21 @@ export function itineraryTab() {
     async saveEntry() {
       const description = this.entryForm.description.trim();
       if (!description) {
-        this.entryError = 'Describe the entry.';
+        this.entryError = t('itinerary.describeTheEntry');
         return;
       }
 
       const startAt = combine(this.entryForm.startDate, this.entryForm.startTime);
       const endAt = combine(this.entryForm.endDate, this.entryForm.endTime);
       if (startAt && endAt && endAt < startAt) {
-        this.entryError = 'The end time cannot be before the start time.';
+        this.entryError = t('checklist.endTimeBeforeStart');
         return;
       }
 
       // Only this form holds a date to the trip; elsewhere a date beyond it
       // saves with a warning instead.
-      const outsideTrip = this.dateOutsideTrip(this.entryForm.startDate, 'start date')
-                       || this.dateOutsideTrip(this.entryForm.endDate, 'end date');
+      const outsideTrip = this.dateOutsideTrip(this.entryForm.startDate, 'trip.field.startDate')
+                       || this.dateOutsideTrip(this.entryForm.endDate, 'trip.field.endDate');
       if (outsideTrip) {
         this.entryError = outsideTrip;
         return;
@@ -348,7 +349,7 @@ export function itineraryTab() {
 
       const cost = this.entryForm.cost === '' ? null : Number(this.entryForm.cost);
       if (cost != null && (!Number.isFinite(cost) || cost < 0)) {
-        this.entryError = 'That cost does not look like a number.';
+        this.entryError = t('checklist.costNotANumber');
         return;
       }
 
@@ -380,11 +381,11 @@ export function itineraryTab() {
           await this.api.updatePlan(this.trip.id, this.entryForm.id,
             { ...payload, cost: cost == null ? 0 : cost });
           savedId = this.entryForm.id;
-          message = 'Entry updated';
+          message = t('itinerary.entryUpdated');
         } else {
           const created = await this.api.addPlan(this.trip.id, { ...payload, cost });
           savedId = created?.id;
-          message = 'Entry added';
+          message = t('itinerary.entryAdded');
         }
         this.entryOpen = false;
         await this.reload();
@@ -431,8 +432,8 @@ export function itineraryTab() {
         this.itinSelectedIds = [];
         this.itinBulkOpen = false;
 
-        if (failed) toast.error(`Removed ${deleted} — ${failed} could not be removed`);
-        else toast.success(`Removed ${deleted} itinerary item${deleted === 1 ? '' : 's'}`);
+        if (failed) toast.error(t('common.removedPartial', { deleted, failed }));
+        else toast.success(t('itinerary.removed', { count: deleted }));
 
         await this.reload();
       } finally {

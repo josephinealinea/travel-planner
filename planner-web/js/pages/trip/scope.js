@@ -1,10 +1,12 @@
 import { savedScope, saveScope } from '../../trip-scope.js';
+import { t } from '../../i18n/index.js';
 
 const KEYS = { destinations: 'destinationIds', checklist: 'checklistItemIds', itinerary: 'itineraryItemIds' };
-const NOUNS = {
-  destinations: ['destination', 'destinations'],
-  checklist: ['checklist item', 'checklist items'],
-  itinerary: ['plan', 'plans'],
+// What "N more …" counts, by kind: the message keys carry the plural forms.
+const MORE = {
+  destinations: 'scope.moreDestinations',
+  checklist: 'scope.moreChecklistItems',
+  itinerary: 'scope.morePlans',
 };
 
 /**
@@ -50,8 +52,7 @@ export function scopeTab() {
       const all = { destinations: this.destinations, checklist: this.checklist, itinerary: this.itinerary }[kind];
       const hidden = all.length - this.inScope(kind, all).length;
       if (hidden <= 0) return '';
-      const [one, many] = NOUNS[kind];
-      return `${hidden} more ${hidden === 1 ? one : many}`;
+      return t(MORE[kind], { count: hidden });
     },
 
     /** True when a just-saved record is not on this member's list. */
@@ -64,9 +65,7 @@ export function scopeTab() {
      * owner is told where it went, anyone else that it has left their view.
      */
     notOnListMessage(message) {
-      return this.canSeeWholeTrip
-        ? `${message}. It's not on your list, so it shows under Whole trip.`
-        : `${message}. It's not on your list, so it won't show here.`;
+      return t(this.canSeeWholeTrip ? 'scope.notOnListOwner' : 'scope.notOnListOther', { message });
     },
 
     namesOf(ids) {
@@ -88,7 +87,7 @@ export function scopeTab() {
      */
     travellerNameList(kind, id) {
       const ids = (this.namedTravellers[kind] || {})[id] || [];
-      if (!ids.length) return ['Everyone'];
+      if (!ids.length) return [t('scope.everyone')];
       return ids
         .map((userId) => this.members.find((m) => m.userId === userId)?.displayName)
         .filter(Boolean);
@@ -101,7 +100,7 @@ export function scopeTab() {
     travellerPills(kind, id) {
       // The signed-in member leads, so their own name is the one that stays visible.
       const ids = [...((this.namedTravellers[kind] || {})[id] || [])];
-      if (!ids.length) return [{ text: '👥 Everyone', title: 'Everyone on the trip' }];
+      if (!ids.length) return [{ text: t('scope.everyoneWithIcon'), title: t('scope.everyoneOnTheTrip') }];
       const mine = ids.indexOf(this.currentUserId);
       if (mine > 0) ids.unshift(ids.splice(mine, 1)[0]);
       const names = ids

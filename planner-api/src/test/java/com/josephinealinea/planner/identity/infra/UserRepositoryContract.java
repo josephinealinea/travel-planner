@@ -194,6 +194,7 @@ public abstract class UserRepositoryContract {
         User user = user(id, email);
         user.setScreenName("Ana");
         user.setHomeCountryCode("PE");
+        user.setLanguageCode("xx");
         user.setTierLevel(com.josephinealinea.planner.identity.domain.TierLevel.PRO);
         user.setPasswordHash("{bcrypt}$2a$10$abcdefghijklmnopqrstuv");
         user.setMustChangePassword(true);

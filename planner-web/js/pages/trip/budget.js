@@ -5,6 +5,7 @@ import { toggleLocation, locationNames, countriesOfTrip } from '../../location-p
 import { countryName, countryFlag } from '../../countries.js';
 import { toggleSharer, shareWithEveryone, sharedWithEveryone, choosePayer, chargedToggled, sharersOfTrip } from '../../member-picker.js';
 import { savedBudgetPageSize } from '../../page-size.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * Colours for the country pie/bars, cycled by rank. Countries are not a fixed
@@ -99,10 +100,10 @@ export function budgetTab() {
      * that unreadable, and a label belongs next to the mode it names.
      */
     budgetShowOptions: [
-      { value: 'category',          label: 'Category' },
-      { value: 'country',           label: 'Country' },
-      { value: 'category-forecast', label: 'Category (Forecast)' },
-      { value: 'country-forecast',  label: 'Country (Forecast)' },
+      { value: 'category',          get label() { return t('budget.groupBy.category'); } },
+      { value: 'country',           get label() { return t('budget.groupBy.country'); } },
+      { value: 'category-forecast', get label() { return t('budget.groupBy.categoryForecast'); } },
+      { value: 'country-forecast',  get label() { return t('budget.groupBy.countryForecast'); } },
     ],
 
     // bulk selection — like the checklist and itinerary, removing is a
@@ -429,11 +430,11 @@ export function budgetTab() {
       const amount = Number(this.expenseForm.amount);
 
       if (!description) {
-        this.expenseError = 'Describe the expense.';
+        this.expenseError = t('budget.describeTheExpense');
         return;
       }
       if (!Number.isFinite(amount) || amount < 0) {
-        this.expenseError = 'Enter an amount of zero or more.';
+        this.expenseError = t('budget.amountZeroOrMore');
         return;
       }
 
@@ -458,10 +459,10 @@ export function budgetTab() {
         };
         if (this.expenseForm.id) {
           await this.api.updateExpense(this.trip.id, this.expenseForm.id, payload);
-          toast.success('Expense updated');
+          toast.success(t('budget.expenseUpdated'));
         } else {
           await this.api.addExpense(this.trip.id, payload);
-          toast.success('Expense added');
+          toast.success(t('budget.expenseAdded'));
         }
         this.expenseOpen = false;
         await this.reload();
@@ -507,8 +508,8 @@ export function budgetTab() {
         this.budgetSelectedIds = [];
         this.budgetBulkOpen = false;
 
-        if (failed) toast.error(`Deleted ${deleted} — ${failed} could not be removed`);
-        else toast.success(`Deleted ${deleted} expense${deleted === 1 ? '' : 's'}`);
+        if (failed) toast.error(t('common.deletedPartial', { deleted, failed }));
+        else toast.success(t('budget.deleted', { count: deleted }));
 
         await this.reload();
       } finally {
@@ -550,7 +551,7 @@ export function budgetTab() {
      */
     ratesNote() {
       const date = (this.budget.ratesDate || '').replace(/ \+\d{4}$/, '');
-      return date ? `Rates updated ${date}` : 'Exchange rates not fetched yet';
+      return date ? t('budget.ratesUpdated', { date }) : t('budget.ratesNotFetched');
     },
 
 
@@ -570,7 +571,7 @@ export function budgetTab() {
      */
     totalLabel() {
       const amount = this.fmt(this.budgetView.total, this.budget.totalsCurrency);
-      return this.budgetForecast ? `Forecast total: ${amount}` : `Total: ${amount}`;
+      return t(this.budgetForecast ? 'budget.forecastTotal' : 'budget.total', { amount });
     },
 
     /**
@@ -582,7 +583,7 @@ export function budgetTab() {
      */
     totalCaption() {
       const rows = this.myBudgetItems.length;
-      return `Your share of ${rows} expense${rows === 1 ? '' : 's'} on this trip`;
+      return t('budget.yourShare', { count: rows });
     },
 
     /**
@@ -591,7 +592,7 @@ export function budgetTab() {
      * field reads as the charge it was — the same rule the API applies.
      */
     statusLabel(item) {
-      return item.status === 'PENDING' ? 'Pending' : 'Charged';
+      return t(item.status === 'PENDING' ? 'trip.pending' : 'trip.charged');
     },
 
     /**
@@ -636,7 +637,7 @@ export function budgetTab() {
     paidByLabel(item) {
       if (!item.paidByUserId) return '—';
       const member = this.members.find((m) => m.userId === item.paidByUserId);
-      return member ? member.displayName : 'Former travel buddy';
+      return member ? member.displayName : t('budget.formerBuddy');
     },
 
     /**
@@ -749,10 +750,10 @@ export function budgetTab() {
           currency: balance.currency,
           net,
           summary: net === 0
-            ? 'Square'
+            ? t('budget.square')
             : net > 0
-              ? `You are owed ${money(net, balance.currency)}`
-              : `You owe ${money(Math.abs(net), balance.currency)}`,
+              ? t('budget.youAreOwed', { amount: money(net, balance.currency) })
+              : t('budget.youOweAmount', { amount: money(Math.abs(net), balance.currency) }),
           netClass: this.settleNetClass({ net }),
           lines: (balance.lines || []).map((line) => {
             const amount = Number(line.amount);
@@ -775,7 +776,7 @@ export function budgetTab() {
               itemId: line.itemId,
               amount: Math.abs(amount),
               owedToYou: amount > 0,
-              description: item ? item.description : 'An expense that is no longer listed',
+              description: item ? item.description : t('budget.expenseGone'),
               category: item ? item.category : null,
               date: item ? item.date : null,
             };
@@ -787,7 +788,7 @@ export function budgetTab() {
     /** Same fallback as the Paid by cell: only current members have names. */
     settleMemberName(userId) {
       const member = this.members.find((m) => m.userId === userId);
-      return member ? member.displayName : 'Former travel buddy';
+      return member ? member.displayName : t('budget.formerBuddy');
     },
 
     /**
@@ -797,10 +798,8 @@ export function budgetTab() {
     settleSummaryLine(row) {
       const name = this.settleMemberName(row.otherUserId);
       const net = Number(row.net || 0);
-      if (net === 0) return `You and ${name} are square in ${row.currency}`;
-      return net > 0
-        ? `${name} owes you ${money(Math.abs(net), row.currency)}`
-        : `You owe ${name} ${money(Math.abs(net), row.currency)}`;
+      if (net === 0) return t('budget.youAndSquare', { name, currency: row.currency });
+      return t(net > 0 ? 'budget.nameOwesYou' : 'budget.youOweName', { name, amount: money(Math.abs(net), row.currency) });
     },
 
     settleNetClass(row) {
@@ -825,8 +824,8 @@ export function budgetTab() {
      */
     settleNetWord(row) {
       const net = Number(row.net || 0);
-      if (net === 0) return 'Settled';
-      return net > 0 ? 'Receive' : 'Pay';
+      if (net === 0) return t('budget.settled');
+      return t(net > 0 ? 'budget.receive' : 'budget.pay');
     },
 
     /** "450.00 EUR", or empty when there is nothing left to move. */
@@ -844,16 +843,14 @@ export function budgetTab() {
 
     /** 'You', or the member's name — a payment reads better as "You paid Sam". */
     settleWho(userId) {
-      return userId === this.currentUserId ? 'You' : this.settleMemberName(userId);
+      return userId === this.currentUserId ? t('budget.you') : this.settleMemberName(userId);
     },
 
     /** "You paid Sam" / "Sam paid you" / "Sam paid Ray". */
     settlePaymentLine(payment) {
       const from = this.settleWho(payment.fromUserId);
-      const to = payment.toUserId === this.currentUserId
-        ? 'you'
-        : this.settleMemberName(payment.toUserId);
-      return `${from} paid ${to}`;
+      const toMe = payment.toUserId === this.currentUserId;
+      return t(toMe ? 'trip.paidYou' : 'trip.paidNamed', { who: from, name: toMe ? '' : this.settleMemberName(payment.toUserId) });
     },
 
     /** Every payment on the trip, most recent first. */
@@ -920,21 +917,19 @@ export function budgetTab() {
       const currency = this.payForm.currency;
       const iPay = this.payForm.fromUserId === this.currentUserId;
       const other = this.settleMemberName(iPay ? this.payForm.toUserId : this.payForm.fromUserId);
-      if (left > 0) return { kind: 'owed', text: `${money(left / 100, currency)} will still be owed.` };
-      if (left === 0) return { kind: 'settled', text: 'This settles it.' };
+      if (left > 0) return { kind: 'owed', text: t('budget.stillOwed', { amount: money(left / 100, currency) }) };
+      if (left === 0) return { kind: 'settled', text: t('budget.thisSettlesIt') };
       const over = money(-left / 100, currency);
       return {
         kind: 'over',
-        text: iPay
-          ? `That is ${over} more than is owed — ${other} would then owe you ${over}.`
-          : `That is ${over} more than is owed — you would then owe ${other} ${over}.`,
+        text: t(iPay ? 'budget.overpayTheyOweYou' : 'budget.overpayYouOweThem', { over, other }),
       };
     },
 
     async savePayment() {
       const amount = Number(this.payForm.amount);
       if (!Number.isFinite(amount) || amount <= 0) {
-        this.payError = 'Enter an amount above zero.';
+        this.payError = t('budget.amountAboveZero');
         return;
       }
       this.payError = '';
@@ -976,7 +971,7 @@ export function budgetTab() {
       try {
         await this.api.deletePayment(this.trip.id, payment.id);
         this.payDeleteTarget = null;
-        toast.success('Payment removed');
+        toast.success(t('budget.paymentRemoved'));
         await this.reload();
       } catch (error) {
         toast.error(error.fullMessage);
@@ -1021,7 +1016,7 @@ export function budgetTab() {
           itemId: line.itemId,
           amount: line.amount,
           owedToYou: line.owedToYou,
-          description: item ? item.description : 'An expense that is no longer listed',
+          description: item ? item.description : t('budget.expenseGone'),
           category: item ? item.category : null,
           date: item ? item.date : null,
         };

@@ -1,10 +1,12 @@
 package com.josephinealinea.planner.config;
 
+import com.josephinealinea.planner.i18n.Messages;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * What this deployment offers, for the frontend to read rather than keep its
@@ -23,18 +25,27 @@ import java.util.List;
 @RequestMapping("/api/v1/config")
 public class ConfigController {
 
-    public record ConfigResponse(List<String> currencies, String defaultDisplayCurrency) {}
+    /** A language a member can pick, named in that language ("Español", not "Spanish"). */
+    public record Language(String code, String name) {}
+
+    public record ConfigResponse(List<String> currencies, String defaultDisplayCurrency, List<Language> languages) {}
 
     private final AppProperties props;
+    private final Messages messages;
 
-    public ConfigController(AppProperties props) {
+    public ConfigController(AppProperties props, Messages messages) {
         this.props = props;
+        this.messages = messages;
     }
 
     @GetMapping
     ConfigResponse config() {
         return new ConfigResponse(
                 props.currencies().available(),
-                props.currencies().defaultDisplay());
+                props.currencies().defaultDisplay(),
+                messages.supported().stream()
+                        .map(code -> new Language(code,
+                                messages.get(Locale.forLanguageTag(code), "language.name." + code)))
+                        .toList());
     }
 }

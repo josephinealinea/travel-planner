@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Llama wandered off — Travelling Llama</title>
+<title data-i18n="404.llamaWanderedOffTravelling">Llama wandered off — Travelling Llama</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
 <!--
   Cloudflare Pages serves this, with a 404 status, for any path that matches
@@ -16,10 +16,15 @@
 <body class="theme-minima">
 <main style="max-width: 32rem; margin: 4rem auto; padding: 0 16px;">
   <p style="font-size: 3rem; margin: 0;" aria-hidden="true">🦙</p>
-  <h1>This llama wandered off</h1>
-  <p>There is nothing at this address. If someone shared it with you, the trip
-     may have been unpublished.</p>
-  <p><a href="/trips.html">Go to my trips</a></p>
+  <h1 data-i18n="404.thisLlamaWanderedOff"></h1>
+  <p data-i18n="404.thereIsNothingAt"></p>
+  <p><a href="/trips.html" data-i18n="404.goToMyTrips"></a></p>
 </main>
+<script type="module">
+  // Absolute paths: this page is served for any unknown URL, at any depth.
+  import { initI18n, startTranslating } from '/js/i18n/index.js';
+  await initI18n();
+  startTranslating();
+</script>
 </body>
 </html>

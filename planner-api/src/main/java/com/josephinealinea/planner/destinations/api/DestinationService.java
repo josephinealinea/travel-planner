@@ -139,7 +139,7 @@ public class DestinationService {
     public Destination update(String tripId, String userId, String destinationId, Input input) {
         Trip trip = access.requireMember(tripId, userId);
         Destination destination = destinations.findById(trip.getSlug(), destinationId)
-                .orElseThrow(() -> ApiException.notFound("Destination"));
+                .orElseThrow(() -> ApiException.notFound("error.destination.notFound"));
 
         if (input.name() != null) requireName(input.name());
         LocalDate start = input.startDate() != null ? input.startDate() : destination.getStartDate();
@@ -171,7 +171,7 @@ public class DestinationService {
     public UnlinkResult delete(String tripId, String userId, String destinationId) {
         Trip trip = access.requireMember(tripId, userId);
         Destination destination = destinations.findById(trip.getSlug(), destinationId)
-                .orElseThrow(() -> ApiException.notFound("Destination"));
+                .orElseThrow(() -> ApiException.notFound("error.destination.notFound"));
 
         destinations.delete(trip.getSlug(), destinationId);
 
@@ -298,30 +298,30 @@ public class DestinationService {
 
     private static void requireName(String name) {
         if (name == null || name.isBlank()) {
-            throw ApiException.badRequest("A destination needs a name.");
+            throw ApiException.badRequest("error.destination.nameRequired");
         }
         if (name.trim().length() > 120) {
-            throw ApiException.badRequest("That destination name is too long.");
+            throw ApiException.badRequest("error.destination.nameTooLong");
         }
     }
 
     private static void requireDateOrder(LocalDate start, LocalDate end) {
         // Both are optional; only their order is checked.
         if (start != null && end != null && end.isBefore(start)) {
-            throw ApiException.badRequest("The end date cannot be before the start date.");
+            throw ApiException.badRequest("error.dates.endBeforeStart");
         }
     }
 
     private static Double validLatitude(double value) {
         if (value < -90 || value > 90) {
-            throw ApiException.badRequest("Latitude must be between -90 and 90.");
+            throw ApiException.badRequest("error.latitude.range");
         }
         return value;
     }
 
     private static Double validLongitude(double value) {
         if (value < -180 || value > 180) {
-            throw ApiException.badRequest("Longitude must be between -180 and 180.");
+            throw ApiException.badRequest("error.longitude.range");
         }
         return value;
     }

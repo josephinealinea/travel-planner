@@ -148,7 +148,7 @@ class TravellersWriteTest {
     void somebodyNotOnTheTripIsRefusedAndNothingIsSaved() {
         assertThatThrownBy(() -> cusco(List.of("user-stranger")))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("travel buddies");
+                .hasMessage("error.trip.notABuddy");
         assertThat(destinations.findAll(SLUG)).isEmpty();
     }
 
@@ -229,6 +229,6 @@ class TravellersWriteTest {
         assertThatThrownBy(() -> itineraryService.update(TRIP_ID, ALEX, night.getId(), new ItineraryService.Input(
                 null, null, null, null, null, null, null, null, null, null, null, null, List.of(ALEX), null)))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("follows its booking");
+                .hasMessage("error.itinerary.dayFollowsBooking");
     }
 }

@@ -13,14 +13,16 @@ public final class AuthDtos {
     private AuthDtos() {}
 
     public record LoginRequest(
-            @NotBlank(message = "Email is required") @Email(message = "That does not look like an email address") String email,
-            @NotBlank(message = "Password is required") String password) {}
+            @NotBlank(message = "{validation.email.required}") @Email(message = "{validation.email.invalid}") String email,
+            @NotBlank(message = "{validation.password.required}") String password) {}
 
     public record MeResponse(
             String id,
             String email,
             String screenName,
             String homeCountryCode,
+            /** Null until they choose one. */
+            String languageCode,
             TierLevel tierLevel,
             String displayName,
             boolean mustChangePassword,
@@ -35,6 +37,7 @@ public final class AuthDtos {
                     user.getEmail(),
                     user.getScreenName(),
                     user.getHomeCountryCode(),
+                    user.getLanguageCode(),
                     user.getTierLevel(),
                     user.displayName(),
                     user.isMustChangePassword(),
@@ -71,10 +74,12 @@ public final class AuthDtos {
                                             Boolean displayBudget) {}
 
     public record ChangePasswordRequest(
-            @NotBlank(message = "Enter your current password") String currentPassword,
-            @NotBlank(message = "Enter a new password")
-            @Size(min = 8, message = "Your new password needs at least 8 characters") String newPassword,
+            @NotBlank(message = "{validation.currentPassword.required}") String currentPassword,
+            @NotBlank(message = "{validation.newPassword.required}")
+            @Size(min = 8, message = "{validation.newPassword.tooShort}") String newPassword,
             String screenName) {}
+
+    public record LanguageRequest(String languageCode) {}
 
     public record ProfileRequest(String screenName, String homeCountryCode, String email) {}
 

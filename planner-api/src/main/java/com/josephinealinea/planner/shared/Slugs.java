@@ -39,7 +39,7 @@ public final class Slugs {
                 || !slug.matches("[a-z0-9][a-z0-9-]*")
                 || slug.contains("..")
                 || Set.of(".", "..").contains(slug)) {
-            throw ApiException.badRequest("Invalid identifier: " + slug);
+            throw ApiException.badRequest("error.identifier.invalid", slug);
         }
         return slug;
     }

@@ -1,4 +1,5 @@
 import { API_BASE } from './config.js';
+import { t, currentLanguage } from './i18n/index.js';
 
 /**
  * Thin fetch wrapper around the planner API.
@@ -18,7 +19,7 @@ function readCookie(name) {
 
 export class ApiError extends Error {
   constructor(status, body) {
-    super(body?.detail || body?.title || `Request failed (${status})`);
+    super(body?.detail || body?.title || t('api.requestFailed', { status }));
     this.status = status;
     this.code = body?.code || null;
     this.body = body;
@@ -37,7 +38,8 @@ function onChangePasswordPage() {
 }
 
 async function request(method, path, body) {
-  const headers = {};
+  // The API answers in this language (its own choice for a signed-in member, else this).
+  const headers = { 'Accept-Language': currentLanguage() };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
   if (method !== 'GET') {
@@ -55,8 +57,7 @@ async function request(method, path, body) {
     });
   } catch {
     throw new ApiError(0, {
-      detail: `Could not reach the API at ${API_BASE}. Check it is running, `
-        + 'or point this page somewhere else by adding ?api=http://host:port to the URL.',
+      detail: t('api.unreachable', { base: API_BASE }),
     });
   }
 
@@ -100,6 +101,7 @@ export const api = {
   me: () => get('/api/v1/auth/me'),
   config: () => get('/api/v1/config'),
   updateProfile: (data) => patch('/api/v1/account/profile', data),
+  updateLanguage: (data) => patch('/api/v1/account/language', data),
   deactivateEmail: () => post('/api/v1/account/deactivate-email'),
   updateCurrencies: (data) => patch('/api/v1/account/currencies', data),
   updateDisplayCurrency: (data) => patch('/api/v1/account/display-currency', data),

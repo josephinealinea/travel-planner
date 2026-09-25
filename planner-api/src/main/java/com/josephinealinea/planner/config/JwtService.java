@@ -102,6 +102,6 @@ public class JwtService {
     }
 
     public static ApiException expired() {
-        return ApiException.unauthorized("Your session has expired — please sign in again.");
+        return ApiException.unauthorized("error.session.expired");
     }
 }

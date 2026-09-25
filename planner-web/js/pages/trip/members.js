@@ -1,5 +1,6 @@
 import { toast } from '../../toast.js';
 import { dateLabel } from '../../format.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * The Members tab.
@@ -27,7 +28,7 @@ export function membersTab() {
       try {
         this.members = await this.api.addMember(this.trip.id, email);
         this.memberEmail = '';
-        toast.success(`${email} added — an invitation email has been sent`);
+        toast.success(t('members.invited', { email }));
       } catch (error) {
         this.memberError = error.fullMessage;
       } finally {
@@ -50,11 +51,11 @@ export function membersTab() {
         this.members = await this.api.removeMember(this.trip.id, member.userId);
         this.removingMember = null;
         if (this.isSelf(member)) {
-          toast.success('You have left the trip');
+          toast.success(t('members.left'));
           location.href = 'trips.html';
           return;
         }
-        toast.success(`${member.displayName} removed`);
+        toast.success(t('members.removed', { name: member.displayName }));
       } catch (error) {
         toast.error(error.fullMessage);
         this.removingMember = null;

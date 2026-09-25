@@ -20,7 +20,7 @@ public class CurrentUserContext {
     }
 
     public CurrentUser get() {
-        if (user == null) throw ApiException.unauthorized("Please sign in.");
+        if (user == null) throw ApiException.unauthorized("error.signIn.required");
         return user;
     }
 

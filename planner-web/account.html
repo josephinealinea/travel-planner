@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Account — Travelling Llama</title>
+<title data-i18n="account.accountTravellingLlama">Account — Travelling Llama</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/css/minima.css?v=78"     id="minima-css">
 <link rel="stylesheet" href="assets/css/y2k.css?v=78"        id="y2k-css"        disabled>
@@ -27,143 +27,138 @@
 <header id="site-header"></header>
 
 <main class="page-narrow">
-  <h1 class="page-title">Account</h1>
+  <h1 class="page-title" data-i18n="account.account"></h1>
 
   <div class="stack-lg">
     <section class="card">
-      <div class="card-header"><h2 class="card-title">Profile</h2></div>
+      <div class="card-header"><h2 class="card-title" data-i18n="account.profile"></h2></div>
       <div id="profile-alert" class="alert" hidden></div>
 
       <form id="profile-form" novalidate>
         <div class="field">
-          <label for="email">Email</label>
+          <label for="email" data-i18n="common.email"></label>
           <input id="email" type="email" autocomplete="email">
-          <p class="field-hint">This is what you sign in with, and where invitations are sent.</p>
+          <p class="field-hint" data-i18n="account.thisIsWhatYou"></p>
         </div>
         <div class="field">
-          <label for="screenName">Screen name</label>
+          <label for="screenName" data-i18n="common.screenName"></label>
           <input id="screenName" type="text" maxlength="60" autocomplete="nickname">
-          <p class="field-hint">
-            What the herd can call you 🦙. Without one they only see your email.
-          </p>
+          <p class="field-hint" data-i18n="account.whatTheHerdCan"></p>
         </div>
         <div class="field autocomplete">
-          <label for="homeCountry">Country of residence</label>
-          <input id="homeCountry" type="text" autocomplete="off" placeholder="Start typing — Peru"
+          <label for="homeCountry" data-i18n="account.countryOfResidence"></label>
+          <input id="homeCountry" type="text" autocomplete="off" data-i18n-placeholder="common.startTypingPeru"
                  role="combobox" aria-expanded="false" aria-controls="homeCountryList">
           <ul class="autocomplete-list" id="homeCountryList" role="listbox" hidden></ul>
-          <p class="field-hint">Shown beside your name on the Travel Buddies tab.</p>
+          <p class="field-hint" data-i18n="account.shownBesideYourName"></p>
         </div>
         <div class="btn-row">
-          <button type="submit" class="btn btn-primary" id="save-profile">Save profile</button>
+          <button type="submit" class="btn btn-primary" id="save-profile" data-i18n="account.saveProfile"></button>
         </div>
         <!-- Its own row, apart from Save: a destructive action should not sit
              beside the primary one where a fingertip can hit either. -->
         <div class="danger-zone">
-          <button type="button" class="btn btn-danger" id="remove-email">Deactivate and remove my data</button>
+          <button type="button" class="btn btn-danger" id="remove-email" data-i18n="account.deactivateAndRemoveMy"></button>
         </div>
       </form>
       <div id="remove-email-confirm" class="alert alert-warning" role="alert" hidden>
-        <p class="small">
-          This removes your email address from our data and signs you out.
-        </p>
+        <p class="small" data-i18n="account.thisRemovesYourEmail"></p>
         <div class="btn-row">
-          <button type="button" class="btn btn-danger" id="confirm-remove-email">Yes, remove my data</button>
-          <button type="button" class="btn" id="cancel-remove-email">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirm-remove-email" data-i18n="account.yesRemoveMyData"></button>
+          <button type="button" class="btn" id="cancel-remove-email" data-i18n="common.cancel"></button>
         </div>
       </div>
     </section>
 
     <section class="card">
-      <div class="card-header"><h2 class="card-title">Password</h2></div>
+      <div class="card-header"><h2 class="card-title" data-i18n="common.password"></h2></div>
       <div id="password-alert" class="alert" hidden></div>
 
       <form id="password-form" novalidate>
         <div class="field">
-          <label for="current">Current password</label>
+          <label for="current" data-i18n="common.currentPassword"></label>
           <div class="password-field">
             <input id="current" type="password" autocomplete="current-password" required>
           </div>
         </div>
         <div class="field">
-          <label for="next">New password</label>
+          <label for="next" data-i18n="common.newPassword"></label>
           <div class="password-field">
             <input id="next" type="password" autocomplete="new-password" minlength="8" required>
           </div>
           <div class="password-strength" id="strength" data-score="0" aria-hidden="true">
             <span></span><span></span><span></span><span></span>
           </div>
-          <p class="field-hint">At least 8 characters.</p>
+          <p class="field-hint" data-i18n="common.atLeast8Characters"></p>
         </div>
         <div class="field">
-          <label for="confirm">Confirm new password</label>
+          <label for="confirm" data-i18n="common.confirmNewPassword"></label>
           <div class="password-field">
             <input id="confirm" type="password" autocomplete="new-password" required>
           </div>
-          <p class="field-error" id="mismatch" hidden>Passwords do not match.</p>
+          <p class="field-error" id="mismatch" hidden data-i18n="account.passwordsDoNotMatch"></p>
         </div>
-        <button type="submit" class="btn btn-primary" id="save-password">Change password</button>
+        <button type="submit" class="btn btn-primary" id="save-password" data-i18n="account.changePassword"></button>
       </form>
     </section>
 
     <section class="card">
-      <div class="card-header"><h2 class="card-title">Appearance</h2></div>
+      <div class="card-header"><h2 class="card-title" data-i18n="account.appearance"></h2></div>
 
       <div class="field">
-        <span class="label">Theme</span>
+        <label for="language" data-i18n="account.language"></label>
+        <select id="language" class="control-narrow"></select>
+        <p class="field-hint" data-i18n="account.languageHint"></p>
+      </div>
+
+      <div class="field">
+        <span class="label" data-i18n="account.theme"></span>
         <!-- localStorage, unlike the settings below, which are on the
              account — so the caption sits here rather than on the card. -->
-        <p class="small muted" style="margin:0 0 8px">Remembered in this browser.</p>
+        <p class="small muted" style="margin:0 0 8px" data-i18n="account.rememberedInThisBrowser"></p>
         <div id="theme-radios" class="stack-sm"></div>
       </div>
 
       <div class="field">
-        <label for="budget-page-size">Pagination - Expense records in Budget page</label>
+        <label for="budget-page-size" data-i18n="account.paginationExpenseRecordsIn"></label>
         <select id="budget-page-size" class="control-narrow"></select>
-        <p class="field-hint">Applies the next time a trip opens.</p>
+        <p class="field-hint" data-i18n="account.appliesTheNextTime"></p>
       </div>
 
       <div class="field">
-        <span class="label">Published page</span>
-        <p class="small muted" style="margin:0 0 8px">
-          Saved to your account, and applied to your own page the next time a trip is published.
-        </p>
+        <span class="label" data-i18n="account.publishedPage"></span>
+        <p class="small muted" style="margin:0 0 8px" data-i18n="account.savedToYourAccount"></p>
         <div id="published-page-alert" class="alert" hidden></div>
         <div id="published-page-settings" class="stack-sm"></div>
       </div>
     </section>
 
     <section class="card">
-      <div class="card-header"><h2 class="card-title">Currencies</h2></div>
+      <div class="card-header"><h2 class="card-title" data-i18n="account.currencies"></h2></div>
       <div id="currency-alert" class="alert" hidden></div>
 
       <div class="field">
-        <label for="display-currency">Your allowed currencies</label>
+        <label for="display-currency" data-i18n="account.yourAllowedCurrencies"></label>
         <div id="currency-chips" class="chip-group" style="margin-bottom:12px"></div>
         <form id="currency-form" class="field-inline">
           <div class="field grow field-narrow">
-            <label for="new-currency">Add a new currency</label>
+            <label for="new-currency" data-i18n="account.addANewCurrency"></label>
             <select id="new-currency"></select>
           </div>
           <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
-            <button type="submit" class="btn" id="add-currency">Add</button>
+            <button type="submit" class="btn" id="add-currency" data-i18n="account.add"></button>
           </div>
         </form>
-        <p class="field-hint">
-          Offered when you record a cost — a plan, an itinerary entry, an expense,
-          or a trip's own budget currency.
-        </p>
+        <p class="field-hint" data-i18n="account.offeredWhenYouRecord"></p>
       </div>
 
       <div class="field">
-        <label for="display-currency">Show your Total Travel Cost in</label>
+        <label for="display-currency" data-i18n="account.showYourTotalTravel"></label>
         <select id="display-currency" class="control-narrow"></select>
-        <p class="field-hint">
-          The amount presented is just a projection amount and is based on the exchange rate.
-        </p>
+        <p class="field-hint" data-i18n="account.theAmountPresentedIs"></p>
       </div>
 
-      <button type="button" class="btn btn-primary" id="save-currencies">Save currencies</button>
+      <button type="button" class="btn btn-primary" id="save-currencies" data-i18n="account.saveCurrencies"></button>
     </section>
   </div>
 </main>
@@ -172,7 +167,8 @@
 
 <script type="module">
   import { api } from './js/api.js';
-  import { COUNTRY_OPTIONS, countryName } from './js/countries.js';
+  import { initI18n, useAccountLanguage, setLanguage, t } from './js/i18n/index.js';
+  import { countryOptions, countryName } from './js/countries.js';
   import { renderChrome, escapeHtml } from './js/chrome.js';
   import { requireUser, clearCachedUser } from './js/session.js';
   import { passwordScore } from './js/password-toggle.js';
@@ -180,9 +176,11 @@
   import { toast } from './js/toast.js';
   import { BUDGET_PAGE_SIZES, savedBudgetPageSize, saveBudgetPageSize } from './js/page-size.js';
 
+  await initI18n();
   await api.initCsrf();
   const user = await requireUser();
   if (!user) throw new Error('redirecting');
+  await useAccountLanguage(user);
 
   renderChrome({ user, active: 'account' });
 
@@ -194,7 +192,7 @@
   const homeCountry = document.querySelector('#homeCountry');
   const homeList = document.querySelector('#homeCountryList');
   // Names come from the shared table (js/countries.js); only the code is saved.
-  const countries = COUNTRY_OPTIONS;
+  const countries = countryOptions();
   let chosenCode = user.homeCountryCode || '';
   homeCountry.value = countryName(chosenCode);
 
@@ -273,8 +271,8 @@
         email: document.querySelector('#email').value.trim(),
       });
       clearCachedUser();
-      alertIn('#profile-alert', 'Saved.', 'info');
-      toast.success('Profile updated');
+      alertIn('#profile-alert', t('account.saved'), 'info');
+      toast.success(t('account.profileUpdated'));
       renderChrome({ user: updated, active: 'account' });
     } catch (error) {
       alertIn('#profile-alert', error.fullMessage, 'error');
@@ -336,12 +334,39 @@
       clearCachedUser();
       document.querySelector('#password-form').reset();
       strength.dataset.score = '0';
-      alertIn('#password-alert', 'Your password has been changed.', 'info');
-      toast.success('Password changed');
+      alertIn('#password-alert', t('account.passwordChangedNote'), 'info');
+      toast.success(t('account.passwordChanged'));
     } catch (error) {
       alertIn('#password-alert', error.fullMessage, 'error');
     } finally {
       button.disabled = false;
+    }
+  });
+
+  // ── language ──────────────────────────────────────
+  // Kept on the account, so the API, the emails and published pages follow it
+  // too. "Automatic" clears it, and this browser's remembered choice with it,
+  // so the browser's own language decides again.
+  const languageSelect = document.querySelector('#language');
+  const { languages = [] } = await api.config().catch(() => ({}));
+  languageSelect.innerHTML = [
+    `<option value="">${escapeHtml(t('account.languageAutomatic'))}</option>`,
+    ...languages.map((language) => `<option value="${escapeHtml(language.code)}">${escapeHtml(language.name)}</option>`),
+  ].join('');
+  languageSelect.value = user.languageCode || '';
+  languageSelect.addEventListener('change', async () => {
+    languageSelect.disabled = true;
+    try {
+      await api.updateLanguage({ languageCode: languageSelect.value });
+      clearCachedUser();
+      await setLanguage(languageSelect.value, { persist: true });
+      // Every string is read once as the page draws, so reloading is the one
+      // way to be sure nothing is left in the old language.
+      location.reload();
+    } catch (error) {
+      toast.error(error.fullMessage);
+      languageSelect.value = user.languageCode || '';
+      languageSelect.disabled = false;
     }
   });
 
@@ -378,11 +403,11 @@
   // Every one of these is a flag defaulting to off: a published page is
   // public, so anything extra it reveals is asked for rather than assumed.
   const PUBLISHED_PAGE_SETTINGS = [
-    { key: 'displayHomeCountry', label: 'Display residence country in Destinations' },
-    { key: 'destinationDays', label: "Display destination's total number of days (instead of nights)" },
-    { key: 'itineraryCost', label: 'Display the expense costs per itinerary' },
-    { key: 'displayBudget', label: 'Display Budget section' },
-    { key: 'forecastExpenses', label: 'Display forecasted expense filter in Budget section' },
+    { key: 'displayHomeCountry', label: t('account.publish.displayHomeCountry') },
+    { key: 'destinationDays', label: t('account.publish.destinationDays') },
+    { key: 'itineraryCost', label: t('account.publish.itineraryCost') },
+    { key: 'displayBudget', label: t('account.publish.displayBudget') },
+    { key: 'forecastExpenses', label: t('account.publish.forecastExpenses') },
   ];
 
   const publishedPageBox = document.querySelector('#published-page-settings');
@@ -415,7 +440,7 @@
       // swapping the node mid-interaction if they tick two in quick
       // succession. Only a failure needs the DOM corrected, below.
       publishedPage = { ...(updated.publishedPage || {}) };
-      toast.success('Published page settings saved');
+      toast.success(t('account.publishedPageSaved'));
     } catch (error) {
       // Put the box back: it is showing a change that did not happen.
       box.checked = !wanted;
@@ -444,7 +469,7 @@
     const remaining = currencyCatalogue.filter((code) => !currencyDraft.includes(code));
     select.innerHTML = remaining.length
       ? remaining.map((code) => `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`).join('')
-      : '<option value="">Every currency is already on your list</option>';
+      : `<option value="">${escapeHtml(t('account.everyCurrencyOnList'))}</option>`;
     select.disabled = !remaining.length;
     document.querySelector('#add-currency').disabled = !remaining.length;
   }
@@ -456,9 +481,9 @@
           <span class="chip">
             ${escapeHtml(code)}
             <button type="button" class="chip-remove" data-code="${escapeHtml(code)}"
-                    aria-label="Remove ${escapeHtml(code)}">✕</button>
+                    aria-label="${escapeHtml(t('account.removeCode', { code }))}">✕</button>
           </span>`).join('')
-      : '<span class="small muted">No currencies yet — add one below.</span>';
+      : `<span class="small muted">${escapeHtml(t('account.noCurrenciesYet'))}</span>`;
   }
   renderCurrencyChips();
   renderCurrencyChoices();
@@ -518,8 +543,8 @@
         displayCurrency: displayCurrencySelect.value,
       });
       clearCachedUser();
-      alertIn('#currency-alert', 'Saved.', 'info');
-      toast.success('Currencies updated');
+      alertIn('#currency-alert', t('account.saved'), 'info');
+      toast.success(t('account.currenciesUpdated'));
       renderChrome({ user: updated, active: 'account' });
     } catch (error) {
       alertIn('#currency-alert', error.fullMessage, 'error');

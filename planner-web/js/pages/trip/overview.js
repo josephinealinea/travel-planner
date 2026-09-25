@@ -1,4 +1,5 @@
 import { countdownLabel, daysUntil, money, category } from '../../format.js';
+import { t } from '../../i18n/index.js';
 
 /**
  * The Overview tab. Everything here is derived from the already-loaded trip
@@ -9,24 +10,24 @@ export function overviewTab() {
     stats() {
       const done = this.scopedChecklist.filter((item) => item.status === 'COMPLETED').length;
       return [
-        { label: 'Destinations', value: this.scopedDestinations.length },
-        { label: 'Checklist done', value: `${done} / ${this.scopedChecklist.length}` },
-        { label: 'Itinerary entries', value: this.scopedItinerary.length },
+        { label: t('overview.destinations'), value: this.scopedDestinations.length },
+        { label: t('overview.checklistDone'), value: `${done} / ${this.scopedChecklist.length}` },
+        { label: t('overview.itineraryEntries'), value: this.scopedItinerary.length },
         // The signed-in member's own charged total, matching what the Budget
         // tab opens on. It moved into `charged` when the rollup was split in
         // two, and reading the old flat `budget.total` here left this stat
         // silently blank — money() answers '' for undefined, so the fallback
         // below swallowed it rather than anything failing loudly.
-        { label: 'Travel cost',
+        { label: t('overview.travelCost'),
           value: money(this.budget.charged?.total, this.budget.totalsCurrency) || '—' },
-        { label: 'Departure', value: this.departureLabel() },
+        { label: t('overview.departure'), value: this.departureLabel() },
       ];
     },
 
     departureLabel() {
       const days = daysUntil(this.trip.startDate);
       if (days == null) return '—';
-      return days >= 0 ? countdownLabel(this.trip.startDate) : 'Past';
+      return days >= 0 ? countdownLabel(this.trip.startDate) : t('overview.past');
     },
 
     /** The next few dated plans, so the tab opens on something useful. */

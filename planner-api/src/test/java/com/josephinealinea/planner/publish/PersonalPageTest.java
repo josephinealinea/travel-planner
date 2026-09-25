@@ -168,7 +168,7 @@ class PersonalPageTest {
                 PublishApprovalProperties.required());
         publish = new PublishService(trips, access, views, renderer,
                 new UserService(users, new BCryptPasswordEncoder(), props),
-                new LoggingEmailSender(), new MailTemplates(props),
+                new LoggingEmailSender(), new MailTemplates(props, com.josephinealinea.planner.i18n.I18nConfig.standalone()),
                 PublishApprovalProperties.required());
     }
 

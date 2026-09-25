@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in — Travelling Llama</title>
-<meta name="description" content="Your travel buddy for planning trips: destinations, checklist, itinerary and a shared budget, then publish the plan when you are ready.">
-<meta property="og:site_name" content="Travelling Llama">
-<meta property="og:title" content="🦙 Travelling Llama">
-<meta property="og:description" content="Your travel buddy for planning trips.">
+<title data-i18n="login.signInTravellingLlama">Sign in — Travelling Llama</title>
+<meta name="description" content="Your travel buddy for planning trips: destinations, checklist, itinerary and a shared budget, then publish the plan when you are ready." data-i18n-content="common.yourTravelBuddyFor">
+<meta property="og:site_name" content="Travelling Llama" data-i18n-content="common.travellingLlama">
+<meta property="og:title" content="🦙 Travelling Llama" data-i18n-content="common.travellingLlama2">
+<meta property="og:description" content="Your travel buddy for planning trips." data-i18n-content="common.yourTravelBuddyForPlanning">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://travellingllama.fun/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
@@ -34,47 +34,44 @@
 
 <main class="page-narrow auth-wrap">
   <div class="auth-logo" aria-hidden="true">🦙</div>
-  <p class="auth-brand">Travelling Llama</p>
-  <h1 class="auth-title">Sign in</h1>
-  <p class="auth-subtitle">Your travel buddy for planning trips.</p>
+  <p class="auth-brand" data-i18n="common.travellingLlama"></p>
+  <h1 class="auth-title" data-i18n="login.signIn"></h1>
+  <p class="auth-subtitle" data-i18n="common.yourTravelBuddyForPlanning"></p>
 
   <div class="card">
     <div id="error" class="alert alert-error" hidden></div>
 
     <form id="login-form" novalidate>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email" data-i18n="common.email"></label>
         <input id="email" name="email" type="email" autocomplete="email" required autofocus>
       </div>
 
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password" data-i18n="common.password"></label>
         <!-- The eye button is appended here by js/password-toggle.js -->
         <div class="password-field">
           <input id="password" name="password" type="password" autocomplete="current-password" required>
         </div>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" id="submit">Sign in</button>
+      <button type="submit" class="btn btn-primary btn-block" id="submit" data-i18n="login.signIn"></button>
     </form>
   </div>
 
-  <p class="auth-footnote">
-    No account? Accounts are created when someone adds you to a trip —
-    check your email for an invitation.
-  </p>
-  <p class="auth-footnote">
-    Forgot your password? Ask a travel buddy on your trip to add you again.
-  </p>
+  <p class="auth-footnote" data-i18n="login.noAccountAccountsAre"></p>
+  <p class="auth-footnote" data-i18n="login.forgotYourPasswordAsk"></p>
 </main>
 
 <footer id="site-footer"></footer>
 
 <script type="module">
   import { api } from './js/api.js';
+  import { initI18n, t } from './js/i18n/index.js';
   import { renderChrome } from './js/chrome.js';
   import { redirectIfSignedIn, afterLoginTarget, clearCachedUser } from './js/session.js';
 
+  await initI18n();
   renderChrome();
 
   const form = document.querySelector('#login-form');
@@ -93,7 +90,7 @@
     event.preventDefault();
     errorBox.hidden = true;
     submit.disabled = true;
-    submit.textContent = 'Signing in…';
+    submit.textContent = t('login.signingIn');
 
     try {
       const user = await api.login({
@@ -106,7 +103,7 @@
     } catch (error) {
       showError(error.fullMessage);
       submit.disabled = false;
-      submit.textContent = 'Sign in';
+      submit.textContent = t('login.signIn');
       form.password.select();
     }
   });
