@@ -28,15 +28,15 @@ cd "/Users/joeydevivre/Documents/GeekPOC/Personal Site/travel-planner/planner-we
 The live API is v1. The new build becomes v2, and the registry keeps both, so v1 stays available for a rollback.
 
 #### Show the current tag    
-```bash
-grep IMAGE_TAG "/Users/joeydevivre/Documents/GeekPOC/Personal Site/travel-planner/planner-api/.env.deploy"                                                                                                       
-```
 
-#### Change it to v2
-```bash
+grep IMAGE_TAG "/Users/joeydevivre/Documents/GeekPOC/Personal Site/travel-planner/planner-api/.env.deploy"                                                                                                       
+
+
+#### Change it to next version ie. v2
+
 sed -i '' "s/^IMAGE_TAG=.*/IMAGE_TAG='v2'/" "/Users/joeydevivre/Documents/GeekPOC/Personal Site/travel-planner/planner-api/.env.deploy" && grep IMAGE_TAG "/Users/joeydevivre/Documents/GeekPOC/Personal         
 Site/travel-planner/planner-api/.env.deploy"
-```
+
 
 ### Step 2: (BE) build and deploy the API (5–10 minutes)
 
@@ -51,7 +51,7 @@ cd "/Users/joeydevivre/Documents/GeekPOC/Personal Site/travel-planner/planner-ap
 ```
 It should end with health: {"status":"UP"} and ... (expect 403): 403.
 
-#### Confirm migration V2 ran on Neon 
+#### Confirm migration ran on Neon 
 ```bash
 gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="planner-api" AND textPayload:"schema"' --project=travellingllama --limit=5 --freshness=20m                             
 --format='value(textPayload)'

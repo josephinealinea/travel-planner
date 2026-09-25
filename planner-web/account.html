@@ -48,7 +48,7 @@
           </p>
         </div>
         <div class="field autocomplete">
-          <label for="homeCountry">Home country</label>
+          <label for="homeCountry">Country of residence</label>
           <input id="homeCountry" type="text" autocomplete="off" placeholder="Start typing — Peru"
                  role="combobox" aria-expanded="false" aria-controls="homeCountryList">
           <ul class="autocomplete-list" id="homeCountryList" role="listbox" hidden></ul>
@@ -378,9 +378,11 @@
   // Every one of these is a flag defaulting to off: a published page is
   // public, so anything extra it reveals is asked for rather than assumed.
   const PUBLISHED_PAGE_SETTINGS = [
-    { key: 'itineraryCost', label: 'Display expense cost per itinerary' },
+    { key: 'displayHomeCountry', label: 'Display residence country in Destinations' },
     { key: 'destinationDays', label: "Display destination's total number of days (instead of nights)" },
-    { key: 'forecastExpenses', label: 'Display forecasted expenses' },
+    { key: 'itineraryCost', label: 'Display the expense costs per itinerary' },
+    { key: 'displayBudget', label: 'Display Budget section' },
+    { key: 'forecastExpenses', label: 'Display forecasted expense filter in Budget section' },
   ];
 
   const publishedPageBox = document.querySelector('#published-page-settings');

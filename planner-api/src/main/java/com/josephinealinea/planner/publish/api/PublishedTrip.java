@@ -17,13 +17,36 @@ public record PublishedTrip(
         String endDate,
         String publishedAt,
         List<Country> countries,
+        /**
+         * Home countries, one per distinct country, from the members whose
+         * accounts ask for it. Empty when nobody does. A personal page carries
+         * only its own member's; the trip's public page carries everybody's.
+         */
+        List<Country> homes,
         String routeSummary,
         List<Destination> destinations,
         List<Day> days,
         List<Checklist> checklist,
+        /** Null on the trip's public page, and on a personal page whose member leaves it out. */
         Budget budget) {
 
-    public record Country(String code, String flag) {}
+    /**
+     * One row per distinct country on the route, for the Destinations panel.
+     * Exactly one of nights/days is set, by the same rule as Destination.
+     * Everything from countries.dev is null when the lookup failed, and the
+     * page leaves the field out.
+     */
+    public record Country(String code,
+                          String flag,
+                          Long nights,
+                          Long days,
+                          String region,
+                          String capital,
+                          List<String> languages,
+                          String demonym,
+                          List<String> currencies,
+                          String callingCode,
+                          String emergencyNumber) {}
 
     public record Destination(String name,
                               String countryCode,
@@ -43,7 +66,9 @@ public record PublishedTrip(
                               Long nights,
                               Long days,
                               String note,
-                              String mapUrl) {}
+                              String mapUrl,
+                              /** IANA zone; the page works out the local time itself, so no lookup. */
+                              String timezone) {}
 
     /**
      * Itinerary grouped by calendar day, which is how the page reads, plus

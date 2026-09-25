@@ -170,7 +170,7 @@
         <div class="table-wrap">
           <table class="table table-cards table-cards-plain">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Home country</th><th>Added</th><th class="actions"></th></tr>
+              <tr><th>Name</th><th>Email</th><th>Residence country</th><th>Added</th><th class="actions"></th></tr>
             </thead>
             <tbody>
               <template x-for="member in membersSignedInFirst" :key="member.userId">
@@ -184,7 +184,7 @@
                     </span>
                   </td>
                   <td class="muted" data-label="Email" x-text="member.emailLabel"></td>
-                  <td data-label="Home country" :class="member.homeCountryCode ? '' : 'muted'" x-text="member.homeCountryCode ? (countryFlagOf(member.homeCountryCode) + ' ' + countryNameOf(member.homeCountryCode)).trim() : 'Unknown'"></td>
+                  <td data-label="Home country" :class="member.homeCountryCode ? '' : 'muted'" x-text="member.homeCountryCode ? (countryFlagOf(member.homeCountryCode) + ' ' + countryNameOf(member.homeCountryCode)).trim() : '-'"></td>
                   <td class="muted tiny" data-label="Added" x-text="addedLabel(member)"></td>
                   <td class="actions">
                     <button type="button" class="btn btn-sm btn-danger"

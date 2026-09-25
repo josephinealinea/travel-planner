@@ -178,12 +178,16 @@ public class UserService {
      */
     public User updatePublishedPageSettings(String userId, Boolean itineraryCost,
                                            Boolean destinationDays,
-                                           Boolean forecastExpenses) {
+                                           Boolean forecastExpenses,
+                                           Boolean displayHomeCountry,
+                                           Boolean displayBudget) {
         User user = require(userId);
         PublishedPageSettings settings = user.getPublishedPage();
         if (itineraryCost != null) settings.setItineraryCost(itineraryCost);
         if (destinationDays != null) settings.setDestinationDays(destinationDays);
         if (forecastExpenses != null) settings.setForecastExpenses(forecastExpenses);
+        if (displayHomeCountry != null) settings.setDisplayHomeCountry(displayHomeCountry);
+        if (displayBudget != null) settings.setDisplayBudget(displayBudget);
         return users.save(user);
     }
 

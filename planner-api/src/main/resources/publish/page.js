@@ -44,6 +44,16 @@
     return date.getDate() + ' ' + MONTHS[date.getMonth()].slice(0, 3);
   }
 
+  // "25 – 26 Oct" inside one month, "31 Oct – 4 Nov" across two.
+  function dateRange(startIso, endIso) {
+    if (!endIso || endIso === startIso) return shortDate(startIso);
+    var a = parseDate(startIso), b = parseDate(endIso);
+    if (a && b && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) {
+      return a.getDate() + ' – ' + shortDate(endIso);
+    }
+    return shortDate(startIso) + ' – ' + shortDate(endIso);
+  }
+
   function money(amount, currency) {
     if (amount == null) return '';
     var value = Number(amount);
@@ -177,52 +187,105 @@
 
   // ── sections ──────────────────────────────────────────
 
+  // Present only when the publishing account asked for it: the payload has no
+  // home country otherwise, so this is also what relabels the section.
+  var HOMES = list(trip.homes);
+  var DESTINATIONS_LABEL = HOMES.length ? 'Home & Destinations' : 'Destinations';
+
   function destinationsPanel() {
     var items = list(trip.destinations);
-    var panel = section('destinations', '🧭 Destinations');
-    if (!items.length) {
+    var panel = section('destinations', '🧭 ' + DESTINATIONS_LABEL);
+    if (!items.length && !HOMES.length) {
       panel.appendChild(el('p', 'empty', 'No destinations yet.'));
       return panel;
     }
 
+    // One card per country, then its stops. Stops with no country are kept
+    // in a card of their own so nothing planned disappears.
     var grid = el('div', 'dest-grid');
-    items.forEach(function (destination) {
-      var card = el('div', 'card');
+    var countries = list(trip.countries);
+    var known = {};
+    countries.forEach(function (c) { known[c.code] = true; });
 
-      var name = el('div', 'dest-name');
-      name.textContent = (destination.flag ? destination.flag + ' ' : '') + destination.name;
-      // Whichever the publishing account asked for arrives; the other is
-      // absent, so there is no flag to read here — see PublishedTrip.Destination.
-      if (destination.nights || destination.days) {
-        name.appendChild(el('span', 'nights-badge', destination.days
-          ? destination.days + 'D'
-          : destination.nights + 'N'));
-      }
-      card.appendChild(name);
+    function localTime(zone) {
+      if (!zone) return null;
+      try {
+        return new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit', timeZone: zone })
+          .format(new Date());
+      } catch (e) { return null; }
+    }
 
-      var meta = [];
-      if (destination.countryCode) meta.push(countryName(destination.countryCode));
-      if (destination.startDate) {
-        meta.push(destination.endDate && destination.endDate !== destination.startDate
-          ? shortDate(destination.startDate) + ' – ' + shortDate(destination.endDate)
-          : shortDate(destination.startDate));
-      }
-      if (meta.length) card.appendChild(el('div', 'dest-meta', meta.join(' · ')));
-
-      if (destination.notes) card.appendChild(el('div', 'dest-notes', destination.notes));
-
+    function stopRow(destination) {
+      var row = el('div', 'dest-notes');
       if (destination.mapUrl) {
-        var link = el('a', 'dest-meta', 'View on map');
+        var link = el('a', 'dest-meta', '📍');
         link.href = destination.mapUrl;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        var row = el('div', 'dest-notes');
         row.appendChild(link);
-        card.appendChild(row);
+        row.appendChild(document.createTextNode(' '));
       }
+      var line = [destination.name];
+      if (destination.startDate) line.push(dateRange(destination.startDate, destination.endDate));
+      // The time there right now, from the browser's own clock and the
+      // stop's IANA zone: no request. An unknown zone just leaves it out.
+      var now = localTime(destination.timezone);
+      if (now) line.push('🕒 ' + now + ' now');
+      row.appendChild(document.createTextNode(line.join(' · ')));
+      if (destination.notes) row.appendChild(el('div', 'dest-meta', destination.notes));
+      return row;
+    }
 
-      grid.appendChild(card);
+    function fact(label, value) {
+      if (value == null || value === '' || (Array.isArray(value) && !value.length)) return null;
+      return label + ': ' + (Array.isArray(value) ? value.join(', ') : value);
+    }
+
+    // Related facts share a line, and a line with nothing on it is not drawn.
+    function factLine(card, parts) {
+      var text = parts.filter(Boolean).join('  ·  ');
+      if (text) card.appendChild(el('div', 'dest-meta', text));
+    }
+
+    function countryCard(country, isHome) {
+      var card = el('div', 'card');
+      var name = el('div', 'dest-name');
+      name.textContent = (country.flag ? country.flag + ' ' : '') + countryName(country.code)
+        + ' (' + country.code + ')';
+      if (isHome) name.appendChild(el('span', 'nights-badge', 'Home'));
+      // Whichever the publishing account asked for arrives; the other is absent.
+      if (country.nights || country.days) {
+        name.appendChild(el('span', 'nights-badge', country.days
+          ? country.days + 'D'
+          : country.nights + 'N'));
+      }
+      card.appendChild(name);
+      factLine(card, [fact('Region', country.region)]);
+      factLine(card, [fact('Capital city', country.capital), fact('Currency', country.currencies)]);
+      factLine(card, [fact('Calling code', country.callingCode), fact('Emergency', country.emergencyNumber)]);
+      factLine(card, [fact('Language', country.languages), fact('Demonym', country.demonym)]);
+      if (!isHome) {
+        items.filter(function (d) { return (d.countryCode || '').toUpperCase() === country.code; })
+          .forEach(function (d) { card.appendChild(stopRow(d)); });
+      }
+      return card;
+    }
+
+    // Home first, then the route. Home is a card of its own even when the trip
+    // also goes there, so the country appears twice rather than the stops
+    // moving out from under the route order.
+    HOMES.forEach(function (home) { grid.appendChild(countryCard(home, true)); });
+    countries.forEach(function (country) { grid.appendChild(countryCard(country, false)); });
+
+    var others = items.filter(function (d) {
+      return !d.countryCode || !known[d.countryCode.toUpperCase()];
     });
+    if (others.length) {
+      var other = el('div', 'card');
+      other.appendChild(el('div', 'dest-name', 'Other stops'));
+      others.forEach(function (d) { other.appendChild(stopRow(d)); });
+      grid.appendChild(other);
+    }
 
     panel.appendChild(grid);
     return panel;
@@ -600,12 +663,16 @@
   // the days look like, then what it cost.
   var PANELS = [
     { key: 'all', label: 'Show All' },
-    { key: 'destinations', label: 'Destinations' },
+    { key: 'destinations', label: DESTINATIONS_LABEL },
     { key: 'checklist', label: 'Checklist' },
     { key: 'weather', label: 'Weather Forecast' },
     { key: 'itinerary', label: 'Itinerary' },
     { key: 'budget', label: 'Budget' }
-  ];
+  ].filter(function (panel) {
+    // No budget in the payload means the account left the section out, and a
+    // filter for a section that is not there would show a blank page.
+    return panel.key !== 'budget' || trip.budget;
+  });
 
   var ALL = 'all';
 
@@ -1010,7 +1077,7 @@
   root.appendChild(destinationsPanel());
   root.appendChild(checklistPanel());
   root.appendChild(itineraryPanel());
-  root.appendChild(budgetPanel());
+  if (trip.budget) root.appendChild(budgetPanel());
 
   var footer = el('div', 'footer');
   footer.textContent = trip.publishedAt

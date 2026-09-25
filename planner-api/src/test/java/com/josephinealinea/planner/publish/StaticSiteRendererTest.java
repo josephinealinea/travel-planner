@@ -40,6 +40,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -220,7 +221,7 @@ class StaticSiteRendererTest {
     }
 
     private String render(String theme, boolean showItineraryCost) throws Exception {
-        return render(theme, new PublishOptions(showItineraryCost, false, false));
+        return render(theme, new PublishOptions(showItineraryCost, false, false, false, java.util.List.of()));
     }
 
     private String render(String theme, PublishOptions options) throws Exception {
@@ -407,9 +408,25 @@ class StaticSiteRendererTest {
         assertThat(nights.get("days").isNull()).isTrue();
 
         JsonNode days = destination(
-                payload(render("minima", new PublishOptions(false, true, false))), "Cusco");
+                payload(render("minima", new PublishOptions(false, true, false, false, java.util.List.of()))), "Cusco");
         assertThat(days.get("days").asLong()).isEqualTo(7);
         assertThat(days.get("nights").isNull()).isTrue();
+    }
+
+    /**
+     * The Destinations panel is one row per country, not per stop: the
+     * country's nights (or days) are summed and its emergency number comes
+     * from the static table. No catalog is wired in this fixture, so the
+     * countries.dev fields are absent rather than invented.
+     */
+    @Test
+    void theCountryRowCarriesSummedNightsAndTheEmergencyNumber() throws Exception {
+        JsonNode peru = payload(render("minima", PublishOptions.hidden())).get("countries").get(0);
+        assertThat(peru.get("code").asText()).isEqualTo("PE");
+        assertThat(peru.get("nights").asLong()).isEqualTo(6);
+        assertThat(peru.get("days").isNull()).isTrue();
+        assertThat(peru.get("emergencyNumber").asText()).isEqualTo("105");
+        assertThat(peru.get("capital").isNull()).isTrue();
     }
 
     private static JsonNode destination(JsonNode payload, String name) {
@@ -430,7 +447,7 @@ class StaticSiteRendererTest {
      */
     @Test
     void withoutTheSettingThePageCarriesNoForecastRollupAtAll() throws Exception {
-        JsonNode budget = payload(render("minima", PublishOptions.hidden())).get("budget");
+        JsonNode budget = payload(renderPersonal(new PublishOptions(false, false, false, true, java.util.List.of()))).get("budget");
 
         assertThat(budget.get("forecast").isNull()).isTrue();
         // 246.22 + 45.00 USD at 1.17 per EUR. The pending deposit is not in it.
@@ -439,12 +456,65 @@ class StaticSiteRendererTest {
 
     @Test
     void withTheSettingTheForecastRollupShipsAlongsideTheCharges() throws Exception {
-        JsonNode budget = payload(render("minima", new PublishOptions(false, false, true)))
+        JsonNode budget = payload(renderPersonal(new PublishOptions(false, false, true, true, java.util.List.of())))
                 .get("budget");
 
         assertThat(budget.get("charged").get("total").decimalValue()).isEqualByComparingTo("248.90");
         // The same two, plus the 100.00 USD deposit nobody has paid: 85.47 more.
         assertThat(budget.get("forecast").get("total").decimalValue()).isEqualByComparingTo("334.37");
+    }
+
+    /** A member's own page, which is the only page that can carry a budget. */
+    private String renderPersonal(PublishOptions options) throws Exception {
+        var member = new com.josephinealinea.planner.identity.domain.User();
+        member.setId("member-1");
+        renderer.render(trip("minima"), PublishOptions.hidden(), "minima",
+                List.of(new StaticSiteRenderer.PersonalPage(member, "member", options)));
+        return Files.readString(publishDir.resolve(SLUG).resolve("m").resolve("member").resolve("index.html"));
+    }
+
+    @Test
+    void theTripsPublicPageNeverCarriesABudget() throws Exception {
+        String html = render("minima", new PublishOptions(false, false, true, true, java.util.List.of()));
+
+        assertThat(payload(html).get("budget").isNull()).isTrue();
+        // Not shipped: the charged total is nowhere in the file, not just unrendered.
+        assertThat(html).doesNotContain("248.9");
+    }
+
+    @Test
+    void aPersonalPageWithoutTheBudgetSettingCarriesNoBudgetAtAll() throws Exception {
+        assertThat(payload(renderPersonal(PublishOptions.hidden())).get("budget").isNull()).isTrue();
+    }
+
+    @Test
+    void theTripsPublicPageShowsTheHomeOfEveryMemberWhoAsked() throws Exception {
+        assertThat(payload(render("minima", PublishOptions.hidden())).get("homes")).isEmpty();
+
+        var alex = new com.josephinealinea.planner.identity.domain.User();
+        alex.setId("alex");
+        var sam = new com.josephinealinea.planner.identity.domain.User();
+        sam.setId("sam");
+        var none = new com.josephinealinea.planner.identity.domain.User();
+        none.setId("none");
+        renderer.render(trip("minima"), PublishOptions.hidden(), "minima", List.of(
+                new StaticSiteRenderer.PersonalPage(alex, "alex",
+                        new PublishOptions(false, false, false, false, List.of("sg"))),
+                new StaticSiteRenderer.PersonalPage(sam, "sam",
+                        new PublishOptions(false, false, false, false, List.of("PH"))),
+                new StaticSiteRenderer.PersonalPage(none, "none", PublishOptions.hidden())));
+
+        JsonNode pub = payload(Files.readString(publishDir.resolve(SLUG).resolve("index.html")));
+        assertThat(pub.get("homes")).hasSize(2);
+        assertThat(pub.get("homes").get(0).get("code").asText()).isEqualTo("SG");
+        assertThat(pub.get("homes").get(0).get("flag").asText()).isEqualTo("\uD83C\uDDF8\uD83C\uDDEC");
+        assertThat(pub.get("homes").get(1).get("code").asText()).isEqualTo("PH");
+
+        // A personal page names only its own member's home.
+        JsonNode mine = payload(Files.readString(
+                publishDir.resolve(SLUG).resolve("m").resolve("sam").resolve("index.html")));
+        assertThat(mine.get("homes")).hasSize(1);
+        assertThat(mine.get("homes").get(0).get("code").asText()).isEqualTo("PH");
     }
 
     /** The data-theme on the html element, which is the one that styles the page. */

@@ -199,7 +199,7 @@ public abstract class UserRepositoryContract {
         user.setMustChangePassword(true);
         user.setCurrencies(new ArrayList<>(List.of("SGD", "EUR", "PEN")));
         user.setDisplayCurrency("SGD");
-        user.setPublishedPage(new PublishedPageSettings(true, true, true));
+        user.setPublishedPage(new PublishedPageSettings(true, true, true, true, true));
         user.setCreatedAt(Instant.parse("2026-01-02T03:04:05.123456Z"));
         user.setUpdatedAt(Instant.parse("2026-01-03T03:04:05.654321Z"));
         return user;

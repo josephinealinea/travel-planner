@@ -170,7 +170,7 @@ class PublishApprovalTest {
         User user = new User();
         user.setId(id);
         user.setEmail(email);
-        user.setPublishedPage(new PublishedPageSettings(showCosts, false, false));
+        user.setPublishedPage(new PublishedPageSettings(showCosts, false, false, true, true));
         return user;
     }
 

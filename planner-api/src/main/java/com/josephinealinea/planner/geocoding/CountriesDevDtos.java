@@ -33,10 +33,19 @@ public final class CountriesDevDtos {
             String name,
             String flag,
             String alpha2Code,
-            List<Currency> currencies) {
+            List<Currency> currencies,
+            String region,
+            String subregion,
+            String capital,
+            String demonym,
+            List<Language> languages,
+            List<String> callingCodes) {
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record Currency(String code, String name, String symbol) {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public record Language(String name) {}
 
         public String primaryCurrency() {
             return currencies == null || currencies.isEmpty() ? null : currencies.get(0).code();

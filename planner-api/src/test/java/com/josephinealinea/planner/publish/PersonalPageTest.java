@@ -179,6 +179,8 @@ class PersonalPageTest {
         user.setId(id);
         user.setEmail(email);
         user.setScreenName(screenName);
+        // A page has a budget only when its member asks for one.
+        user.getPublishedPage().setDisplayBudget(true);
         return user;
     }
 
@@ -219,9 +221,8 @@ class PersonalPageTest {
         JsonNode trip = payload(read(publishDir.resolve(SLUG).resolve("index.html")));
         JsonNode alex = payload(read(personal("alex")));
 
-        // The trip page counts everything: 900 + 1234.56.
-        assertThat(trip.get("budget").get("charged").get("total").decimalValue())
-                .isEqualByComparingTo("2134.56");
+        // The trip's public page has no budget at all: that is for personal pages.
+        assertThat(trip.get("budget").isNull()).isTrue();
         // Alex's page counts his half of the flight, and nothing else.
         assertThat(alex.get("budget").get("charged").get("total").decimalValue())
                 .isEqualByComparingTo("450.00");
@@ -243,8 +244,9 @@ class PersonalPageTest {
         // nowhere in Alex's file — not in the markup, not in window.TRIP.
         assertThat(alexPage).doesNotContain("1234.56");
         assertThat(alexPage).doesNotContain("2134.56");
-        // The trip's own page is the opposite case and is meant to carry it.
-        assertThat(tripPage).contains("2134.56");
+        // The trip's own page carries no budget, so nobody's spending is in it.
+        assertThat(tripPage).doesNotContain("2134.56");
+        assertThat(tripPage).doesNotContain("1234.56");
     }
 
     /**
@@ -470,7 +472,7 @@ class PersonalPageTest {
         users.save(sam);
         publish.publish(TRIP_ID, ALEX, "minima");
 
-        assertThat(payload(read(publishDir.resolve(SLUG).resolve("index.html")))
+        assertThat(payload(read(personal("alex")))
                 .get("budget").get("displayCurrency").asText()).isEqualTo("EUR");
         assertThat(payload(read(personal("sam")))
                 .get("budget").get("displayCurrency").asText()).isEqualTo("SGD");

@@ -39,12 +39,30 @@ public class PublishedPageSettings {
      */
     private boolean forecastExpenses;
 
+    /**
+     * Whether a published page opens its Destinations section with the
+     * member's home country. The section is then labelled "Home &amp;
+     * Destinations". Off by default, and a page with it off carries no home
+     * country at all.
+     */
+    private boolean displayHomeCountry;
+
+    /**
+     * Whether a published page has a Budget section — and a Budget filter — at
+     * all. Off by default: when it is off the page carries no budget figure,
+     * not one it renders and hides.
+     */
+    private boolean displayBudget;
+
     public PublishedPageSettings() {}
 
-    public PublishedPageSettings(boolean itineraryCost, boolean destinationDays, boolean forecastExpenses) {
+    public PublishedPageSettings(boolean itineraryCost, boolean destinationDays, boolean forecastExpenses,
+                                 boolean displayHomeCountry, boolean displayBudget) {
         this.itineraryCost = itineraryCost;
         this.destinationDays = destinationDays;
         this.forecastExpenses = forecastExpenses;
+        this.displayHomeCountry = displayHomeCountry;
+        this.displayBudget = displayBudget;
     }
 
     public boolean isItineraryCost() { return itineraryCost; }
@@ -55,4 +73,10 @@ public class PublishedPageSettings {
 
     public boolean isForecastExpenses() { return forecastExpenses; }
     public void setForecastExpenses(boolean forecastExpenses) { this.forecastExpenses = forecastExpenses; }
+
+    public boolean isDisplayHomeCountry() { return displayHomeCountry; }
+    public void setDisplayHomeCountry(boolean displayHomeCountry) { this.displayHomeCountry = displayHomeCountry; }
+
+    public boolean isDisplayBudget() { return displayBudget; }
+    public void setDisplayBudget(boolean displayBudget) { this.displayBudget = displayBudget; }
 }

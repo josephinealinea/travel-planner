@@ -237,7 +237,10 @@ public class PublishService {
         var settings = user.getPublishedPage();
         return new PublishOptions(settings.isItineraryCost(),
                 settings.isDestinationDays(),
-                settings.isForecastExpenses());
+                settings.isForecastExpenses(),
+                settings.isDisplayBudget(),
+                settings.isDisplayHomeCountry() && user.getHomeCountryCode() != null
+                        ? java.util.List.of(user.getHomeCountryCode()) : java.util.List.of());
     }
 
     /** The staged page's HTML for a members-only preview, or null if none. */

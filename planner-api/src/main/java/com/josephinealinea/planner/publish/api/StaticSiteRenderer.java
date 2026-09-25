@@ -19,7 +19,10 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import com.josephinealinea.planner.geocoding.CountryCatalog;
+import com.josephinealinea.planner.geocoding.EmergencyNumbers;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -84,17 +87,31 @@ public class StaticSiteRenderer {
     private final ChecklistRepository checklist;
     private final ItineraryRepository itinerary;
     private final BudgetService budgets;
+    private final CountryCatalog catalog;
     private final PageStore pages;
     private final ObjectMapper json;
     /** Where the "Planned with Travelling Llama" line links: the website, not the API. */
     private final String siteUrl;
 
+    /** Without a catalog no country details are looked up; the panel shows what it has. */
     public StaticSiteRenderer(DestinationRepository destinations,
                               ChecklistRepository checklist,
                               ItineraryRepository itinerary,
                               BudgetService budgets,
                               PageStore pages,
                               AppProperties props) {
+        this(destinations, checklist, itinerary, budgets, pages, props, null);
+    }
+
+    @Autowired
+    public StaticSiteRenderer(DestinationRepository destinations,
+                              ChecklistRepository checklist,
+                              ItineraryRepository itinerary,
+                              BudgetService budgets,
+                              PageStore pages,
+                              AppProperties props,
+                              CountryCatalog catalog) {
+        this.catalog = catalog;
         this.siteUrl = props.cors().siteUrl();
         this.destinations = destinations;
         this.checklist = checklist;
@@ -145,7 +162,7 @@ public class StaticSiteRenderer {
     public void render(Trip trip, PublishOptions options, String requestedTheme,
                        List<PersonalPage> personal) {
         var theme = safeTheme(requestedTheme);
-        write(trip, options, theme, Area.PUBLISHED, null, null);
+        write(trip, publicOptions(options, personal), theme, Area.PUBLISHED, null, null);
         writePersonal(trip, theme, Area.PUBLISHED, personal);
         log.info("Published \"{}\"{}", trip.getTitle(),
                 personal.isEmpty() ? "" : " with " + personal.size() + " personal page(s)");
@@ -166,9 +183,28 @@ public class StaticSiteRenderer {
 
     public void renderPending(Trip trip, PublishOptions options, String theme,
                               List<PersonalPage> personal) {
-        write(trip, options, safeTheme(theme), Area.PENDING, null, null);
+        write(trip, publicOptions(options, personal), safeTheme(theme), Area.PENDING, null, null);
         writePersonal(trip, safeTheme(theme), Area.PENDING, personal);
         log.info("Staged \"{}\" for approval", trip.getTitle());
+    }
+
+    /**
+     * What the trip's own, public page may show: the publisher's settings for
+     * the itinerary and destinations, except that
+     * <ul>
+     *   <li>it never has a Budget section — what a trip costs is for a
+     *       member's own page, where it is their share, not the public's;</li>
+     *   <li>its home countries are everybody's who asked for one, so the page
+     *       does not present the publisher's home as the trip's.</li>
+     * </ul>
+     */
+    private static PublishOptions publicOptions(PublishOptions options, List<PersonalPage> personal) {
+        List<String> homes = personal.stream()
+                .flatMap(page -> page.options().homeCountryCodes().stream())
+                .map(code -> code.trim().toUpperCase())
+                .distinct().toList();
+        return new PublishOptions(options.itineraryCost(), options.destinationDays(),
+                options.forecastExpenses(), false, homes);
     }
 
     /**
@@ -268,15 +304,18 @@ public class StaticSiteRenderer {
         // what the trip cost. See BudgetService.summarise.
         BudgetService.Summary budget = budgets.summarise(trip, viewer);
 
-        // Countries in route order, de-duplicated, for the flag strip.
-        Map<String, String> countries = new LinkedHashMap<>();
+        // Countries in route order, de-duplicated: the flag strip and the
+        // Destinations panel, with the nights (or days) summed per country.
+        Map<String, List<Destination>> byCountry = new LinkedHashMap<>();
         allDestinations.forEach(destination -> {
             String code = destination.getCountryCode();
             if (code != null && !code.isBlank()) {
-                countries.putIfAbsent(code.toUpperCase(),
-                        destination.getCountryFlag() == null ? "" : destination.getCountryFlag());
+                byCountry.computeIfAbsent(code.toUpperCase(), k -> new ArrayList<>()).add(destination);
             }
         });
+        List<PublishedTrip.Country> countries = byCountry.entrySet().stream()
+                .map(e -> toCountry(e.getKey(), e.getValue(), options))
+                .toList();
 
         // "Tallinn -> Los Angeles -> Cusco", collapsing repeats.
         List<String> route = new ArrayList<>(new LinkedHashSet<>(
@@ -288,9 +327,8 @@ public class StaticSiteRenderer {
                 iso(trip.getStartDate()),
                 iso(trip.getEndDate()),
                 trip.getPublishedAt() == null ? null : trip.getPublishedAt().toString(),
-                countries.entrySet().stream()
-                        .map(e -> new PublishedTrip.Country(e.getKey(), e.getValue()))
-                        .toList(),
+                countries,
+                options.homeCountryCodes().stream().map(code -> home(code, options)).toList(),
                 String.join(" → ", route),
                 allDestinations.stream().map(d -> toView(d, options)).toList(),
                 days(allItinerary, allDestinations, options.itineraryCost(),
@@ -298,7 +336,66 @@ public class StaticSiteRenderer {
                 allChecklist.stream()
                         .map(this::toView)
                         .toList(),
-                toView(budget, options));
+                options.displayBudget() ? toView(budget, options) : null);
+    }
+
+    /**
+     * The home country as a Destinations card with no stops, or null when the
+     * account did not ask for it. Built through toCountry so it carries the
+     * same facts as any other country card.
+     */
+    private PublishedTrip.Country home(String code, PublishOptions options) {
+        if (code == null || code.isBlank()) return null;
+        String upper = code.trim().toUpperCase();
+        PublishedTrip.Country card = toCountry(upper, List.of(), options);
+        if (!card.flag().isEmpty() || upper.length() != 2) return card;
+        // No stop to borrow a flag from, so spell it from the code: two
+        // regional-indicator letters.
+        String flag = upper.chars()
+                .mapToObj(c -> new String(Character.toChars(0x1F1E6 + (c - 'A'))))
+                .collect(java.util.stream.Collectors.joining());
+        return new PublishedTrip.Country(card.code(), flag, card.nights(), card.days(), card.region(),
+                card.capital(), card.languages(), card.demonym(), card.currencies(), card.callingCode(),
+                card.emergencyNumber());
+    }
+
+    private PublishedTrip.Country toCountry(String code, List<Destination> stops,
+                                            PublishOptions options) {
+        String flag = stops.stream().map(Destination::getCountryFlag)
+                .filter(f -> f != null && !f.isBlank()).findFirst().orElse("");
+        long nights = stops.stream().map(Destination::nights).filter(n -> n != null)
+                .mapToLong(Long::longValue).sum();
+        long days = stops.stream().map(Destination::days).filter(n -> n != null)
+                .mapToLong(Long::longValue).sum();
+        var details = catalog == null ? null : catalog.byCode(code).orElse(null);
+        String region = null, capital = null, calling = null, demonym = null;
+        List<String> languages = null, currencies = null;
+        if (details != null) {
+            region = details.subregion() == null || details.subregion().isBlank()
+                    ? details.region()
+                    : (details.region() == null ? "" : details.region() + " · ") + details.subregion();
+            capital = details.capital();
+            demonym = details.demonym();
+            if (details.languages() != null) {
+                languages = details.languages().stream()
+                        .map(l -> l.name()).filter(n -> n != null).toList();
+            }
+            if (details.currencies() != null) {
+                currencies = details.currencies().stream()
+                        .filter(c -> c.code() != null)
+                        .map(c -> c.symbol() == null || c.symbol().isBlank()
+                                || c.symbol().equals(c.code())
+                                ? c.code() : c.code() + " (" + c.symbol() + ")")
+                        .toList();
+            }
+            if (details.callingCodes() != null && !details.callingCodes().isEmpty()) {
+                calling = "+" + String.join(", +", details.callingCodes());
+            }
+        }
+        return new PublishedTrip.Country(code, flag,
+                options.destinationDays() || nights == 0 ? null : nights,
+                options.destinationDays() && days > 0 ? days : null,
+                region, capital, languages, demonym, currencies, calling, EmergencyNumbers.of(code));
     }
 
     private PublishedTrip.Destination toView(
@@ -321,7 +418,8 @@ public class StaticSiteRenderer {
                 options.destinationDays() ? null : destination.nights(),
                 options.destinationDays() ? destination.days() : null,
                 destination.getNote(),
-                mapUrl);
+                mapUrl,
+                destination.getTimezone());
     }
 
     /** Items carry country codes; the page turns them into names (see page.js). */

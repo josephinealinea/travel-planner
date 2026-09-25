@@ -38,9 +38,9 @@ lsof -ti :8080 | xargs -r kill; lsof -ti :3000 | xargs -r kill
 ./docker-stop.sh
 ```
 #### Start the API (yml mode ON)
-```bash
-cd planner-api && BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
-```
+
+cd planner-api && FEATURE_ENABLE_DATABASE=false && BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
+
 #### If database mode ON
 #### Start Postgres
 ```bash
@@ -188,7 +188,3 @@ cd planner-api && ./gradlew test
 cd planner-web && npm run css:watch
 ```
 
-## Not built
-
-Password reset by email, images, and per-day weather (the personal site fetches
-that live in the browser, and the published page could do the same).

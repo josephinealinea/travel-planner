@@ -356,7 +356,7 @@ class YamlImporterTest {
         alex.setDisplayCurrency("EUR");
         User sam = user(SAM, "sam@example.com", "$2a$10$samhash", "2026-09-02T09:00:00Z", null);
         sam.setDisplayCurrency("SGD");
-        sam.setPublishedPage(new PublishedPageSettings(true, false, true));
+        sam.setPublishedPage(new PublishedPageSettings(true, false, true, true, true));
         User ray = user(RAY, "ray@example.com", "$2a$10$rayhash", "2026-09-03T09:00:00Z", "2026-09-04T12:00:00Z");
         ray.setMustChangePassword(true);
         store.write(paths.users(), List.of(alex, sam, ray));

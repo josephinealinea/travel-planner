@@ -15,10 +15,25 @@ package com.josephinealinea.planner.publish.api;
  */
 public record PublishOptions(boolean itineraryCost,
                              boolean destinationDays,
-                             boolean forecastExpenses) {
+                             boolean forecastExpenses,
+                             boolean displayBudget,
+                             /**
+                              * Home countries to open Destinations with —
+                              * already resolved from each account's "display
+                              * home country" setting, so a member who has
+                              * switched it off, or never set one, contributes
+                              * nothing and nothing about where they live
+                              * reaches the file.
+                              */
+                             java.util.List<String> homeCountryCodes) {
+
+    public PublishOptions {
+        homeCountryCodes = homeCountryCodes == null ? java.util.List.of() : java.util.List.copyOf(homeCountryCodes);
+    }
+
 
     /** Everything off, which is also what an unconfigured account gets. */
     public static PublishOptions hidden() {
-        return new PublishOptions(false, false, false);
+        return new PublishOptions(false, false, false, false, java.util.List.of());
     }
 }
