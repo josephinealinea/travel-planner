@@ -3,6 +3,8 @@ package com.josephinealinea.planner.publish;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.josephinealinea.planner.budget.api.BudgetService;
+import com.josephinealinea.planner.budget.api.SettlementProperties;
+import com.josephinealinea.planner.budget.domain.SettlementPayment;
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
 import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
@@ -111,6 +113,8 @@ class PersonalPageTest {
         var checklist = new YamlChecklistRepository(store, paths, locks);
         var itinerary = new YamlItineraryRepository(store, paths, locks);
         var budget = new YamlBudgetRepository(store, paths, locks);
+        var settlementPayments = new com.josephinealinea.planner.budget.infra.YamlSettlementPaymentRepository(
+                store, paths, locks);
         trips = new YamlTripRepository(store, paths, locks);
         users = new YamlUserRepository(store, paths, locks);
 
@@ -138,9 +142,25 @@ class PersonalPageTest {
         budget.save(SLUG, expense("shared", "Flight", "900.00", List.of(ALEX, SAM)));
         budget.save(SLUG, expense("sams", "Sam's camera", "1234.56", List.of(SAM)));
 
+        // Distinctive amount and note, for the same reason: a test can search
+        // the whole file for them.
+        SettlementPayment payment = new SettlementPayment();
+        payment.setId("pay-1");
+        payment.setTripId(TRIP_ID);
+        payment.setFromUserId(SAM);
+        payment.setToUserId(ALEX);
+        payment.setAmount(new java.math.BigDecimal("77.31"));
+        payment.setCurrency("EUR");
+        payment.setNote("Cash for the tuk-tuk 4471");
+        settlementPayments.save(SLUG, payment);
+
         var access = new TripAccessService(trips);
+        // Built with a payment repository, so the maths that would show a
+        // payment on a page has every chance to: the renderer must still never
+        // name one.
         var budgets = new BudgetService(budget, itinerary, destinations, users, access,
-                new TripCountries(destinations), TestRates.empty(store, paths, props));
+                new TripCountries(destinations), TestRates.empty(store, paths, props),
+                SettlementProperties.off(), settlementPayments);
         var renderer = new StaticSiteRenderer(destinations, checklist, itinerary, budgets,
                 new com.josephinealinea.planner.publish.infra.FileSystemPageStore(store, paths), props);
         views = new TripViewAssembler(users, destinations, checklist, itinerary, budgets,
@@ -294,6 +314,26 @@ class PersonalPageTest {
         assertThat(payload(alexPage).get("budget").has("settlements")).isFalse();
     }
 
+    /**
+     * A payment settles a debt, and a debt is between the people on the trip —
+     * so neither the trip's page nor either member's may carry one, or its
+     * amount, or its note. Same reasoning, same whole-file search.
+     */
+    @Test
+    void noPaymentReachesAPublishedFile() throws Exception {
+        publish.publish(TRIP_ID, ALEX, "minima");
+
+        for (String file : new String[]{read(personal("alex")), read(personal("sam")),
+                read(publishDir.resolve(SLUG).resolve("index.html"))}) {
+            assertThat(file).doesNotContain("77.31");
+            assertThat(file).doesNotContain("4471");
+            assertThat(file).doesNotContain("tuk-tuk");
+            assertThat(file).doesNotContain("pay-1");
+            assertThat(file).doesNotContain("fromUserId");
+            assertThat(file).doesNotContain("\"payments\"");
+        }
+    }
+
     @Test
     void eachMemberGetsTheirOwnPageAtTheirOwnName() throws Exception {
         publish.publish(TRIP_ID, ALEX, "minima");
@@ -372,8 +412,8 @@ class PersonalPageTest {
         publish.publish(TRIP_ID, ALEX, "minima");
         Trip trip = trips.findById(TRIP_ID).orElseThrow();
 
+        // Alex's own page is offered as "my page", so the list is everyone else.
         assertThat(views.publish(trip, ALEX).personalPageUrls()).containsExactly(
-                "http://localhost:8080/p/" + SLUG + "/m/alex",
                 "http://localhost:8080/p/" + SLUG + "/m/sam");
         assertThat(views.publish(trip, SAM).personalPageUrls()).isEmpty();
     }

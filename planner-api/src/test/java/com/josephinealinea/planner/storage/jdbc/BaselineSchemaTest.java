@@ -32,7 +32,7 @@ class BaselineSchemaTest extends PostgresTestBase {
 
         assertThat(result.success).isTrue();
         // Every migration applies to an empty database, in order, ending at the latest.
-        assertThat(result.targetSchemaVersion).isEqualTo("9");
+        assertThat(result.targetSchemaVersion).isEqualTo("11");
         assertThat(JdbcClient.create(fresh).sql("SELECT count(*) FROM trips").query(Long.class).single())
                 .as("schema only: a migration never writes a row").isZero();
     }
@@ -92,7 +92,7 @@ class BaselineSchemaTest extends PostgresTestBase {
     @Test
     void everyPerTripTableIsKeyedByTripAndIdAndCarriesSeq() {
         for (String table : new String[] {"destinations", "checklist_items", "itinerary_items",
-                "budget_items", "weather_records"}) {
+                "budget_items", "weather_records", "settlement_payments"}) {
             assertThat(jdbc().sql("""
                             SELECT string_agg(a.attname, ',' ORDER BY a.attnum)
                             FROM pg_index i

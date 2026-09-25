@@ -5,6 +5,7 @@ import com.josephinealinea.planner.weather.DayWeather;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * One day's weather for one point on the map, as it was last looked up.
@@ -41,6 +42,14 @@ public class WeatherRecord {
     private Double temperatureMin;
     private Double precipitation;
     private DayWeather.Source source;
+
+    /**
+     * The extra daily readings (sunrise, UV, wind, ...) as one document rather
+     * than a column each, so the next field is a key and not a migration. Keys
+     * are {@code DetailField.key()}; absent means unknown and 0 is a real
+     * answer. Null on a record cached before this existed.
+     */
+    private Map<String, Object> details;
 
     /** When Open-Meteo answered. What the TTL is measured against. */
     private Instant fetchedAt;
@@ -92,6 +101,9 @@ public class WeatherRecord {
 
     public DayWeather.Source getSource() { return source; }
     public void setSource(DayWeather.Source source) { this.source = source; }
+
+    public Map<String, Object> getDetails() { return details; }
+    public void setDetails(Map<String, Object> details) { this.details = details; }
 
     public Instant getFetchedAt() { return fetchedAt; }
     public void setFetchedAt(Instant fetchedAt) { this.fetchedAt = fetchedAt; }

@@ -45,6 +45,8 @@ class JdbcTripRepositoryContractTest extends TripRepositoryContract {
                     INSERT INTO itinerary_items (trip_id, id, description) VALUES (:tripId, 'i-1', 'Train')""",
             "budget_items", """
                     INSERT INTO budget_items (trip_id, id, amount) VALUES (:tripId, 'b-1', 12.50)""",
+            "settlement_payments", """
+                    INSERT INTO settlement_payments (trip_id, id, amount) VALUES (:tripId, 'p-1', 20.00)""",
             "weather_records", """
                     INSERT INTO weather_records (trip_id, id, latitude, longitude, date)
                     VALUES (:tripId, '-13.5,-72.0:2026-10-25', -13.5, -72.0, DATE '2026-10-25')""");

@@ -2,6 +2,7 @@ package com.josephinealinea.planner.importer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
+import com.josephinealinea.planner.budget.infra.YamlSettlementPaymentRepository;
 import com.josephinealinea.planner.checklist.infra.YamlChecklistRepository;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.destinations.infra.YamlDestinationRepository;
@@ -51,7 +52,7 @@ final class YamlSource {
 
     /** The per-trip entities whose files are looked at for orphans. */
     private static final List<String> PER_TRIP_ENTITIES =
-            List.of("destinations", "checklist", "itinerary", "budget", "weather");
+            List.of("destinations", "checklist", "itinerary", "budget", "weather", "settlements");
 
     final Path dir;
     final YamlStore store;
@@ -62,6 +63,7 @@ final class YamlSource {
     final YamlChecklistRepository checklist;
     final YamlItineraryRepository itinerary;
     final YamlBudgetRepository budget;
+    final YamlSettlementPaymentRepository payments;
     final YamlWeatherRepository weather;
     final YamlRatesRepository rates;
 
@@ -81,6 +83,7 @@ final class YamlSource {
         this.checklist = new YamlChecklistRepository(store, paths, locks);
         this.itinerary = new YamlItineraryRepository(store, paths, locks);
         this.budget = new YamlBudgetRepository(store, paths, locks);
+        this.payments = new YamlSettlementPaymentRepository(store, paths, locks);
         this.weather = new YamlWeatherRepository(store, paths, locks);
         this.rates = new YamlRatesRepository(store, paths);
     }

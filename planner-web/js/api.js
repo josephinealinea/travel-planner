@@ -154,6 +154,8 @@ export const api = {
   addExpense: (id, data) => post(`${trip(id)}/budget`, data),
   updateExpense: (id, itemId, data) => patch(`${trip(id)}/budget/${itemId}`, data),
   deleteExpense: (id, itemId) => del(`${trip(id)}/budget/${itemId}`),
+  recordPayment: (id, data) => post(`${trip(id)}/settlements/payments`, data),
+  deletePayment: (id, paymentId) => del(`${trip(id)}/settlements/payments/${paymentId}`),
 
   // ── publish ────────────────────────────────────────
   publish: (id, theme) => post(`${trip(id)}/publish`, { theme }),

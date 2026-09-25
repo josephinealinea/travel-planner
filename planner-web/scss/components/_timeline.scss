@@ -126,6 +126,36 @@
 
 .weather-line-muted { font-size: 0.8rem; }
 
+// The extra readings under the temperature: sunrise/sunset, UV, rain, wind,
+// feels-like. Only the ones the API had a value for are in the DOM, so a
+// climate day simply has fewer. A grid, not a wrapping flex row: chips line up
+// in columns at every width, so a phone gets a tidy two-up block instead of a
+// ragged wrap that strands one chip on a line of its own. The column minimum
+// fits the longest chip ("4% · 0.7 mm rain"), which is what keeps one whole;
+// the maximum stops a full-width card spreading them across the screen.
+.weather-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 11rem));
+  gap: 2px t.$space-3;
+  margin-top: t.$space-1;
+  font-size: 0.8rem;
+  // The data itself, so full text colour rather than the muted grey: muted
+  // on the card tint is 4.5:1, right on the edge of legible.
+  color: var(--tp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+// A fixed box so the text of every chip starts at the same distance from its
+// icon, whatever width each emoji happens to render at.
+.weather-detail-icon { font-size: 0.95rem; line-height: 1; width: 1.2em; text-align: center; }
+
 .weather-icon { font-size: 1.05rem; line-height: 1; }
 
 .weather-temps {

@@ -1,7 +1,9 @@
 package com.josephinealinea.planner.importer;
 
 import com.josephinealinea.planner.budget.domain.BudgetItem;
+import com.josephinealinea.planner.budget.domain.SettlementPayment;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.SettlementPaymentRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
 import com.josephinealinea.planner.destinations.domain.Destination;
@@ -82,6 +84,7 @@ public class YamlImporter {
     private final ChecklistRepository checklist;
     private final ItineraryRepository itinerary;
     private final BudgetRepository budget;
+    private final SettlementPaymentRepository payments;
     private final JdbcClient jdbc;
     private final PlatformTransactionManager transactionManager;
 
@@ -91,6 +94,7 @@ public class YamlImporter {
                         ChecklistRepository checklist,
                         ItineraryRepository itinerary,
                         BudgetRepository budget,
+                        SettlementPaymentRepository payments,
                         JdbcClient jdbc,
                         PlatformTransactionManager transactionManager) {
         this.users = users;
@@ -99,6 +103,7 @@ public class YamlImporter {
         this.checklist = checklist;
         this.itinerary = itinerary;
         this.budget = budget;
+        this.payments = payments;
         this.jdbc = jdbc;
         this.transactionManager = transactionManager;
     }
@@ -237,6 +242,10 @@ public class YamlImporter {
             budget.replaceAll(slug, budgetRows);
             report.count("budget rows", budgetRows.size());
 
+            List<SettlementPayment> paymentRows = yaml.payments.findAll(slug);
+            payments.replaceAll(slug, paymentRows);
+            report.count("settlement payments", paymentRows.size());
+
             for (ChecklistItem row : checklistRows) {
                 if (!row.legacyDestinationIds().isEmpty()) {
                     legacyLinks++;
@@ -349,6 +358,8 @@ public class YamlImporter {
             verifier.compareRows("checklist", slug, yaml.checklist.findAll(slug), checklist.findAll(slug));
             verifier.compareRows("itinerary", slug, yaml.itinerary.findAll(slug), itinerary.findAll(slug));
             verifier.compareRows("budget", slug, yaml.budget.findAll(slug), budget.findAll(slug));
+            verifier.compareRows("settlement payments", slug,
+                    yaml.payments.findAll(slug), payments.findAll(slug));
         }
 
         // Nothing filed anywhere else: every table holds exactly what was
@@ -360,6 +371,8 @@ public class YamlImporter {
         requireTableCount(verifier, "checklist_items", report.counts.getOrDefault("checklist items", 0));
         requireTableCount(verifier, "itinerary_items", report.counts.getOrDefault("itinerary entries", 0));
         requireTableCount(verifier, "budget_items", report.counts.getOrDefault("budget rows", 0));
+        requireTableCount(verifier, "settlement_payments",
+                report.counts.getOrDefault("settlement payments", 0));
 
         RateTable rates = yaml.rates.load();
         if (rates.isEmpty()) {
@@ -372,8 +385,8 @@ public class YamlImporter {
         }
         verifier.compareMoney(
                 new ImportVerifier.Store(yaml.trips, yaml.users, yaml.destinations, yaml.checklist,
-                        yaml.itinerary, yaml.budget),
-                new ImportVerifier.Store(trips, users, destinations, checklist, itinerary, budget),
+                        yaml.itinerary, yaml.budget, yaml.payments),
+                new ImportVerifier.Store(trips, users, destinations, checklist, itinerary, budget, payments),
                 rates, yamlTrips);
 
         if (verifier.emailsNormalised() > 0) {

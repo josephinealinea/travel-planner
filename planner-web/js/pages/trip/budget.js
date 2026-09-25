@@ -705,6 +705,85 @@ export function budgetTab() {
       return this.settleRows.length > 0;
     },
 
+    /**
+     * Whether anybody still owes anything. Pairwise, a pair that has been paid
+     * off stays listed (as Settled) so its payment can be seen and undone, so
+     * "rows exist" and "money is owed" are no longer the same question.
+     */
+    get hasOpenSettlements() {
+      return this.settleRows.some((row) => Number(row.net || 0) !== 0);
+    },
+
+    /**
+     * True when the API has simplified the debts across the whole trip
+     * (app.settlement.simplify-debts). A simplified payment is not caused by
+     * any one row, so the details view shows the member's balance instead of
+     * the rows behind a pair.
+     */
+    get settleSimplified() {
+      return !!this.budget.settlementsSimplified;
+    },
+
+    /** Whether the balance dialog (simplified mode's one View details) is open. */
+    settleBalancesOpen: false,
+
+    openSettleBalances() {
+      this.settleBalancesOpen = true;
+    },
+
+    closeSettleBalances() {
+      this.settleBalancesOpen = false;
+    },
+
+    /**
+     * The signed-in member's standing per currency, each with the rows that add
+     * up to it — what the one View details shows while debts are simplified.
+     * A currency that nets to nothing is still listed: seeing that it balances
+     * out is the point of having the button when nobody owes anybody.
+     */
+    get settleBalanceSections() {
+      const items = this.budget.items || [];
+      return (this.budget.balances || []).map((balance) => {
+        const net = Number(balance.net || 0);
+        return {
+          currency: balance.currency,
+          net,
+          summary: net === 0
+            ? 'Square'
+            : net > 0
+              ? `You are owed ${money(net, balance.currency)}`
+              : `You owe ${money(Math.abs(net), balance.currency)}`,
+          netClass: this.settleNetClass({ net }),
+          lines: (balance.lines || []).map((line) => {
+            const amount = Number(line.amount);
+            if (line.paymentId) {
+              // A payment, not an expense: the API sends only its id, and the
+              // wording and date come from the payments already in hand.
+              const payment = (this.budget.payments || []).find((p) => p.id === line.paymentId);
+              return {
+                itemId: line.paymentId,
+                amount: Math.abs(amount),
+                owedToYou: amount > 0,
+                description: payment ? this.settlePaymentLine(payment) : 'A payment',
+                category: null,
+                date: payment ? payment.date : null,
+                isPayment: true,
+              };
+            }
+            const item = items.find((candidate) => candidate.id === line.itemId);
+            return {
+              itemId: line.itemId,
+              amount: Math.abs(amount),
+              owedToYou: amount > 0,
+              description: item ? item.description : 'An expense that is no longer listed',
+              category: item ? item.category : null,
+              date: item ? item.date : null,
+            };
+          }),
+        };
+      });
+    },
+
     /** Same fallback as the Paid by cell: only current members have names. */
     settleMemberName(userId) {
       const member = this.members.find((m) => m.userId === userId);
@@ -731,8 +810,9 @@ export function budgetTab() {
     },
 
     /**
-     * The Net figure said as a direction: "(to receive) 450.00 EUR" or
-     * "(to pay) 450.00 EUR", never a bare negative.
+     * The Net figure said as a direction, in two pieces: a pill that says
+     * "Receive" or "Pay" (settleNetWord), then the amount and currency
+     * (settleNetAmount) — never a bare negative.
      *
      * Which way the money goes is the entire point of this column, and a
      * leading minus is the part of a figure a reader skims past — so the
@@ -740,19 +820,180 @@ export function budgetTab() {
      * also makes the column readable in monochrome and to anyone who does not
      * separate the two hues, which a red/green-only signal would not be.
      *
-     * The amount is shown absolute, because "(to pay) −450.00" would state the
+     * The amount is shown absolute, because "Pay −450.00" would state the
      * same thing twice and invite reading it as a negative debt.
      */
-    settleNetLabel(row) {
+    settleNetWord(row) {
       const net = Number(row.net || 0);
-      if (net === 0) return money(0, row.currency);
-      const direction = net > 0 ? '(to receive)' : '(to pay)';
+      if (net === 0) return 'Settled';
+      return net > 0 ? 'Receive' : 'Pay';
+    },
+
+    /** "450.00 EUR", or empty when there is nothing left to move. */
+    settleNetAmount(row) {
+      const net = Number(row.net || 0);
+      if (net === 0) return '';
       // The figure and its currency are glued together, so a narrow card wraps
-      // after the direction rather than leaving "EUR" stranded on its own line.
+      // after the pill rather than leaving "EUR" stranded on its own line.
       // Anchored to a trailing three-letter code, because a plain replace of
       // the first space would eat a thousands separator in some locales.
-      const amount = money(Math.abs(net), row.currency).replace(/ ([A-Za-z]{3})$/, ' $1');
-      return `${direction} ${amount}`;
+      return money(Math.abs(net), row.currency).replace(/ ([A-Za-z]{3})$/, ' $1');
+    },
+
+    // ── recording payments ──────────────────────────
+
+    /** 'You', or the member's name — a payment reads better as "You paid Sam". */
+    settleWho(userId) {
+      return userId === this.currentUserId ? 'You' : this.settleMemberName(userId);
+    },
+
+    /** "You paid Sam" / "Sam paid you" / "Sam paid Ray". */
+    settlePaymentLine(payment) {
+      const from = this.settleWho(payment.fromUserId);
+      const to = payment.toUserId === this.currentUserId
+        ? 'you'
+        : this.settleMemberName(payment.toUserId);
+      return `${from} paid ${to}`;
+    },
+
+    /** Every payment on the trip, most recent first. */
+    get settlePayments() {
+      return [...(this.budget.payments || [])].sort((a, b) =>
+        (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    },
+
+    /** The two people involved, or the trip owner — the API enforces the same rule. */
+    canManagePayment(payment) {
+      return this.isOwner
+        || payment.fromUserId === this.currentUserId
+        || payment.toUserId === this.currentUserId;
+    },
+
+    /** A pair that nets to zero has nothing left to pay. */
+    settleRowOwing(row) {
+      return Number(row.net || 0) !== 0;
+    },
+
+    payOpen: false,
+    payBusy: false,
+    payError: '',
+    payForm: { fromUserId: '', toUserId: '', amount: '', currency: '', date: '', note: '' },
+    /** What the row said was owed when the dialog opened, in cents — the yardstick for the outcome line. */
+    payOwedCents: 0,
+    payDeleteTarget: null,
+    payDeleteBusy: false,
+
+    /**
+     * The dialog opens filled from the row it was pressed on: whoever owes
+     * pays, the full net is the amount (edit it down for a part payment), and
+     * the currency is fixed — a debt is repaid in the currency it was run up
+     * in, and never converted.
+     */
+    openRecordPayment(row) {
+      const net = Number(row.net || 0);
+      if (net === 0) return;
+      const me = this.currentUserId;
+      this.payOwedCents = Math.round(Math.abs(net) * 100);
+      this.payForm = {
+        fromUserId: net > 0 ? row.otherUserId : me,
+        toUserId: net > 0 ? me : row.otherUserId,
+        amount: Math.abs(net).toFixed(2),
+        currency: row.currency,
+        date: new Date().toISOString().slice(0, 10),
+        note: '',
+      };
+      this.payError = '';
+      this.payOpen = true;
+      this.focusWhenShown('payAmount');
+    },
+
+    /**
+     * What recording this amount would leave, said in words before it is
+     * saved: still owed, settled, or an over-payment that turns the debt round.
+     * Worked in whole cents so 624.91 − 24.91 is 600.00 and not 599.9999….
+     * Null while the amount is not a usable number.
+     */
+    get payOutcome() {
+      const cents = Math.round(Number(this.payForm.amount) * 100);
+      if (!Number.isFinite(cents) || cents <= 0) return null;
+      const left = this.payOwedCents - cents;
+      const currency = this.payForm.currency;
+      const iPay = this.payForm.fromUserId === this.currentUserId;
+      const other = this.settleMemberName(iPay ? this.payForm.toUserId : this.payForm.fromUserId);
+      if (left > 0) return { kind: 'owed', text: `${money(left / 100, currency)} will still be owed.` };
+      if (left === 0) return { kind: 'settled', text: 'This settles it.' };
+      const over = money(-left / 100, currency);
+      return {
+        kind: 'over',
+        text: iPay
+          ? `That is ${over} more than is owed — ${other} would then owe you ${over}.`
+          : `That is ${over} more than is owed — you would then owe ${other} ${over}.`,
+      };
+    },
+
+    async savePayment() {
+      const amount = Number(this.payForm.amount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        this.payError = 'Enter an amount above zero.';
+        return;
+      }
+      this.payError = '';
+      this.payBusy = true;
+      // Worded now, from the dialog as it stands: it is gone by the time the
+      // request comes back, and the toast is the only place the result is
+      // said next to what was just done.
+      const summary = `${this.settlePaymentLine(this.payForm)} ${money(amount, this.payForm.currency)}`;
+      const outcome = this.payOutcome;
+      try {
+        await this.api.recordPayment(this.trip.id, {
+          fromUserId: this.payForm.fromUserId,
+          toUserId: this.payForm.toUserId,
+          amount,
+          currency: this.payForm.currency,
+          date: this.payForm.date || null,
+          note: this.payForm.note.trim() || null,
+        });
+        this.payOpen = false;
+        toast.success(outcome && outcome.kind !== 'over'
+          ? `${summary} — ${outcome.kind === 'settled' ? 'settled' : outcome.text.replace(' will still be owed.', ' left')}`
+          : `${summary} — recorded`);
+        await this.reload();
+      } catch (error) {
+        this.payError = error.fullMessage;
+      } finally {
+        this.payBusy = false;
+      }
+    },
+
+    askDeletePayment(payment) {
+      this.payDeleteTarget = payment;
+    },
+
+    async confirmDeletePayment() {
+      const payment = this.payDeleteTarget;
+      if (!payment) return;
+      this.payDeleteBusy = true;
+      try {
+        await this.api.deletePayment(this.trip.id, payment.id);
+        this.payDeleteTarget = null;
+        toast.success('Payment removed');
+        await this.reload();
+      } catch (error) {
+        toast.error(error.fullMessage);
+      } finally {
+        this.payDeleteBusy = false;
+      }
+    },
+
+    /** The payments between the signed-in member and the open pair, in that currency. */
+    get settleDetailPayments() {
+      if (!this.settleDetail) return [];
+      const other = this.settleDetail.otherUserId;
+      const me = this.currentUserId;
+      return this.settlePayments.filter((payment) =>
+        (payment.currency || this.budget.displayCurrency) === this.settleDetail.currency
+        && ((payment.fromUserId === me && payment.toUserId === other)
+          || (payment.fromUserId === other && payment.toUserId === me)));
     },
 
     openSettleDetails(row) {
@@ -773,7 +1014,8 @@ export function budgetTab() {
     get settleDetailLines() {
       if (!this.settleDetail) return [];
       const items = this.budget.items || [];
-      return (this.settleDetail.lines || []).map((line) => {
+      const lines = this.settleDetail.lines || [];
+      return lines.map((line) => {
         const item = items.find((candidate) => candidate.id === line.itemId);
         return {
           itemId: line.itemId,

@@ -83,6 +83,7 @@ public class YamlPaths {
     public Path itinerary(String slug)    { return travels("itinerary", slug); }
     public Path budget(String slug)       { return travels("budget", slug); }
     public Path weather(String slug)      { return travels("weather", slug); }
+    public Path settlements(String slug)  { return travels("settlements", slug); }
 
     private Path travels(String entity, String slug) {
         return root.resolve("travels").resolve(entity).resolve(Slugs.requireSafe(slug) + ".yml");

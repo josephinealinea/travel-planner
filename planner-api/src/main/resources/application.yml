@@ -66,6 +66,11 @@ app:
     bucket: ${R2_BUCKET:}
     access-key-id: ${R2_ACCESS_KEY_ID:}
     secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  settlement:
+    # Off: Settle Expenses lists who owes whom pair by pair. On: debts are
+    # netted across the whole trip so fewer payments are needed (Splitwise's
+    # "simplify debts").
+    simplify-debts: ${SIMPLIFY_DEBTS:true}
   tiers:
     # Trips a BASIC account may be on, created and joined together.
     basic-max-trips: ${BASIC_MAX_TRIPS:3}
@@ -102,6 +107,10 @@ app:
     horizon-days: 14
     history-days: 85
     cache-ttl: 12h
+    # How long a reading for today's date is trusted. Later days use cache-ttl;
+    # past days are never refetched.
+    today:
+      cache-ttl: 12h
   rates:
     base-url: https://open.er-api.com
     base: EUR

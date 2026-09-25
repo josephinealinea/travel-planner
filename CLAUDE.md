@@ -386,6 +386,81 @@ Rules that are easy to break by accident, all with tests:
     `noSettlementReachesAPublishedFile`, which greps the rendered file
     including a personal page — the one published file rendered *for* a
     viewer, and so the only one where settlements are computed at all.
+  - **`app.settlement.simplify-debts` (`SIMPLIFY_DEBTS`, default off) nets debts
+    across the whole trip.** `SettlementProperties`, a record of its own, read
+    by the `@Autowired` constructor of `BudgetService`; the 7-argument one
+    stays and means off, so tests and `ImportVerifier` are untouched. On,
+    `BudgetService.simplify` computes every member's balance per currency from
+    the charged rows, then matches the largest creditor with the largest
+    debtor until nobody is owed — at most n−1 payments per currency. Four
+    things to keep straight:
+    - **The plan is the trip's, not the viewer's.** Every member computes it
+      independently, so nothing in the matching may depend on who is asking;
+      ties break on user id. The viewer only filters the finished plan to the
+      payments they are part of. `anyTangleNeedsAtMostOneFewerPaymentsThanPeople`
+      checks it from every chair.
+    - **A simplified payment has no rows behind it**, so its `Settlement.lines`
+      is empty. The details view shows `Summary.balances` instead — the
+      member's own standing per currency, with the rows that add up to it (rows
+      that net to nothing for them are left out, but a currency that nets to
+      zero is still listed, so "square" can be seen) — and
+      `settlementsSimplified` tells the page which to show. That is one View
+      details button in the panel's header rather than one per row, since a
+      balance belongs to the member and not to a pair.
+    - **Everything above still holds**: charged rows only, per currency and
+      never converted, `TripMembers.shareOf` for every division (which is why a
+      currency's balances sum to exactly zero), a departed payer skipped, and
+      neither `settlements` nor `balances` on a published page.
+    - **Someone may be told to pay a person they never shared an expense with.**
+      That is the point of simplifying; the settle note says so.
+  - **A payment settles a debt, and is its own record — not an expense.**
+    `SettlementPayment` (`budget/domain`), stored per trip like the other five
+    (`travels/settlements/<slug>.yml`, table `settlement_payments`, Flyway
+    `V10`). It is deliberately **not** a `kind` on `BudgetItem`: every reader of
+    expenses — the table, both breakdowns, native totals, forecast, the other
+    tabs, the publisher, the importer's verifier — would have to remember to
+    skip it, and the fifth door somebody forgets would inflate the trip's cost
+    by every repayment. As its own record it is excluded from all of them by
+    construction; only the settlement maths in `BudgetService` reads it, and
+    `aPaymentChangesNoFigureAnywhere` pins that. Five things to keep straight:
+    - **To the ledger it is "paid by `from`, shared by `to`"**: the payer is
+      credited, the receiver debited, per currency, never converted. Simplified,
+      it joins the whole-trip ledger before the matching, so the remaining plan
+      shrinks and its rows appear in the balance breakdown (`Balance.Line.paymentId`).
+      Pairwise, `Settlement` gains `paidYou` / `youPaid` and
+      `net = owesYou − youOwe − paidYou + youPaid`; `owesYou` / `youOwe` stay
+      gross so a paid-off pair still says what happened. A pair that nets to
+      zero stays listed as Settled, so its payment can be seen and undone.
+    - **Either party or the owner records or deletes one**
+      (`SettlementService.requireInvolved`); any other member gets 403, a
+      non-member 404. The author is `createdByUserId`; there is **no edit** —
+      delete and record again — so `updatedBy…` stays absent — and no
+      confirmation from the receiver.
+    - **A payment naming somebody who has left is ignored** by the maths
+      (`countedPayments`), like a departed payer's expense, and kept in the
+      file so re-adding them restores it.
+    - **It never reaches a published page.** `Summary.payments` is empty with
+      no signed-in member, `PublishedTrip` never names one, and
+      `noPaymentReachesAPublishedFile` searches every rendered file for the
+      amount and the note.
+    - **Deleting a trip must delete them**: a sixth file in
+      `YamlTripRepository.delete`, `ON DELETE CASCADE` in Postgres, and the
+      importer copies, counts and verifies them (`settlement payments`).
+      `BudgetService` reaches the repository through its nine-argument
+      `@Autowired` constructor; the shorter ones leave it null, meaning none.
+    - **Frontend:** each row of the settle table has **Record payment**
+      (prefilled from the row; the amount can be lowered for a part payment),
+      and a **Payments** list under the table has Delete. The currency is
+      fixed by the row — a debt is repaid in the currency it was run up in — so
+      it is part of the label ("Amount (PEN)"), not a field that looks editable.
+      The dialog says what saving would leave *before* it is saved (`payOutcome`:
+      still owed, settled, or an over-payment that turns the debt round), worked
+      in whole cents, and the toast repeats the outcome ("You paid Sam 24.91 PEN
+      — 600.00 PEN left"). Toasts have no action button, so there is no Undo on
+      it; Delete beside the payment is the undo.
+      The settle table is a `table-cards-plain` card on a phone — with two
+      buttons per row, the default card layout squeezed the details into a
+      sliver.
 - **The budget rollup is computed twice, and the two halves never mix.**
   `BudgetService.Summary` carries `charged` and `forecast`, each a whole
   `Breakdown` — category slices, country slices, native totals, total and
@@ -1221,6 +1296,37 @@ batching discipline — one request per endpoint for the whole page, coordinates
 de-duplicated across days, never one per card. Load scales with readers rather
 than concentrating on the server, which is the one good thing about having no
 API there.
+
+**Details: more of the same answer, no more requests.** Each card also shows
+sunrise/sunset, UV, rain chance, wind and feels-like, and a tooltip carries the
+rest (rain and snow amounts, humidity, cloud cover, daylight, wind direction).
+They ride the existing two calls as extra `daily=` values, chosen from one
+catalogue, `weather/DetailField`, which drives the request, the parsing and —
+through `WeatherDetailsDriftTest` — what `page.js` must ask for.
+
+- **One document, not columns.** `WeatherRecord.details` is a map keyed by
+  `DetailField.key()`: `jsonb` in Postgres (`V11`), a nested mapping in YAML, so
+  the next field is a line in the catalogue and a chip, not a migration.
+  `TripScopedJdbcRepository` takes a `jsonColumns` set to bind it (text cast to
+  `jsonb` in the statement, like `users.published_page`).
+- **Absent means unknown, and 0 is an answer.** A null column leaves the key
+  out; a real 0 (0 mm, 0 % chance, 0 km/h) is kept and shown. Every frontend
+  test is `!= null`, never truthiness — the same trap as WMO code 0.
+- **`/climate` is only asked what it can answer.** Verified live for a Cusco
+  date: it serves sunrise, sunset, daylight, rain, snowfall, wind, gusts,
+  humidity and cloud cover, and answers **null** for UV, feels-like, rain
+  probability, wind direction, sunshine and showers. Those are `inClimate =
+  false`, so a climate card just has fewer chips. Recheck if the model changes.
+- **`timezone=auto` on both calls**, or sunrise and sunset come back in UTC
+  (Cusco 05:16 read as 10:16). The times are destination-local wall-clock.
+- **An old record has no `details`** and shows exactly as before; it is filled
+  in when its own TTL lapses, never by a forced refetch.
+- **Today has its own TTL.** `app.weather.today.cache-ttl` (`TodayWeatherProperties`,
+  default 12 h) governs a reading for today's date; `app.weather.cache-ttl`
+  governs later days; past days are never refetched. Both are 12 h, so the
+  split changes nothing until somebody sets one.
+- **Air quality is left out on purpose:** a separate host (a third request),
+  hourly only and forecast-only.
 
 ## Exchange rates (open.er-api.com)
 

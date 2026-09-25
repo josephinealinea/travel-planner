@@ -178,3 +178,106 @@ export function hasReading(day) {
 function round(value) {
   return value == null ? null : Math.round(value);
 }
+
+// ── details ──────────────────────────────────────────────────────────────
+//
+// `day.details` is the document the API stores beside the reading: sunrise,
+// UV, wind and so on, keyed as DetailField.key() names them. Two rules carry
+// over from the API and are easy to break here:
+//
+//  - **absent means unknown, and 0 is an answer.** Every test below is
+//    `!= null`, never truthiness, or "0% chance of rain" and "no wind" would
+//    quietly disappear — the very days a traveller most wants told.
+//  - **the endpoints do not all answer everything.** A CLIMATE row has no UV,
+//    feels-like, rain probability or wind direction, so those chips simply are
+//    not there; nothing renders a placeholder for them.
+
+const known = (value) => value != null;
+const whole = (value) => Math.round(value);
+
+/** "05:35" from "2026-09-25T05:35" — the API already sends destination-local time. */
+const clock = (iso) => (typeof iso === 'string' && iso.length >= 16 ? iso.slice(11, 16) : null);
+
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const compass = (degrees) => COMPASS[Math.round(degrees / 45) % 8];
+
+/**
+ * The few that earn room on the card itself, in reading order.
+ *
+ * Every chip says what it is in words ("4% rain", "Feels 23° / 5°"), not just
+ * with an icon: a tooltip cannot be reached by touch or by everyone using a
+ * screen reader, so the title is a bonus and never the only explanation.
+ */
+export function detailChips(day) {
+  const d = day?.details;
+  if (!d) return [];
+  const chips = [];
+
+  const rise = clock(d.sunrise);
+  const set = clock(d.sunset);
+  if (rise || set) {
+    chips.push({
+      id: 'sun',
+      icon: '🌅',
+      text: [rise, set].filter(Boolean).join(' · '),
+      title: 'Sunrise · sunset, local time',
+    });
+  }
+  if (known(d.uvIndexMax)) {
+    chips.push({ id: 'uv', icon: '☀️', text: `UV ${whole(d.uvIndexMax)}`, title: 'Peak UV index' });
+  }
+
+  // Chance and amount share one chip. A dry day with a known chance still says
+  // "0% rain" (the answer a traveller wants); a dry climate day, which has no
+  // chance to state, says nothing — its condition label already reads "Dry".
+  const rainParts = [];
+  if (known(d.precipitationProbabilityMax)) rainParts.push(`${whole(d.precipitationProbabilityMax)}%`);
+  if (known(d.rainSum) && d.rainSum > 0) rainParts.push(`${round1(d.rainSum)} mm`);
+  if (rainParts.length) {
+    chips.push({ id: 'rain', icon: '💧', text: `${rainParts.join(' · ')} rain`, title: 'Chance and amount of rain' });
+  }
+  if (known(d.snowfallSum) && d.snowfallSum > 0) {
+    chips.push({ id: 'snow', icon: '❄️', text: `${round1(d.snowfallSum)} cm snow`, title: 'Snowfall' });
+  }
+
+  if (known(d.windSpeedMax)) {
+    chips.push({
+      id: 'wind',
+      icon: '💨',
+      text: `${whole(d.windSpeedMax)} km/h wind`,
+      title: known(d.windGustsMax) ? `Gusts up to ${whole(d.windGustsMax)} km/h` : 'Top wind speed',
+    });
+  }
+
+  // Feels-like only earns a chip when it differs from the real temperature by
+  // a degree or more: two near-identical ranges stacked on a card are noise,
+  // and it is the only chip that could be mistaken for the reading above it.
+  if (known(d.apparentTemperatureMax) || known(d.apparentTemperatureMin)) {
+    const differs = (feels, real) => known(feels) && (!known(real) || Math.abs(feels - real) >= 1);
+    if (differs(d.apparentTemperatureMax, day.temperatureMax) || differs(d.apparentTemperatureMin, day.temperatureMin)) {
+      const high = known(d.apparentTemperatureMax) ? `${whole(d.apparentTemperatureMax)}°` : null;
+      const low = known(d.apparentTemperatureMin) ? `${whole(d.apparentTemperatureMin)}°` : null;
+      chips.push({ id: 'feels', icon: '🌡', text: `Feels ${[high, low].filter(Boolean).join(' / ')}`, title: 'Feels like' });
+    }
+  }
+  return chips;
+}
+
+/** Everything else that is known, as one sentence for a tooltip. */
+export function detailsTitle(day) {
+  const d = day?.details;
+  if (!d) return '';
+  const parts = [];
+  if (known(d.humidityMean)) parts.push(`Humidity ${whole(d.humidityMean)}%`);
+  if (known(d.cloudCoverMean)) parts.push(`Cloud cover ${whole(d.cloudCoverMean)}%`);
+  if (known(d.daylightSeconds)) {
+    const minutes = Math.round(d.daylightSeconds / 60);
+    parts.push(`Daylight ${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`);
+  }
+  if (known(d.windDirection)) parts.push(`Wind from ${compass(d.windDirection)}`);
+  return parts.join(' · ');
+}
+
+function round1(value) {
+  return Math.round(value * 10) / 10;
+}

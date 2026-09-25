@@ -76,9 +76,11 @@ public class WeatherClient {
     private static final Logger log = LoggerFactory.getLogger(WeatherClient.class);
 
     private static final String DAILY_FORECAST =
-            "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum";
+            "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,"
+                    + DetailField.dailyParameter(DetailField.forForecast());
     private static final String DAILY_CLIMATE =
-            "temperature_2m_max,temperature_2m_min,precipitation_sum";
+            "temperature_2m_max,temperature_2m_min,precipitation_sum,"
+                    + DetailField.dailyParameter(DetailField.forClimate());
     private static final Duration RETRY_DELAY = Duration.ofSeconds(1);
 
     private final RestClient forecast;
@@ -110,7 +112,8 @@ public class WeatherClient {
                           Double temperatureMax,
                           Double temperatureMin,
                           Double precipitation,
-                          DayWeather.Source source) {}
+                          DayWeather.Source source,
+                          Map<String, Object> details) {}
 
     /**
      * Looks up every point for every date in the range. No caching here — the
@@ -308,10 +311,34 @@ public class WeatherClient {
 
             Double rain = number(daily, "precipitation_sum", i);
             Double code = number(daily, "weather_code", i);
+
+            // Only what the endpoint can answer was asked for, and a null
+            // column leaves the key out: absent means unknown, and 0 is a real
+            // answer that must survive.
+            Map<String, Object> details = new LinkedHashMap<>();
+            List<DetailField> asked = source == DayWeather.Source.CLIMATE
+                    ? DetailField.forClimate() : DetailField.forForecast();
+            for (DetailField field : asked) {
+                Object value = field.text()
+                        ? text(daily, field.parameter(), i)
+                        : number(daily, field.parameter(), i);
+                if (value != null) details.put(field.key(), value);
+            }
+
             readings.put(LocalDate.parse(times.get(i).asText()),
-                    new Reading(code == null ? null : code.intValue(), max, min, rain, source));
+                    new Reading(code == null ? null : code.intValue(), max, min, rain, source, details));
         }
         return readings;
+    }
+
+    /** As {@link #number}, for the columns that are strings (sunrise, sunset). */
+    private static String text(JsonNode daily, String field, int index) {
+        JsonNode column = daily.path(field);
+        if (!column.isArray() || index >= column.size()) return null;
+        JsonNode value = column.get(index);
+        if (value == null || value.isNull()) return null;
+        String text = value.asText();
+        return text.isBlank() ? null : text;
     }
 
     /** Null for a missing column, a short column, or an explicit JSON null. */

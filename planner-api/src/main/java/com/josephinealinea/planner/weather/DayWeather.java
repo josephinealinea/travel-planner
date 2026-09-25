@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.weather;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * One day's weather for one place, as the itinerary shows it.
@@ -25,7 +26,8 @@ public record DayWeather(
         Double temperatureMax,
         Double temperatureMin,
         Double precipitation,
-        Source source) {
+        Source source,
+        Map<String, Object> details) {
 
     public enum Source {
         /**
@@ -47,6 +49,6 @@ public record DayWeather(
     public static DayWeather unavailable(LocalDate date, String destinationId, String name,
                                          String countryCode, String countryFlag) {
         return new DayWeather(date, destinationId, name, countryCode, countryFlag,
-                null, null, null, null, Source.UNAVAILABLE);
+                null, null, null, null, Source.UNAVAILABLE, Map.of());
     }
 }

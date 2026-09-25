@@ -175,7 +175,11 @@ public class TripViewAssembler {
         }
         var written = pages.publishedMemberPages(trip.getSlug());
         String base = publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/";
-        return PersonalPages.slugsFor(trip, usersById(trip)).values().stream()
+        // The owner's own page is already offered as "my page" beside the
+        // trip's, so this lists everybody else's.
+        return PersonalPages.slugsFor(trip, usersById(trip)).entrySet().stream()
+                .filter(entry -> !entry.getKey().equals(currentUserId))
+                .map(Map.Entry::getValue)
                 .filter(written::contains)
                 .sorted()
                 .map(slug -> base + trip.getSlug() + "/m/" + slug)

@@ -10,7 +10,9 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.josephinealinea.planner.budget.api.BudgetService;
+import com.josephinealinea.planner.budget.api.SettlementProperties;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.SettlementPaymentRepository;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
 import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
@@ -178,11 +180,13 @@ final class ImportVerifier {
                  DestinationRepository destinations,
                  ChecklistRepository checklist,
                  ItineraryRepository itinerary,
-                 BudgetRepository budget) {
+                 BudgetRepository budget,
+                 SettlementPaymentRepository payments) {
 
         BudgetService budgetService(RatesService rates) {
             return new BudgetService(budget, itinerary, destinations, users,
-                    new TripAccessService(trips), new TripCountries(destinations), rates);
+                    new TripAccessService(trips), new TripCountries(destinations), rates,
+                    SettlementProperties.off(), payments);
         }
     }
 

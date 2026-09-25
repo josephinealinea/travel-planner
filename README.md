@@ -93,7 +93,12 @@ trip.
    somebody presses **Set this Checklist to Complete**.
 6. **Costs become budget.** A cost on a plan creates a matching budget record.
    Editing the cost updates the amount; clearing it removes the record. Expenses
-   can also be added by hand.
+   can also be added by hand. Settle Expenses lists who owes whom pair by pair;
+   set `SIMPLIFY_DEBTS=true` to net debts across the whole trip so fewer payments
+   are needed (off by default).
+   **Record payment** on a line of the Settle panel marks a debt (or part of one)
+   as paid: it settles the balance without counting as spending, so no total
+   changes, and it never appears on a published page.
 7. **Publish.** The owner can publish at any point, however unfinished. Any other
    member gets **Request to Publish**, and the owner's approval publishes. Set `REQUIRE_OWNER_APPROVAL=false` to let any member publish and
    re-publish directly (only the owner can unpublish).

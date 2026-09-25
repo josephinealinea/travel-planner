@@ -47,7 +47,9 @@ public class JdbcWeatherRepository extends TripScopedJdbcRepository<WeatherRecor
     public JdbcWeatherRepository(JdbcClient jdbc, PlatformTransactionManager transactionManager) {
         super(jdbc, transactionManager, "weather_records",
                 List.of("latitude", "longitude", "date", "weather_code",
-                        "temperature_max", "temperature_min", "precipitation", "source", "fetched_at"),
+                        "temperature_max", "temperature_min", "precipitation", "source", "fetched_at",
+                        "details"),
+                java.util.Set.of("details"),
                 WeatherRecord::getId);
     }
 
@@ -63,6 +65,7 @@ public class JdbcWeatherRepository extends TripScopedJdbcRepository<WeatherRecor
         values.put("precipitation", record.getPrecipitation());
         values.put("source", JdbcValues.enumName(record.getSource()));
         values.put("fetched_at", JdbcValues.timestamptz(record.getFetchedAt()));
+        values.put("details", JdbcValues.json(record.getDetails()));
         return values;
     }
 
@@ -79,6 +82,9 @@ public class JdbcWeatherRepository extends TripScopedJdbcRepository<WeatherRecor
         record.setPrecipitation(JdbcValues.nullableDouble(rs, "precipitation"));
         record.setSource(JdbcValues.enumValue(rs, "source", DayWeather.Source.class, null));
         record.setFetchedAt(JdbcValues.instant(rs, "fetched_at"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> details = JdbcValues.json(rs, "details", Map.class);
+        record.setDetails(details);
         return record;
     }
 }

@@ -6,6 +6,7 @@ import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.domain.Trip;
 import com.josephinealinea.planner.weather.DayWeather;
+import com.josephinealinea.planner.weather.TodayWeatherProperties;
 import com.josephinealinea.planner.weather.WeatherClient;
 import com.josephinealinea.planner.weather.domain.WeatherRecord;
 import com.josephinealinea.planner.weather.infra.WeatherRepository;
@@ -88,20 +89,31 @@ public class WeatherService {
     private final TripAccessService access;
     private final WeatherClient weather;
     private final Duration ttl;
+    private final Duration todayTtl;
     private final Clock clock;
     /** Readings looked up outside the trip's own dates; never persisted. */
     private final Map<String, Map<String, WeatherRecord>> unsaved = new ConcurrentHashMap<>();
 
-    // @Autowired because there are two constructors. Without it Spring cannot
-    // choose, falls back to looking for a no-arg one, and the app fails to
-    // start — see CLAUDE.md, Traps.
+    // @Autowired because there are several constructors. Without it Spring
+    // cannot choose, falls back to looking for a no-arg one, and the app fails
+    // to start — see CLAUDE.md, Traps.
     @Autowired
     public WeatherService(DestinationRepository destinations,
                           WeatherRepository stored,
                           TripAccessService access,
                           WeatherClient weather,
+                          AppProperties props,
+                          TodayWeatherProperties today) {
+        this(destinations, stored, access, weather, props, today, Clock.systemUTC());
+    }
+
+    public WeatherService(DestinationRepository destinations,
+                          WeatherRepository stored,
+                          TripAccessService access,
+                          WeatherClient weather,
                           AppProperties props) {
-        this(destinations, stored, access, weather, props, Clock.systemUTC());
+        this(destinations, stored, access, weather, props,
+                TodayWeatherProperties.defaults(), Clock.systemUTC());
     }
 
     /**
@@ -115,11 +127,23 @@ public class WeatherService {
                    WeatherClient weather,
                    AppProperties props,
                    Clock clock) {
+        this(destinations, stored, access, weather, props,
+                TodayWeatherProperties.defaults(), clock);
+    }
+
+    public WeatherService(DestinationRepository destinations,
+                   WeatherRepository stored,
+                   TripAccessService access,
+                   WeatherClient weather,
+                   AppProperties props,
+                   TodayWeatherProperties today,
+                   Clock clock) {
         this.destinations = destinations;
         this.stored = stored;
         this.access = access;
         this.weather = weather;
         this.ttl = props.weather().cacheTtl();
+        this.todayTtl = today.cacheTtl();
         this.clock = clock;
     }
 
@@ -181,8 +205,10 @@ public class WeatherService {
 
                 // Rule 1: a past date already answered is final.
                 if (record != null && record.isForDateInThePast(today)) continue;
-                // Rule 3: a future date is good until the TTL lapses.
-                if (record != null && !record.olderThan(now, ttl)) continue;
+                // Rule 3: a present or future date is good until its TTL lapses —
+                // today's has a setting of its own, later days share the general one.
+                Duration limit = day.equals(today) ? todayTtl : ttl;
+                if (record != null && !record.olderThan(now, limit)) continue;
 
                 anyGap = true;
                 if (neededFrom == null || day.isBefore(neededFrom)) neededFrom = day;
@@ -213,6 +239,8 @@ public class WeatherService {
                 record.setTemperatureMin(reading.temperatureMin());
                 record.setPrecipitation(reading.precipitation());
                 record.setSource(reading.source());
+                record.setDetails(reading.details() == null || reading.details().isEmpty()
+                        ? null : reading.details());
                 record.setFetchedAt(now);
                 toSave.add(record);
                 held.put(record.getId(), record);
@@ -271,7 +299,8 @@ public class WeatherService {
                     record.getTemperatureMax(),
                     record.getTemperatureMin(),
                     record.getPrecipitation(),
-                    record.getSource()));
+                    record.getSource(),
+                    record.getDetails() == null ? Map.of() : record.getDetails()));
         }
         return days;
     }

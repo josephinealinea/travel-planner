@@ -105,6 +105,20 @@ public abstract class TripScopedJdbcRepository<T> implements TripScopedRepositor
                                        String table,
                                        List<String> columns,
                                        Function<T, String> idOf) {
+        this(jdbc, transactionManager, table, columns, Set.of(), idOf);
+    }
+
+    /**
+     * @param jsonColumns the entity columns that are {@code jsonb}: their values
+     *                    are bound as text and cast in the statement
+     *                    ({@code :col::jsonb}), see {@link JdbcValues#json}
+     */
+    protected TripScopedJdbcRepository(JdbcClient jdbc,
+                                       PlatformTransactionManager transactionManager,
+                                       String table,
+                                       List<String> columns,
+                                       Set<String> jsonColumns,
+                                       Function<T, String> idOf) {
         this.jdbc = jdbc;
         this.transactions = new TransactionTemplate(transactionManager);
         this.table = table;
@@ -122,7 +136,13 @@ public abstract class TripScopedJdbcRepository<T> implements TripScopedRepositor
         }
 
         String names = this.columns.isEmpty() ? "" : ", " + String.join(", ", this.columns);
-        String values = this.columns.stream().map(c -> ":" + c).collect(Collectors.joining(", "));
+        if (!this.columns.containsAll(jsonColumns)) {
+            throw new IllegalArgumentException(table + ": json columns " + jsonColumns
+                    + " are not all listed in " + this.columns);
+        }
+        String values = this.columns.stream()
+                .map(c -> ":" + c + (jsonColumns.contains(c) ? "::jsonb" : ""))
+                .collect(Collectors.joining(", "));
         String valueList = this.columns.isEmpty() ? "" : ", " + values;
 
         this.selectAll = "SELECT * FROM " + table + " WHERE trip_id = " + TRIP_ID_OF_SLUG + " ORDER BY seq";

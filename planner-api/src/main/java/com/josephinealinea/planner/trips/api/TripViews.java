@@ -131,14 +131,30 @@ public final class TripViews {
                               * no settlement has a route into a public file.
                               * See BudgetService.Settlement.
                               */
-                             List<BudgetService.Settlement> settlements) {
+                             List<BudgetService.Settlement> settlements,
+                             /**
+                              * Whether `settlements` are simplified across the
+                              * whole trip (app.settlement.simplify-debts), and
+                              * if so the signed-in member's balance behind
+                              * them. Member-only like settlements: neither
+                              * reaches PublishedTrip.Budget.
+                              */
+                             boolean settlementsSimplified,
+                             List<BudgetService.Balance> balances,
+                             /**
+                              * Payments recorded to settle debts, for the
+                              * Settle panel to list. Member-only like
+                              * settlements, and never counted in a figure.
+                              */
+                             List<com.josephinealinea.planner.budget.domain.SettlementPayment> payments) {
 
         public static BudgetView from(BudgetService.Summary summary,
                                       com.josephinealinea.planner.rates.domain.RateTable table) {
             return new BudgetView(summary.items(), summary.displayCurrency(), summary.totalsCurrency(),
                     table.getBase(), table.getDate(), table.getRates(),
                     summary.shares(), summary.charged(), summary.forecast(),
-                    summary.settlements());
+                    summary.settlements(), summary.settlementsSimplified(), summary.balances(),
+                    summary.payments());
         }
     }
 

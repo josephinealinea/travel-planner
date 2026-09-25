@@ -1,7 +1,9 @@
 package com.josephinealinea.planner.budget.api;
 
 import com.josephinealinea.planner.budget.domain.BudgetItem;
+import com.josephinealinea.planner.budget.domain.SettlementPayment;
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.SettlementPaymentRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.api.TripCountries;
@@ -18,6 +20,7 @@ import com.josephinealinea.planner.shared.Ids;
 import com.josephinealinea.planner.trips.api.TripAccessService;
 import com.josephinealinea.planner.trips.api.TripMembers;
 import com.josephinealinea.planner.trips.domain.Trip;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -130,7 +133,49 @@ public class BudgetService {
                           Map<String, BigDecimal> shares,
                           Breakdown charged,
                           Breakdown forecast,
-                          List<Settlement> settlements) {}
+                          List<Settlement> settlements,
+                          /**
+                           * True when `settlements` were simplified across the
+                           * whole trip rather than listed pair by pair, so the
+                           * page can say what it is showing. Tells the reader
+                           * how to interpret the list; carries no money.
+                           */
+                          boolean settlementsSimplified,
+                          /**
+                           * The signed-in member's own balance per currency,
+                           * with the rows behind it. Only filled while
+                           * simplifying — the pairwise list already says which
+                           * rows explain each line, and a simplified payment
+                           * has no rows of its own, so this is what the
+                           * details view shows instead. A currency is listed
+                           * whenever a row involves the member, including when
+                           * it nets to zero.
+                           */
+                          List<Balance> balances,
+                          /**
+                           * Every settlement payment recorded on the trip, for
+                           * the signed-in member's Settle panel to list. Never
+                           * counted in any figure above — see
+                           * {@link SettlementPayment}. Empty with no signed-in
+                           * member, so a published page has none.
+                           */
+                          List<SettlementPayment> payments) {}
+
+    /**
+     * One member's standing in one currency across the whole trip: what they
+     * are owed (positive) or owe (negative), and the rows that add up to it.
+     *
+     * A `Line` carries the id of the expense row or of the payment that made
+     * it (exactly one is set) and its effect on the balance, and nothing else —
+     * the frontend already holds every row in `items` and every payment in
+     * `payments`. An expense that nets to nothing for the member (they paid
+     * for something only they share) is left out, since it moves nothing and
+     * would only be noise.
+     */
+    public record Balance(String currency, BigDecimal net, List<Line> lines) {
+
+        public record Line(String itemId, String paymentId, BigDecimal amount) {}
+    }
 
     /**
      * What one other member and the signed-in member owe each other, in one
@@ -147,6 +192,11 @@ public class BudgetService {
      * would be a number nobody can hand over — and it would drift with the
      * rates besides. Two currencies with one member are two of these.
      *
+     * `net` is what is still owed once payments are counted: positive when the
+     * other member owes the signed-in one, negative when it is the other way.
+     * `owesYou` and `youOwe` stay gross on purpose, so a settled pair still
+     * says what happened and the payments beside it say why it is zero.
+     *
      * A `Line` carries the row's id and nothing else about it: the frontend
      * already holds every row in `items` and looks up the description, date and
      * category there, so no field is kept in two places to fall out of step.
@@ -155,6 +205,10 @@ public class BudgetService {
                              String currency,
                              BigDecimal owesYou,
                              BigDecimal youOwe,
+                             /** What the other member has paid the signed-in member so far. */
+                             BigDecimal paidYou,
+                             /** What the signed-in member has paid the other member so far. */
+                             BigDecimal youPaid,
                              BigDecimal net,
                              List<Line> lines) {
 
@@ -198,7 +252,11 @@ public class BudgetService {
     private final TripAccessService access;
     private final TripCountries countries;
     private final RatesService rates;
+    private final boolean simplifyDebts;
+    /** Null means none: the constructors that predate payments leave it unset. */
+    private final SettlementPaymentRepository settlementPayments;
 
+    /** Simplification off — the behaviour from before the flag existed. */
     public BudgetService(BudgetRepository budget,
                          ItineraryRepository itinerary,
                          DestinationRepository destinations,
@@ -206,6 +264,34 @@ public class BudgetService {
                          TripAccessService access,
                          TripCountries countries,
                          RatesService rates) {
+        this(budget, itinerary, destinations, users, access, countries, rates,
+                SettlementProperties.off());
+    }
+
+    /** Simplification as configured, and no payments. */
+    public BudgetService(BudgetRepository budget,
+                         ItineraryRepository itinerary,
+                         DestinationRepository destinations,
+                         UserRepository users,
+                         TripAccessService access,
+                         TripCountries countries,
+                         RatesService rates,
+                         SettlementProperties settlement) {
+        this(budget, itinerary, destinations, users, access, countries, rates, settlement, null);
+    }
+
+    @Autowired
+    public BudgetService(BudgetRepository budget,
+                         ItineraryRepository itinerary,
+                         DestinationRepository destinations,
+                         UserRepository users,
+                         TripAccessService access,
+                         TripCountries countries,
+                         RatesService rates,
+                         SettlementProperties settlement,
+                         SettlementPaymentRepository settlementPayments) {
+        this.simplifyDebts = settlement.simplifyDebts();
+        this.settlementPayments = settlementPayments;
         this.budget = budget;
         this.itinerary = itinerary;
         this.destinations = destinations;
@@ -291,11 +377,183 @@ public class BudgetService {
         // buckets — the arithmetic is a few dozen BigDecimal operations, and a
         // single pass would have to thread "which buckets does this row
         // belong in" through the country split and the native sums as well.
+        // Payments settle debts and are otherwise invisible: nothing above this
+        // line reads them, which is what keeps a repayment out of every total.
+        // With no signed-in member (a published page) there is nobody to
+        // settle for, so none are loaded at all.
+        List<SettlementPayment> allPayments = user == null || settlementPayments == null
+                ? List.of()
+                : settlementPayments.findAll(trip.getSlug());
+        List<SettlementPayment> counted = countedPayments(allPayments, members);
+        Simplified simplified = simplifyDebts && user != null
+                ? simplify(items, counted, members, user.getId(), tripCurrency)
+                : null;
         return new Summary(items, tripCurrency, target, shares,
                 breakdown(charges.stream().filter(c -> c.item().isConfirmed()).toList(),
                         target, tripCurrency, pivot, table, countrySamples),
                 breakdown(charges, target, tripCurrency, pivot, table, countrySamples),
-                settlements(items, members, user, tripCurrency));
+                simplified != null ? simplified.settlements()
+                        : settlements(items, counted, members, user, tripCurrency),
+                simplifyDebts,
+                simplified != null ? simplified.balances() : List.of(),
+                allPayments);
+    }
+
+    /**
+     * The payments that take part in the maths: both people still on the trip.
+     * The trip no longer knows anybody who has left, so it does not settle with
+     * them — the same rule that drops a departed payer's expense — and the
+     * record itself is kept, so re-adding them restores it.
+     */
+    private static List<SettlementPayment> countedPayments(List<SettlementPayment> all, TripMembers members) {
+        return all.stream()
+                .filter(p -> p.getAmount() != null && p.getAmount().signum() > 0)
+                .filter(p -> p.getFromUserId() != null && p.getToUserId() != null
+                        && !p.getFromUserId().equals(p.getToUserId()))
+                .filter(p -> members.userIds().contains(p.getFromUserId())
+                        && members.userIds().contains(p.getToUserId()))
+                .toList();
+    }
+
+    /** A viewer's payments and balances under simplification, worked out together. */
+    private record Simplified(List<Settlement> settlements, List<Balance> balances) {}
+
+    private static final BigDecimal ZERO_MONEY = BigDecimal.ZERO.setScale(2);
+
+    /** One payment in the plan: `from` hands `to` this much, in one currency. */
+    private record Transfer(String from, String to, String currency, BigDecimal amount) {}
+
+    /**
+     * Settle Expenses with simplify-debts on: net every member's position across
+     * the whole trip, then pay it off with as few transfers as a greedy match
+     * finds (Splitwise's approach — the true minimum is NP-hard, and this is
+     * never worse than one payment fewer than there are people).
+     *
+     * <b>The plan is the trip's, not the viewer's.</b> Every member computes it
+     * independently from the same rows, so nothing in the matching may depend on
+     * who is asking, or two members would be told different things about the
+     * same money. The viewer only filters the finished plan down to the
+     * payments they are part of. Ties are broken by user id for the same reason.
+     *
+     * The rules that made the pairwise version right are kept: charged rows
+     * only, per currency and never converted, a payer who has left the trip is
+     * not settled with, and the division is {@link TripMembers#shareOf}, so the
+     * figures reconcile with the Budget tab to the cent. Because shareOf hands
+     * out the odd cent, each currency's balances sum to exactly zero.
+     */
+    private static Simplified simplify(List<BudgetItem> items, List<SettlementPayment> payments,
+                                       TripMembers members, String me, String tripCurrency) {
+        // currency -> user -> what they are owed (positive) or owe (negative)
+        Map<String, Map<String, BigDecimal>> standing = new LinkedHashMap<>();
+        // currency -> the viewer's own rows behind their balance
+        Map<String, List<Balance.Line>> mine = new LinkedHashMap<>();
+
+        for (BudgetItem item : items) {
+            if (!item.isConfirmed() || item.getAmount() == null) continue;
+            String payer = effectivePayerOf(item);
+            if (payer == null || !members.userIds().contains(payer)) continue;
+
+            String currency = nativeCurrencyOf(item, tripCurrency);
+            Map<String, BigDecimal> ledger = standing.computeIfAbsent(currency, c -> new LinkedHashMap<>());
+            BigDecimal amount = item.getAmount().setScale(2, RoundingMode.HALF_UP);
+            ledger.merge(payer, amount, BigDecimal::add);
+
+            BigDecimal myEffect = payer.equals(me) ? amount : BigDecimal.ZERO;
+            for (String sharer : members.sharersOf(item.getSharedByUserIds())) {
+                BigDecimal share = members.shareOf(item.getAmount(), item.getSharedByUserIds(), sharer);
+                if (share == null) continue;
+                ledger.merge(sharer, share.negate(), BigDecimal::add);
+                if (sharer.equals(me)) myEffect = myEffect.subtract(share);
+            }
+            if (myEffect.signum() != 0) {
+                mine.computeIfAbsent(currency, c -> new ArrayList<>())
+                        .add(new Balance.Line(item.getId(), null, myEffect));
+            }
+        }
+
+        // A payment is a row "paid by from, shared by to" and nothing more: the
+        // payer is credited and the receiver debited, so it lands in the same
+        // ledger before anything is matched and the remaining plan shrinks.
+        for (SettlementPayment payment : payments) {
+            String currency = paymentCurrencyOf(payment, tripCurrency);
+            Map<String, BigDecimal> ledger = standing.computeIfAbsent(currency, c -> new LinkedHashMap<>());
+            BigDecimal amount = payment.getAmount().setScale(2, RoundingMode.HALF_UP);
+            ledger.merge(payment.getFromUserId(), amount, BigDecimal::add);
+            ledger.merge(payment.getToUserId(), amount.negate(), BigDecimal::add);
+
+            BigDecimal myEffect = payment.getFromUserId().equals(me) ? amount
+                    : payment.getToUserId().equals(me) ? amount.negate() : BigDecimal.ZERO;
+            if (myEffect.signum() != 0) {
+                mine.computeIfAbsent(currency, c -> new ArrayList<>())
+                        .add(new Balance.Line(null, payment.getId(), myEffect));
+            }
+        }
+
+        List<Transfer> plan = new ArrayList<>();
+        List<Balance> balances = new ArrayList<>();
+        for (String currency : new TreeSet<>(standing.keySet())) {
+            Map<String, BigDecimal> ledger = standing.get(currency);
+            plan.addAll(match(currency, ledger));
+            // Listed whenever a row involves the member, even if it nets to
+            // zero: "you are square" is an answer worth being able to see.
+            List<Balance.Line> lines = mine.getOrDefault(currency, List.of());
+            if (!lines.isEmpty()) {
+                balances.add(new Balance(currency,
+                        ledger.getOrDefault(me, BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP),
+                        lines));
+            }
+        }
+
+        List<Settlement> settlements = new ArrayList<>();
+        for (Transfer payment : plan) {
+            BigDecimal amount = payment.amount().setScale(2, RoundingMode.HALF_UP);
+            if (payment.to().equals(me)) {
+                settlements.add(new Settlement(payment.from(), payment.currency(),
+                        amount, ZERO_MONEY, ZERO_MONEY, ZERO_MONEY, amount, List.of()));
+            } else if (payment.from().equals(me)) {
+                settlements.add(new Settlement(payment.to(), payment.currency(),
+                        ZERO_MONEY, amount, ZERO_MONEY, ZERO_MONEY, amount.negate(), List.of()));
+            }
+        }
+        settlements.sort(Comparator.comparing(Settlement::otherUserId)
+                .thenComparing(Settlement::currency));
+        return new Simplified(settlements, balances);
+    }
+
+    /**
+     * The greedy match for one currency: the biggest creditor is paid by the
+     * biggest debtor, as much as either can cover, until nobody is owed. Each
+     * step clears at least one person, so n people need at most n−1 payments.
+     */
+    private static List<Transfer> match(String currency, Map<String, BigDecimal> ledger) {
+        Map<String, BigDecimal> open = new LinkedHashMap<>();
+        ledger.forEach((user, amount) -> {
+            if (amount.signum() != 0) open.put(user, amount);
+        });
+
+        Comparator<Map.Entry<String, BigDecimal>> largestFirst = Map.Entry
+                .<String, BigDecimal>comparingByValue(Comparator.comparing(BigDecimal::abs))
+                .reversed()
+                .thenComparing(Map.Entry.comparingByKey());
+
+        List<Transfer> payments = new ArrayList<>();
+        while (true) {
+            var creditor = open.entrySet().stream()
+                    .filter(e -> e.getValue().signum() > 0).min(largestFirst).orElse(null);
+            var debtor = open.entrySet().stream()
+                    .filter(e -> e.getValue().signum() < 0).min(largestFirst).orElse(null);
+            if (creditor == null || debtor == null) break;
+
+            BigDecimal pay = creditor.getValue().min(debtor.getValue().negate());
+            payments.add(new Transfer(debtor.getKey(), creditor.getKey(), currency, pay));
+            String creditorId = creditor.getKey();
+            String debtorId = debtor.getKey();
+            BigDecimal creditorLeft = creditor.getValue().subtract(pay);
+            BigDecimal debtorLeft = debtor.getValue().add(pay);
+            if (creditorLeft.signum() == 0) open.remove(creditorId); else open.put(creditorId, creditorLeft);
+            if (debtorLeft.signum() == 0) open.remove(debtorId); else open.put(debtorId, debtorLeft);
+        }
+        return payments;
     }
 
     /**
@@ -317,6 +575,7 @@ public class BudgetService {
      * figure is what a public file must never carry.
      */
     private static List<Settlement> settlements(List<BudgetItem> items,
+                                                List<SettlementPayment> payments,
                                                 TripMembers members,
                                                 User user,
                                                 String tripCurrency) {
@@ -325,7 +584,7 @@ public class BudgetService {
 
         // Keyed by the other member and the currency, which is what one line of
         // the table is. LinkedHashMap so the order is stable between reloads.
-        Map<String, Settlement> pairs = new LinkedHashMap<>();
+        Map<String, Pair> pairs = new LinkedHashMap<>();
 
         for (BudgetItem item : items) {
             if (!item.isConfirmed()) continue;
@@ -345,43 +604,85 @@ public class BudgetService {
                     if (sharer.equals(me)) continue;
                     BigDecimal share = members.shareOf(item.getAmount(), item.getSharedByUserIds(), sharer);
                     if (share == null || share.signum() == 0) continue;
-                    add(pairs, sharer, currency, item.getId(), share, true);
+                    pair(pairs, sharer, currency).owedToYou(item.getId(), share);
                 }
             } else if (sharers.contains(me)) {
                 // Somebody else paid for something I share, so I owe them my
                 // part of it — and only my part.
                 BigDecimal share = members.shareOf(item.getAmount(), item.getSharedByUserIds(), me);
                 if (share == null || share.signum() == 0) continue;
-                add(pairs, payer, currency, item.getId(), share, false);
+                pair(pairs, payer, currency).owedByYou(item.getId(), share);
             }
             // Anything else is two other people's business.
         }
 
+        // Payments settle what the rows above say is owed, and add nothing to
+        // it: they are kept apart from owesYou/youOwe so a pair that has been
+        // paid off still shows what happened and why it now reads zero.
+        for (SettlementPayment payment : payments) {
+            String currency = paymentCurrencyOf(payment, tripCurrency);
+            if (payment.getFromUserId().equals(me)) {
+                pair(pairs, payment.getToUserId(), currency).youPaid(payment.getAmount());
+            } else if (payment.getToUserId().equals(me)) {
+                pair(pairs, payment.getFromUserId(), currency).paidYou(payment.getAmount());
+            }
+        }
+
         return pairs.values().stream()
+                .map(Pair::toSettlement)
                 .sorted(Comparator.comparing(Settlement::otherUserId)
                         .thenComparing(Settlement::currency))
                 .toList();
     }
 
-    /** Folds one row's contribution into the (member, currency) line it belongs to. */
-    private static void add(Map<String, Settlement> pairs, String other, String currency,
-                            String itemId, BigDecimal amount, boolean owedToYou) {
-        Settlement current = pairs.get(other + ' ' + currency);
-        BigDecimal owesYou = current == null ? BigDecimal.ZERO : current.owesYou();
-        BigDecimal youOwe = current == null ? BigDecimal.ZERO : current.youOwe();
-        List<Settlement.Line> lines = new ArrayList<>(
-                current == null ? List.of() : current.lines());
+    private static Pair pair(Map<String, Pair> pairs, String other, String currency) {
+        return pairs.computeIfAbsent(other + ' ' + currency, key -> new Pair(other, currency));
+    }
 
-        if (owedToYou) owesYou = owesYou.add(amount);
-        else youOwe = youOwe.add(amount);
-        lines.add(new Settlement.Line(itemId, amount, owedToYou));
+    private static String paymentCurrencyOf(SettlementPayment payment, String tripCurrency) {
+        String currency = payment.getCurrency();
+        return (currency == null || currency.isBlank()) ? tripCurrency : currency.toUpperCase();
+    }
 
-        pairs.put(other + ' ' + currency, new Settlement(
-                other, currency,
-                owesYou.setScale(2, RoundingMode.HALF_UP),
-                youOwe.setScale(2, RoundingMode.HALF_UP),
-                owesYou.subtract(youOwe).setScale(2, RoundingMode.HALF_UP),
-                lines));
+    /** One line of the pairwise table while it is being added up. */
+    private static final class Pair {
+        private final String other;
+        private final String currency;
+        private BigDecimal owesYou = BigDecimal.ZERO;
+        private BigDecimal youOwe = BigDecimal.ZERO;
+        private BigDecimal paidYou = BigDecimal.ZERO;
+        private BigDecimal youPaid = BigDecimal.ZERO;
+        private final List<Settlement.Line> lines = new ArrayList<>();
+
+        Pair(String other, String currency) {
+            this.other = other;
+            this.currency = currency;
+        }
+
+        void owedToYou(String itemId, BigDecimal amount) {
+            owesYou = owesYou.add(amount);
+            lines.add(new Settlement.Line(itemId, amount, true));
+        }
+
+        void owedByYou(String itemId, BigDecimal amount) {
+            youOwe = youOwe.add(amount);
+            lines.add(new Settlement.Line(itemId, amount, false));
+        }
+
+        void paidYou(BigDecimal amount) { paidYou = paidYou.add(amount); }
+
+        void youPaid(BigDecimal amount) { youPaid = youPaid.add(amount); }
+
+        Settlement toSettlement() {
+            return new Settlement(other, currency,
+                    owesYou.setScale(2, RoundingMode.HALF_UP),
+                    youOwe.setScale(2, RoundingMode.HALF_UP),
+                    paidYou.setScale(2, RoundingMode.HALF_UP),
+                    youPaid.setScale(2, RoundingMode.HALF_UP),
+                    owesYou.subtract(youOwe).subtract(paidYou).add(youPaid)
+                            .setScale(2, RoundingMode.HALF_UP),
+                    lines);
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ package com.josephinealinea.planner.importer;
 import com.josephinealinea.planner.budget.api.BudgetService;
 import com.josephinealinea.planner.budget.domain.BudgetItem;
 import com.josephinealinea.planner.budget.infra.JdbcBudgetRepository;
+import com.josephinealinea.planner.budget.infra.JdbcSettlementPaymentRepository;
 import com.josephinealinea.planner.budget.infra.YamlBudgetRepository;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.checklist.domain.ChecklistItem;
@@ -96,6 +97,7 @@ class YamlImporterTest {
     private JdbcChecklistRepository checklist;
     private JdbcItineraryRepository itinerary;
     private JdbcBudgetRepository budget;
+    private JdbcSettlementPaymentRepository payments;
     private YamlImporter importer;
 
     @BeforeEach
@@ -109,7 +111,8 @@ class YamlImporterTest {
         checklist = new JdbcChecklistRepository(jdbc, tm);
         itinerary = new JdbcItineraryRepository(jdbc, tm);
         budget = new JdbcBudgetRepository(jdbc, tm);
-        importer = new YamlImporter(users, trips, destinations, checklist, itinerary, budget, jdbc, tm);
+        payments = new JdbcSettlementPaymentRepository(jdbc, tm);
+        importer = new YamlImporter(users, trips, destinations, checklist, itinerary, budget, payments, jdbc, tm);
         writeFixtures();
     }
 
@@ -129,7 +132,16 @@ class YamlImporterTest {
                 .containsEntry("destinations", 1)
                 .containsEntry("checklist items", 3)
                 .containsEntry("itinerary entries", 4)
-                .containsEntry("budget rows", 5);
+                .containsEntry("budget rows", 5)
+                .containsEntry("settlement payments", 1);
+        assertThat(count("settlement_payments")).isEqualTo(1);
+        assertThat(payments.findAll(TALLINN)).singleElement().satisfies(payment -> {
+            assertThat(payment.getAmount()).isEqualByComparingTo("5.50");
+            assertThat(payment.getNote()).isEqualTo("Cash at the hostel");
+            assertThat(payment.getCreatedByUserId()).isEqualTo(ALEX);
+            assertThat(payment.getFromUserId()).isEqualTo(ALEX);
+            assertThat(payment.getToUserId()).isEqualTo(SAM);
+        });
     }
 
     /**
@@ -237,7 +249,7 @@ class YamlImporterTest {
         assertThat(report.verifier.passed()).isTrue();
         assertThat(report.counts).containsEntry("budget rows", 5);
         for (String table : List.of("users", "trips", "trip_members", "publish_requests", "destinations",
-                "checklist_items", "itinerary_items", "budget_items")) {
+                "checklist_items", "itinerary_items", "budget_items", "settlement_payments")) {
             assertThat(count(table)).as(table).isZero();
         }
     }
@@ -261,7 +273,8 @@ class YamlImporterTest {
 
         assertThat(report.outcome).isEqualTo(ImportReport.Outcome.FAILED);
         assertThat(report.failure).isNotBlank();
-        for (String table : List.of("users", "trips", "trip_members", "destinations", "budget_items")) {
+        for (String table : List.of("users", "trips", "trip_members", "destinations", "budget_items",
+                "settlement_payments")) {
             assertThat(count(table)).as(table).isZero();
         }
     }
@@ -282,7 +295,7 @@ class YamlImporterTest {
                 new FeatureFlags(false),
                 mock(ObjectProvider.class), mock(ObjectProvider.class), mock(ObjectProvider.class),
                 mock(ObjectProvider.class), mock(ObjectProvider.class), mock(ObjectProvider.class),
-                mock(ObjectProvider.class), mock(ObjectProvider.class),
+                mock(ObjectProvider.class), mock(ObjectProvider.class), mock(ObjectProvider.class),
                 exitCode::set);
 
         runner.run(null);
@@ -298,7 +311,7 @@ class YamlImporterTest {
         ImportRunner runner = new ImportRunner(new ImportProperties("", false), new FeatureFlags(true),
                 mock(ObjectProvider.class), mock(ObjectProvider.class), mock(ObjectProvider.class),
                 mock(ObjectProvider.class), mock(ObjectProvider.class), mock(ObjectProvider.class),
-                mock(ObjectProvider.class), mock(ObjectProvider.class),
+                mock(ObjectProvider.class), mock(ObjectProvider.class), mock(ObjectProvider.class),
                 exitCode::set);
 
         runner.run(null);
@@ -438,6 +451,23 @@ class YamlImporterTest {
                   destinationIds:
                   - dest-old
                   paidByUserId: user-sam
+                """);
+
+        // A settlement payment, hand-written like the row above: the amount's
+        // scale and the audit fields have to survive, and the verifier's
+        // settlement comparison reads it on both sides.
+        Files.createDirectories(paths.settlements(TALLINN).getParent());
+        Files.writeString(paths.settlements(TALLINN), """
+                - id: pay-1
+                  tripId: trip-tallinn
+                  fromUserId: user-alex
+                  toUserId: user-sam
+                  amount: 5.50
+                  currency: EUR
+                  date: 2026-10-01
+                  note: Cash at the hostel
+                  createdAt: 2026-10-01T18:00:00Z
+                  createdByUserId: user-alex
                 """);
     }
 

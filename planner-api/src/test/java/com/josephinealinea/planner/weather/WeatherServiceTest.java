@@ -63,6 +63,8 @@ class WeatherServiceTest {
     private WeatherService service;
     private MovableClock clock;
     private Path dir;
+    private AppProperties props;
+    private WeatherClient client;
 
     /** A clock a test can wind forward, to age records past the TTL. */
     private static final class MovableClock extends Clock {
@@ -76,7 +78,7 @@ class WeatherServiceTest {
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
         this.dir = tempDir;
-        AppProperties props = new AppProperties(
+        props = new AppProperties(
                 new AppProperties.Storage(tempDir.toString()),
                 new AppProperties.Publish(tempDir.resolve("published").toString(), null),
                 new AppProperties.Mail(null, null),
@@ -110,7 +112,7 @@ class WeatherServiceTest {
         forecast = new CannedHttp();
         climate = new CannedHttp();
         clock = new MovableClock();
-        WeatherClient client =
+        client =
                 new WeatherClient(forecast.client(), climate.client(), props, clock);
         service = new WeatherService(destinations, stored, new TripAccessService(trips),
                 client, props, clock);
@@ -311,6 +313,90 @@ class WeatherServiceTest {
         clock.forward(Duration.ofHours(7));
         days();
         assertThat(forecast.callCount()).isEqualTo(2);
+    }
+
+    private WeatherService serviceWithTodayTtl(Duration todayTtl) {
+        return new WeatherService(destinations, stored, new TripAccessService(trips), client, props,
+                new TodayWeatherProperties(todayTtl), clock);
+    }
+
+    @Test
+    void todaysReadingUsesTheTodayTtlWhileLaterDaysKeepTheGeneralOne() {
+        cusco("2026-10-27", "2026-10-29");
+        forecast.ok(answerFor("2026-10-27", "2026-10-28", "2026-10-29")).ok(answerFor("2026-10-27"));
+        WeatherService quick = serviceWithTodayTtl(Duration.ofHours(1));
+
+        quick.forTrip(TRIP_ID, USER_ID);
+        assertThat(forecast.callCount()).isEqualTo(1);
+
+        // Two hours on: today (1h) is stale, the 28th and 29th (12h) are not.
+        clock.forward(Duration.ofHours(2));
+        quick.forTrip(TRIP_ID, USER_ID);
+
+        assertThat(forecast.callCount()).isEqualTo(2);
+        String second = forecast.asked().get(1).getRawQuery();
+        assertThat(second).contains("start_date=2026-10-27").contains("end_date=2026-10-27");
+    }
+
+    @Test
+    void withBothTtlsAtTwelveHoursTodayBehavesAsItAlwaysDid() {
+        cusco("2026-10-27", "2026-10-27");
+        forecast.ok(answerFor("2026-10-27")).ok(answerFor("2026-10-27"));
+        // Start at 04:00 so that 13 hours on is still the same day.
+        clock.forward(Duration.ofHours(-8));
+
+        days();
+        clock.forward(Duration.ofHours(11));
+        days();
+        assertThat(forecast.callCount()).isEqualTo(1);
+
+        clock.forward(Duration.ofHours(2));
+        days();
+        assertThat(forecast.callCount()).isEqualTo(2);
+    }
+
+    @Test
+    void aPastDayIsNeverRefetchedWhateverTheTtls() {
+        cusco("2026-10-25", "2026-10-25");
+        forecast.ok(answerFor("2026-10-25")).ok(answerFor("2026-10-25"));
+        WeatherService quick = serviceWithTodayTtl(Duration.ofMinutes(1));
+
+        quick.forTrip(TRIP_ID, USER_ID);
+        clock.forward(Duration.ofDays(30));
+        quick.forTrip(TRIP_ID, USER_ID);
+
+        assertThat(forecast.callCount()).isEqualTo(1);
+    }
+
+    @Test
+    void aFetchedReadingsDetailsReachTheDayAndAreStored() {
+        cusco("2026-10-27", "2026-10-27");
+        forecast.ok("""
+                {"daily":{"time":["2026-10-27"],"temperature_2m_max":[19.3],
+                          "temperature_2m_min":[3.2],"precipitation_sum":[0.0],
+                          "uv_index_max":[10.35],"rain_sum":[0.0]}}
+                """);
+
+        assertThat(days()).singleElement().satisfies(day ->
+                assertThat(day.details()).containsEntry("uvIndexMax", 10.35).containsEntry("rainSum", 0.0));
+        assertThat(stored.findAll(SLUG)).singleElement().satisfies(record ->
+                assertThat(record.getDetails()).containsEntry("uvIndexMax", 10.35));
+    }
+
+    @Test
+    void aRecordStoredBeforeDetailsExistedStillShowsAndCarriesNoDetails() {
+        cusco("2026-10-27", "2026-10-27");
+        forecast.ok(answerFor("2026-10-27"));
+        days();
+        // The answer had no detail columns, so nothing was stored for them.
+        assertThat(stored.findAll(SLUG)).singleElement().satisfies(record ->
+                assertThat(record.getDetails()).isNull());
+
+        assertThat(days()).singleElement().satisfies(day -> {
+            assertThat(day.details()).isEmpty();
+            assertThat(day.temperatureMax()).isEqualTo(16.0);
+        });
+        assertThat(forecast.callCount()).isEqualTo(1);
     }
 
     @Test

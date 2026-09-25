@@ -535,6 +535,16 @@
                           x-text="weatherBadge(row.day)"></span>
                   </div>
 
+                  <div class="weather-details" x-show="weatherHasReading(row.day) && weatherDetails(row.day).length"
+                       :title="weatherDetailsTitle(row.day)">
+                    <template x-for="chip in weatherDetails(row.day)" :key="chip.id">
+                      <span class="weather-detail" :title="chip.title" :aria-label="chip.text + ' (' + chip.title + ')'">
+                        <span class="weather-detail-icon" aria-hidden="true" x-text="chip.icon"></span>
+                        <span x-text="chip.text"></span>
+                      </span>
+                    </template>
+                  </div>
+
                   <div class="weather-line weather-line-muted"
                        x-show="!weatherHasReading(row.day)"
                        :title="weatherUnavailableTitle(row.day)"
@@ -817,44 +827,70 @@
         <div class="card settle">
           <div class="section-head">
             <h3 class="section-title" id="settle-title">💸 Settle the herd</h3>
+            <!-- One button for the whole panel while debts are simplified: a
+                 simplified payment has no rows of its own, so what there is to
+                 show is the member's balance — including when it is already
+                 zero, which is the reassurance. -->
+            <button type="button" class="btn btn-sm" x-show="settleSimplified" x-cloak
+                    aria-haspopup="dialog" aria-label="View details of your balance"
+                    @click="openSettleBalances()">View details</button>
           </div>
-          <p class="settle-note">
+          <p class="settle-note" x-show="!settleSimplified">
             Based on the charged expenses only, in the same currency each was paid in.
           </p>
+          <p class="settle-note" x-show="settleSimplified" x-cloak>
+            Based on the charged expenses only, in the same currency each was paid in.
+            Payments are simplified across the whole trip to keep the number of
+            transfers down.
+          </p>
 
-          <p class="empty" x-show="!hasSettlements" x-cloak>
+          <p class="empty" x-show="!hasOpenSettlements" x-cloak>
             All settled! The herd is square. <span aria-hidden="true">🦙</span>
           </p>
 
           <div class="table-wrap" x-show="hasSettlements" x-cloak>
-            <table class="table table-cards" aria-labelledby="settle-title">
+            <table class="table table-cards table-cards-plain" aria-labelledby="settle-title">
               <thead>
                 <tr>
                   <th>Travel Buddy</th>
-                  <th class="num">Owes you</th>
-                  <th class="num">You owe</th>
+                  <th class="num" x-show="!settleSimplified">Owes you</th>
+                  <th class="num" x-show="!settleSimplified">You owe</th>
                   <th class="num">Net</th>
-                  <th class="actions"><span class="sr-only">Details</span></th>
+                  <th class="actions"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 <template x-for="row in settleRows" :key="row.otherUserId + row.currency">
                   <tr>
                     <td class="cell-title" x-text="settleMemberName(row.otherUserId)"></td>
-                    <td data-label="Owes you" class="num" x-text="fmt(row.owesYou, row.currency)"></td>
-                    <td data-label="You owe" class="num" x-text="fmt(row.youOwe, row.currency)"></td>
-                    <!-- "(to pay)" / "(to receive)" rather than a minus sign:
-                         the direction is the whole point of this column, and a
-                         sign is the one part of a figure a reader skims past. -->
+                    <td data-label="Owes you" class="num" x-show="!settleSimplified"
+                        x-text="fmt(row.owesYou, row.currency)"></td>
+                    <td data-label="You owe" class="num" x-show="!settleSimplified"
+                        x-text="fmt(row.youOwe, row.currency)"></td>
+                    <!-- A "Receive" / "Pay" pill then the amount, rather than a
+                         minus sign: the direction is the whole point of this
+                         column, and a sign is the one part of a figure a reader
+                         skims past. -->
                     <td data-label="Net" class="num">
-                      <span :class="settleNetClass(row)" x-text="settleNetLabel(row)"></span>
+                      <span class="settle-net">
+                        <span class="settle-pill" :class="settleNetClass(row)"
+                              x-text="settleNetWord(row)"></span>
+                        <span class="settle-net-amount" x-show="settleNetAmount(row)"
+                              x-text="settleNetAmount(row)"></span>
+                      </span>
                     </td>
                     <td class="actions">
                       <span class="btn-row">
-                        <button type="button" class="btn btn-sm"
+                        <button type="button" class="btn btn-sm" x-show="!settleSimplified"
                                 @click="openSettleDetails(row)"
                                 :aria-label="`View details: ${settleSummaryLine(row)}`">
                           View details
+                        </button>
+                        <!-- Nothing to record against a pair that is square. -->
+                        <button type="button" class="btn btn-sm btn-primary" x-show="settleRowOwing(row)"
+                                @click="openRecordPayment(row)"
+                                :aria-label="`Record payment: ${settleSummaryLine(row)}`">
+                          Record payment
                         </button>
                       </span>
                     </td>
@@ -862,6 +898,31 @@
                 </template>
               </tbody>
             </table>
+          </div>
+
+          <!-- Payments already made. They settle debts and change no figure
+               anywhere else, so they live here and not in the expense table. -->
+          <div class="settle-payments" x-show="settlePayments.length" x-cloak>
+            <h3 class="settle-payments-title" id="settle-payments-title">💵 Herd payments</h3>
+            <ul class="settle-lines" aria-labelledby="settle-payments-title">
+              <template x-for="payment in settlePayments" :key="payment.id">
+                <li class="settle-line">
+                  <span class="settle-line-main">
+                    <span class="settle-line-desc" x-text="settlePaymentLine(payment)"></span>
+                    <span class="settle-line-meta">
+                      <span x-show="payment.date" x-text="payment.date ? expenseDate(payment) : ''"></span>
+                      <span x-show="payment.note" x-text="payment.note"></span>
+                    </span>
+                  </span>
+                  <span class="settle-line-amount" x-text="fmt(payment.amount, payment.currency)"></span>
+                  <button type="button" class="btn btn-sm" x-show="canManagePayment(payment)"
+                          @click="askDeletePayment(payment)"
+                          :aria-label="`Delete payment: ${settlePaymentLine(payment)}, ${fmt(payment.amount, payment.currency)}`">
+                    Undo
+                  </button>
+                </li>
+              </template>
+            </ul>
           </div>
         </div>
       </section>
@@ -2035,7 +2096,7 @@
            Account → Appearance. -->
       <div class="modal-backdrop panel-switchable" x-show="settleDetail" x-cloak
            @click.self="closeSettleDetails()" @keydown.escape.window="closeSettleDetails()">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settle-detail-title"
+        <div class="modal settle-modal" role="dialog" aria-modal="true" aria-labelledby="settle-detail-title"
              x-dialog="settleDetail">
           <div class="modal-header">
             <h2 class="modal-title" id="settle-detail-title"
@@ -2072,10 +2133,24 @@
                   <dt x-text="`You owe ${settleMemberName(settleDetail.otherUserId)}`"></dt>
                   <dd x-text="fmt(settleDetail.youOwe, settleDetail.currency)"></dd>
                 </div>
+                <div x-show="Number(settleDetail.paidYou) > 0">
+                  <dt x-text="`${settleMemberName(settleDetail.otherUserId)} has paid you`"></dt>
+                  <dd x-text="fmt(settleDetail.paidYou, settleDetail.currency)"></dd>
+                </div>
+                <div x-show="Number(settleDetail.youPaid) > 0">
+                  <dt x-text="`You have paid ${settleMemberName(settleDetail.otherUserId)}`"></dt>
+                  <dd x-text="fmt(settleDetail.youPaid, settleDetail.currency)"></dd>
+                </div>
                 <div class="settle-totals-net">
                   <dt>Net</dt>
-                  <dd :class="settleNetClass(settleDetail)"
-                      x-text="settleNetLabel(settleDetail)"></dd>
+                  <dd>
+                    <span class="settle-net">
+                      <span class="settle-pill" :class="settleNetClass(settleDetail)"
+                            x-text="settleNetWord(settleDetail)"></span>
+                      <span class="settle-net-amount" x-show="settleNetAmount(settleDetail)"
+                            x-text="settleNetAmount(settleDetail)"></span>
+                    </span>
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -2083,6 +2158,129 @@
 
           <div class="modal-actions">
             <button type="button" class="btn" @click="closeSettleDetails()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settle balances: the one View details while debts are simplified —
+           the signed-in member's standing per currency and the rows behind it. -->
+      <div class="modal-backdrop panel-switchable" x-show="settleBalancesOpen" x-cloak
+           @click.self="closeSettleBalances()" @keydown.escape.window="closeSettleBalances()">
+        <div class="modal settle-modal" role="dialog" aria-modal="true" aria-labelledby="settle-balance-title"
+             x-dialog="settleBalancesOpen">
+          <div class="modal-header">
+            <h2 class="modal-title" id="settle-balance-title">Your balance</h2>
+            <button type="button" class="modal-close" @click="closeSettleBalances()"
+                    aria-label="Close">✕</button>
+          </div>
+
+          <p class="empty" x-show="settleBalanceSections.length === 0">
+            Nothing to balance yet — no charged expense involves you.
+          </p>
+
+          <template x-for="section in settleBalanceSections" :key="section.currency">
+            <div class="settle-balance">
+              <h3 class="section-title" x-text="`Balance in ${section.currency}`"></h3>
+              <ul class="settle-lines">
+                <template x-for="line in section.lines" :key="line.itemId">
+                  <li class="settle-line">
+                    <span class="settle-line-main">
+                      <span class="settle-line-desc" x-text="line.description"></span>
+                      <span class="settle-line-meta">
+                        <span x-show="line.category" x-text="categoryOf(line.category).label"></span>
+                        <span x-show="line.date" x-text="line.date ? expenseDate(line) : ''"></span>
+                      </span>
+                    </span>
+                    <span class="settle-line-amount"
+                          :class="line.owedToYou ? 'settle-net-positive' : 'settle-net-negative'"
+                          x-text="(line.owedToYou ? '+' : '−') + ' ' + fmt(line.amount, section.currency)"></span>
+                  </li>
+                </template>
+              </ul>
+              <dl class="settle-totals">
+                <div class="settle-totals-net">
+                  <dt>Net balance</dt>
+                  <dd :class="section.netClass" x-text="section.summary"></dd>
+                </div>
+              </dl>
+              <p class="settle-note" x-text="section.net === 0
+                    ? 'No payments needed.'
+                    : 'Settled by the payments in the table.'"></p>
+            </div>
+          </template>
+
+          <div class="modal-actions">
+            <button type="button" class="btn" @click="closeSettleBalances()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Record a payment against one line of the settle table. The two
+           people and the currency are fixed by the line; the amount can be
+           lowered for a part payment. -->
+      <div class="modal-backdrop panel-switchable" x-show="payOpen" x-cloak @click.self="payOpen = false"
+           @keydown.escape.window="payOpen = false">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pay-title"
+             x-dialog="payOpen">
+          <div class="modal-header">
+            <h2 class="modal-title" id="pay-title">Record payment</h2>
+            <button type="button" class="modal-close" @click="payOpen = false"
+                    aria-label="Close">✕</button>
+          </div>
+          <div class="alert alert-error" x-show="payError" x-text="payError" x-cloak></div>
+          <form @submit.prevent="savePayment()">
+            <p class="settle-pay-summary"
+               x-text="`${settleWho(payForm.fromUserId)} paid ${payForm.toUserId === currentUserId ? 'you' : settleMemberName(payForm.toUserId)}`"></p>
+            <!-- The currency is fixed by the line, so it is part of the label
+                 rather than a field that looks editable and is not. -->
+            <div class="field">
+              <label for="pay-amount" x-text="`Amount (${payForm.currency})`"></label>
+              <input id="pay-amount" type="number" step="0.01" min="0.01" inputmode="decimal"
+                     x-ref="payAmount" x-model="payForm.amount" required
+                     aria-describedby="pay-outcome">
+            </div>
+            <!-- What saving this would leave, before it is saved. Live, and
+                 announced politely so it is not read out on every keystroke. -->
+            <p id="pay-outcome" class="settle-pay-outcome" aria-live="polite"
+               :class="payOutcome ? `settle-pay-outcome-${payOutcome.kind}` : ''"
+               x-text="payOutcome ? payOutcome.text : 'Lower the amount for a part payment.'"></p>
+            <div class="field">
+              <label for="pay-date">Date</label>
+              <input id="pay-date" type="date" x-model="payForm.date">
+            </div>
+            <div class="field">
+              <label for="pay-note">Note (optional)</label>
+              <input id="pay-note" x-model="payForm.note" maxlength="200"
+                     placeholder="Paid in cash">
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn" @click="payOpen = false">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="payBusy"
+                      x-text="payBusy ? 'Saving…' : 'Record payment'"></button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete a payment: the debt it settled comes back. -->
+      <div class="modal-backdrop" x-show="payDeleteTarget" x-cloak @click.self="payDeleteTarget = null"
+           @keydown.escape.window="payDeleteTarget = null">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pay-delete-title"
+             x-dialog="payDeleteTarget">
+          <div class="modal-header">
+            <h2 class="modal-title" id="pay-delete-title">Delete this payment?</h2>
+            <button type="button" class="modal-close" @click="payDeleteTarget = null"
+                    aria-label="Close">✕</button>
+          </div>
+          <template x-if="payDeleteTarget">
+            <p class="small"
+               x-text="`${settlePaymentLine(payDeleteTarget)}, ${fmt(payDeleteTarget.amount, payDeleteTarget.currency)}. The debt it settled comes back.`"></p>
+          </template>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="payDeleteTarget = null">Cancel</button>
+            <button type="button" class="btn btn-danger" :disabled="payDeleteBusy"
+                    @click="confirmDeletePayment()"
+                    x-text="payDeleteBusy ? 'Deleting…' : 'Delete payment'"></button>
           </div>
         </div>
       </div>

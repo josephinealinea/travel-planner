@@ -95,6 +95,7 @@ public class YamlTripRepository implements TripRepository {
             store.delete(paths.itinerary(slug));
             store.delete(paths.budget(slug));
             store.delete(paths.weather(slug));
+            store.delete(paths.settlements(slug));
         });
         locks.writeVoid(TripLocks.TRIP_INDEX, () -> {
             List<IndexEntry> remaining = index().stream()

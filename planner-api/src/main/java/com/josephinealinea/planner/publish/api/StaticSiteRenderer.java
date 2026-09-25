@@ -508,7 +508,7 @@ public class StaticSiteRenderer {
                 <noscript>
                   <div class="noscript">This trip page needs JavaScript to render its itinerary.</div>
                 </noscript>
-                <div id="app" class="page"></div>
+                <main id="app" class="page"></main>
                 <footer class="brand-footer">Planned with 🦙 <a href="{{siteUrl}}">Travelling Llama</a></footer>
                 <script>window.COUNTRIES = {{countries}};</script>
                 <script>window.TRIP = {{payload}};</script>

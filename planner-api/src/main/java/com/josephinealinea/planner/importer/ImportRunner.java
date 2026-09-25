@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.importer;
 
 import com.josephinealinea.planner.budget.infra.BudgetRepository;
+import com.josephinealinea.planner.budget.infra.SettlementPaymentRepository;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
 import com.josephinealinea.planner.config.FeatureFlags;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
@@ -62,6 +63,7 @@ public class ImportRunner implements ApplicationRunner {
     private final ObjectProvider<ChecklistRepository> checklist;
     private final ObjectProvider<ItineraryRepository> itinerary;
     private final ObjectProvider<BudgetRepository> budget;
+    private final ObjectProvider<SettlementPaymentRepository> payments;
     private final ObjectProvider<JdbcClient> jdbc;
     private final ObjectProvider<PlatformTransactionManager> transactionManager;
     private final ImportConfig.ImportExit exit;
@@ -75,6 +77,7 @@ public class ImportRunner implements ApplicationRunner {
                         ObjectProvider<ChecklistRepository> checklist,
                         ObjectProvider<ItineraryRepository> itinerary,
                         ObjectProvider<BudgetRepository> budget,
+                        ObjectProvider<SettlementPaymentRepository> payments,
                         ObjectProvider<JdbcClient> jdbc,
                         ObjectProvider<PlatformTransactionManager> transactionManager,
                         ImportConfig.ImportExit exit) {
@@ -86,6 +89,7 @@ public class ImportRunner implements ApplicationRunner {
         this.checklist = checklist;
         this.itinerary = itinerary;
         this.budget = budget;
+        this.payments = payments;
         this.jdbc = jdbc;
         this.transactionManager = transactionManager;
         this.exit = exit;
@@ -116,7 +120,8 @@ public class ImportRunner implements ApplicationRunner {
 
         YamlImporter importer = new YamlImporter(
                 users.getObject(), trips.getObject(), destinations.getObject(), checklist.getObject(),
-                itinerary.getObject(), budget.getObject(), jdbc.getObject(), transactionManager.getObject());
+                itinerary.getObject(), budget.getObject(), payments.getObject(), jdbc.getObject(),
+                transactionManager.getObject());
         ImportReport report = importer.run(Path.of(properties.yamlDir()), properties.dryRun());
         report.print(out);
         if (report.error != null) report.error.printStackTrace(out);

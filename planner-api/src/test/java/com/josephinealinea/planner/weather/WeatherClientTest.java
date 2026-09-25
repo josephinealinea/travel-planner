@@ -148,6 +148,86 @@ class WeatherClientTest {
                 .isEqualTo(16.4);
     }
 
+    private static final String FORECAST_WITH_DETAILS = """
+            {"latitude":-13.53,"longitude":-71.95,"timezone":"America/Lima",
+             "daily":{"time":["2026-09-15"],
+                      "weather_code":[3],
+                      "temperature_2m_max":[19.3],
+                      "temperature_2m_min":[3.2],
+                      "precipitation_sum":[0.0],
+                      "sunrise":["2026-09-15T05:35"],
+                      "sunset":["2026-09-15T17:43"],
+                      "uv_index_max":[10.35],
+                      "rain_sum":[0.0],
+                      "precipitation_probability_max":[0]}}
+            """;
+
+    private static final String CLIMATE_WITH_NULL_DETAILS = """
+            {"latitude":-13.5,"longitude":-72.0,
+             "daily":{"time":["2026-10-24"],
+                      "temperature_2m_max":[16.4],
+                      "temperature_2m_min":[9.9],
+                      "precipitation_sum":[5.16],
+                      "uv_index_max":[null],
+                      "wind_speed_10m_max":[10.1]}}
+            """;
+
+    private static String dailyOf(java.net.URI uri) {
+        for (String pair : uri.getRawQuery().split("&")) {
+            if (pair.startsWith("daily=")) return java.net.URLDecoder.decode(pair.substring(6),
+                    java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return "";
+    }
+
+    @Test
+    void theForecastCallAsksForEveryDetailAndTheClimateCallOnlyForThoseItCanAnswer() {
+        String climateSpanning = """
+                {"daily":{"time":["2026-09-15","2026-10-24"],
+                          "temperature_2m_max":[1.0,16.4],
+                          "temperature_2m_min":[1.0,9.9],
+                          "precipitation_sum":[1.0,5.16]}}
+                """;
+        CannedHttp forecast = new CannedHttp().ok(FORECAST_TOMORROW);
+        CannedHttp climate = new CannedHttp().ok(climateSpanning);
+
+        client(forecast, climate)
+                .lookUp(List.of(CUSCO), TODAY.plusDays(1), LocalDate.parse("2026-10-24"));
+
+        assertThat(dailyOf(forecast.asked().get(0)))
+                .contains("uv_index_max", "sunrise", "wind_direction_10m_dominant");
+        assertThat(dailyOf(climate.asked().get(0)))
+                .contains("sunrise", "rain_sum", "cloud_cover_mean")
+                .doesNotContain("uv_index_max", "apparent_temperature_max",
+                        "precipitation_probability_max", "wind_direction_10m_dominant");
+    }
+
+    @Test
+    void detailsCarryTheValuesTheAnswerHadAndAZeroIsKept() {
+        CannedHttp forecast = new CannedHttp().ok(FORECAST_WITH_DETAILS);
+
+        var reading = client(forecast, new CannedHttp())
+                .lookUp(List.of(CUSCO), TODAY.plusDays(1), TODAY.plusDays(1))
+                .get("cusco").get(TODAY.plusDays(1));
+
+        assertThat(reading.details())
+                .containsEntry("sunrise", "2026-09-15T05:35")
+                .containsEntry("uvIndexMax", 10.35)
+                .containsEntry("rainSum", 0.0)
+                .containsEntry("precipitationProbabilityMax", 0.0);
+    }
+
+    @Test
+    void aNullDetailColumnLeavesTheKeyOutRatherThanZero() {
+        CannedHttp climate = new CannedHttp().ok(CLIMATE_WITH_NULL_DETAILS);
+
+        var reading = client(new CannedHttp(), climate)
+                .lookUp(List.of(CUSCO), LocalDate.parse("2026-10-24"), LocalDate.parse("2026-10-24"))
+                .get("cusco").get(LocalDate.parse("2026-10-24"));
+
+        assertThat(reading.details()).containsKey("windSpeedMax").doesNotContainKey("uvIndexMax");
+    }
+
     @Test
     void datesBeyondTheForecastHorizonGoToTheClimateEndpoint() {
         CannedHttp climate = new CannedHttp().ok(ONE_LOCATION_CLIMATE);

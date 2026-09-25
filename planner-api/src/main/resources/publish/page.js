@@ -267,8 +267,14 @@
           // Filled in by the lookup below, or left saying why it is empty.
           var line = el('div', 'weather-line weather-line-muted', '📅 Loading weather…');
           pc.appendChild(line);
+          // The extra readings (sunrise, UV, wind ...), filled by render() only
+          // when the lookup had some; empty and hidden until then.
+          var extras = el('div', 'weather-details');
+          extras.hidden = true;
+          pc.appendChild(extras);
           if (place.latitude != null && place.longitude != null) {
-            pending.push({ date: day.date, lat: place.latitude, lon: place.longitude, line: line });
+            pending.push({ date: day.date, lat: place.latitude, lon: place.longitude,
+                           line: line, extras: extras });
           } else {
             line.textContent = '📅 No coordinates for this place';
           }
@@ -750,6 +756,36 @@
   var CLIMATE_MODEL = 'MRI_AGCM3_2_S';
   var HORIZON_DAYS = 14;
 
+  // What is asked of each endpoint. Written out literally on purpose:
+  // WeatherDetailsDriftTest reads this file and checks every DetailField on the
+  // API side appears here, and that the climate list carries none of the
+  // forecast-only ones (the climate endpoint accepts them and answers nulls).
+  var FORECAST_DAILY = 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,'
+    + 'sunrise,sunset,daylight_duration,uv_index_max,precipitation_probability_max,'
+    + 'rain_sum,snowfall_sum,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,'
+    + 'apparent_temperature_max,apparent_temperature_min,relative_humidity_2m_mean,cloud_cover_mean';
+  var CLIMATE_DAILY = 'temperature_2m_max,temperature_2m_min,precipitation_sum,'
+    + 'sunrise,sunset,daylight_duration,rain_sum,snowfall_sum,'
+    + 'wind_speed_10m_max,wind_gusts_10m_max,relative_humidity_2m_mean,cloud_cover_mean';
+
+  // [key stored by the API, Open-Meteo variable, is a string, climate can answer]
+  var DETAIL_KEYS = [
+    ['sunrise', 'sunrise', true, true],
+    ['sunset', 'sunset', true, true],
+    ['daylightSeconds', 'daylight_duration', false, true],
+    ['uvIndexMax', 'uv_index_max', false, false],
+    ['precipitationProbabilityMax', 'precipitation_probability_max', false, false],
+    ['rainSum', 'rain_sum', false, true],
+    ['snowfallSum', 'snowfall_sum', false, true],
+    ['windSpeedMax', 'wind_speed_10m_max', false, true],
+    ['windGustsMax', 'wind_gusts_10m_max', false, true],
+    ['windDirection', 'wind_direction_10m_dominant', false, false],
+    ['apparentTemperatureMax', 'apparent_temperature_max', false, false],
+    ['apparentTemperatureMin', 'apparent_temperature_min', false, false],
+    ['humidityMean', 'relative_humidity_2m_mean', false, true],
+    ['cloudCoverMean', 'cloud_cover_mean', false, true]
+  ];
+
   var WMO = [[0,'☀️','Clear'],[1,'🌤','Mainly clear'],[2,'⛅️','Partly cloudy'],
              [3,'☁️','Overcast'],[45,'🌫','Fog'],[48,'🌫','Freezing fog'],
              [51,'🌦','Light drizzle'],[53,'🌦','Drizzle'],[55,'🌧','Heavy drizzle'],
@@ -815,9 +851,7 @@
       var url = (kind === 'forecast' ? FORECAST_URL : CLIMATE_URL)
         + '?latitude=' + keys.map(function (k) { return byPoint[k].lat; }).join(',')
         + '&longitude=' + keys.map(function (k) { return byPoint[k].lon; }).join(',')
-        + '&daily=' + (kind === 'forecast'
-            ? 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum'
-            : 'temperature_2m_max,temperature_2m_min,precipitation_sum')
+        + '&daily=' + (kind === 'forecast' ? FORECAST_DAILY : CLIMATE_DAILY)
         + '&start_date=' + dates[0] + '&end_date=' + dates[dates.length - 1]
         + '&timezone=auto'
         + (kind === 'climate' ? '&models=' + CLIMATE_MODEL : '');
@@ -838,7 +872,7 @@
             var min = at < 0 ? null : pick(daily.temperature_2m_min, at);
             if (max == null && min == null) return fail([slot]);
             render(slot, max, min, pick(daily.precipitation_sum, at),
-                   pick(daily.weather_code, at), kind);
+                   pick(daily.weather_code, at), kind, detailsAt(daily, at, kind));
           });
         });
       }).catch(function () { fail(slots); });
@@ -850,7 +884,83 @@
     return column[index] == null ? null : column[index];
   }
 
-  function render(slot, max, min, rain, code, kind) {
+  /**
+   * The details one day had an answer for. A null column leaves the key out —
+   * absent means unknown and 0 is a real answer, exactly as the API stores it.
+   */
+  function detailsAt(daily, at, kind) {
+    var found = {};
+    DETAIL_KEYS.forEach(function (field) {
+      if (kind === 'climate' && !field[3]) return;
+      var value = pick(daily[field[1]], at);
+      if (value != null && !(field[2] && value === '')) found[field[0]] = value;
+    });
+    return found;
+  }
+
+  function known(value) { return value != null; }
+  function whole(value) { return Math.round(value); }
+  function tenth(value) { return Math.round(value * 10) / 10; }
+  function clockOf(iso) {
+    return typeof iso === 'string' && iso.length >= 16 ? iso.slice(11, 16) : null;
+  }
+
+  /**
+   * The same chips, in the same order and words, as the planner's detailChips
+   * (js/weather.js) — change one, change the other. Each says what it is in
+   * words, since a tooltip cannot be reached by touch.
+   */
+  function detailChips(d, max, min) {
+    var chips = [];
+    var rise = clockOf(d.sunrise);
+    var set = clockOf(d.sunset);
+    if (rise || set) {
+      chips.push(['🌅', [rise, set].filter(Boolean).join(' · '), 'Sunrise · sunset, local time']);
+    }
+    if (known(d.uvIndexMax)) chips.push(['☀️', 'UV ' + whole(d.uvIndexMax), 'Peak UV index']);
+
+    var rain = [];
+    if (known(d.precipitationProbabilityMax)) rain.push(whole(d.precipitationProbabilityMax) + '%');
+    if (known(d.rainSum) && d.rainSum > 0) rain.push(tenth(d.rainSum) + ' mm');
+    if (rain.length) chips.push(['💧', rain.join(' · ') + ' rain', 'Chance and amount of rain']);
+    if (known(d.snowfallSum) && d.snowfallSum > 0) {
+      chips.push(['❄️', tenth(d.snowfallSum) + ' cm snow', 'Snowfall']);
+    }
+
+    if (known(d.windSpeedMax)) {
+      chips.push(['💨', whole(d.windSpeedMax) + ' km/h wind',
+        known(d.windGustsMax) ? 'Gusts up to ' + whole(d.windGustsMax) + ' km/h' : 'Top wind speed']);
+    }
+
+    // Only when it differs from the real temperature by a degree or more.
+    var differs = function (feels, real) {
+      return known(feels) && (!known(real) || Math.abs(feels - real) >= 1);
+    };
+    if (differs(d.apparentTemperatureMax, max) || differs(d.apparentTemperatureMin, min)) {
+      var feels = [];
+      if (known(d.apparentTemperatureMax)) feels.push(whole(d.apparentTemperatureMax) + '°');
+      if (known(d.apparentTemperatureMin)) feels.push(whole(d.apparentTemperatureMin) + '°');
+      chips.push(['🌡', 'Feels ' + feels.join(' / '), 'Feels like']);
+    }
+    return chips;
+  }
+
+  /** Everything else that is known, as one sentence for a tooltip. */
+  function detailsTitle(d) {
+    var compass = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    var parts = [];
+    if (known(d.humidityMean)) parts.push('Humidity ' + whole(d.humidityMean) + '%');
+    if (known(d.cloudCoverMean)) parts.push('Cloud cover ' + whole(d.cloudCoverMean) + '%');
+    if (known(d.daylightSeconds)) {
+      var minutes = Math.round(d.daylightSeconds / 60);
+      var rest = minutes % 60;
+      parts.push('Daylight ' + Math.floor(minutes / 60) + 'h ' + (rest < 10 ? '0' : '') + rest + 'm');
+    }
+    if (known(d.windDirection)) parts.push('Wind from ' + compass[Math.round(d.windDirection / 45) % 8]);
+    return parts.join(' · ');
+  }
+
+  function render(slot, max, min, rain, code, kind, details) {
     var cond = conditionOf(code, rain);
     var line = slot.line;
     line.className = 'weather-line';
@@ -867,6 +977,19 @@
     line.appendChild(el('span',
       kind === 'climate' ? 'weather-badge weather-badge-typical' : 'weather-badge',
       kind === 'climate' ? 'Typical' : 'Forecast'));
+
+    var chips = detailChips(details || {}, max, min);
+    slot.extras.textContent = '';
+    slot.extras.hidden = !chips.length;
+    slot.extras.title = detailsTitle(details || {});
+    chips.forEach(function (chip) {
+      var node = el('span', 'weather-detail');
+      node.title = chip[2];
+      node.setAttribute('aria-label', chip[1] + ' (' + chip[2] + ')');
+      node.appendChild(el('span', 'weather-detail-icon', chip[0]));
+      node.appendChild(el('span', null, chip[1]));
+      slot.extras.appendChild(node);
+    });
   }
 
   function fail(slots) {

@@ -138,6 +138,29 @@ public abstract class WeatherRepositoryContract extends TripScopedRepositoryCont
         assertThat(loaded.getTemperatureMin()).isZero();
     }
 
+    @Test
+    void detailsRoundTripAndAZeroStaysAZero() {
+        WeatherRecord record = reading(-13.53, -71.97, OCT_25);
+        Map<String, Object> details = new java.util.LinkedHashMap<>();
+        details.put("sunrise", "2026-10-25T05:16");
+        details.put("rainSum", 0.0);
+        details.put("windSpeedMax", 10.1);
+        record.setDetails(details);
+        store().save(TRIP, record);
+
+        WeatherRecord read = store().findAll(TRIP).get(0);
+        assertThat(read.getDetails())
+                .containsEntry("sunrise", "2026-10-25T05:16")
+                .containsEntry("rainSum", 0.0)
+                .containsEntry("windSpeedMax", 10.1);
+    }
+
+    @Test
+    void aRecordWithoutDetailsReadsBackWithoutThemNotAsAnEmptyDocument() {
+        store().save(TRIP, reading(-13.53, -71.97, OCT_25));
+        assertThat(store().findAll(TRIP).get(0).getDetails()).isNullOrEmpty();
+    }
+
     static WeatherRecord reading(double latitude, double longitude, LocalDate date) {
         WeatherRecord record = new WeatherRecord();
         record.setId(WeatherRecord.keyFor(latitude, longitude, date));
@@ -155,6 +178,11 @@ public abstract class WeatherRepositoryContract extends TripScopedRepositoryCont
         record.setPrecipitation(2.75);
         record.setSource(DayWeather.Source.CLIMATE);
         record.setFetchedAt(Instant.parse("2026-09-18T06:12:45.123456Z"));
+        Map<String, Object> details = new java.util.LinkedHashMap<>();
+        details.put("sunrise", "2026-10-25T05:16");
+        details.put("uvIndexMax", 10.35);
+        details.put("rainSum", 0.0);
+        record.setDetails(details);
         return record;
     }
 }

@@ -30,6 +30,7 @@
   --tp-text: #3a2f1d;
   --tp-muted: #7a6a4f;
   --tp-accent: #b45309;
+  --tp-weather-typical-fg: #92400e;
   --tp-border: #e2d3b0;
   --tp-done: #4d7c0f;
   --tp-font-display: Georgia, "Times New Roman", serif;
@@ -495,6 +496,23 @@ a { color: var(--tp-accent); }
 }
 
 .weather-line-muted { font-size: 0.78rem; }
+
+/* Sunrise/sunset, UV, rain, wind, feels-like. A grid so chips line up in
+   columns at any width (a phone gets a tidy two-up block, not a ragged wrap),
+   with the column minimum sized to the longest chip. Hidden until a lookup
+   fills it — [hidden] still wins because of the !important rule above. Full
+   text colour: it is the data, and muted on the card tint is only 4.5:1. */
+.weather-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 11rem));
+  gap: 2px 12px;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--tp-text);
+  font-variant-numeric: tabular-nums;
+}
+.weather-detail { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.weather-detail-icon { font-size: 0.95rem; line-height: 1; width: 1.2em; text-align: center; }
 .weather-icon { font-size: 1.05rem; line-height: 1; }
 
 .weather-temps {
@@ -569,4 +587,14 @@ a { color: var(--tp-accent); }
   color: var(--tp-on-selected, #fff);
   background: var(--tp-selected, var(--tp-accent));
   border-color: var(--tp-selected, var(--tp-accent));
+}
+
+/* Every button and stand-alone link is at least 28px, the desktop default. */
+.theme-btn, .panel-btn { min-height: 28px; }
+a.dest-meta, .brand-footer a { display: inline-flex; align-items: center; min-height: 28px; }
+
+/* Phones: the buttons and links a reader taps are a fingertip tall. */
+@media (max-width: 640px) {
+  .theme-btn, .panel-btn { min-height: 44px; }
+  a.dest-meta, .brand-footer a { display: inline-flex; align-items: center; min-height: 44px; }
 }

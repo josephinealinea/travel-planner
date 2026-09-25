@@ -6,8 +6,10 @@ import {
   newTravellers, travellersFromRecord, snapshotTravellers, travellersPayload,
   defaultCostSharers,
 } from '../../traveller-picker.js';
-import { condition, temperatureRange, sourceNote, sourceBadge, hasReading, unavailableHint }
-  from '../../weather.js';
+import {
+  condition, temperatureRange, sourceNote, sourceBadge, hasReading, unavailableHint,
+  detailChips, detailsTitle,
+} from '../../weather.js';
 
 /**
  * One entry's row.
@@ -445,6 +447,8 @@ export function itineraryTab() {
     weatherNote: (day) => sourceNote(day),
     weatherBadge: (day) => sourceBadge(day),
     weatherHasReading: (day) => hasReading(day),
+    weatherDetails: (day) => detailChips(day),
+    weatherDetailsTitle: (day) => detailsTitle(day),
 
     /**
      * The place, without a flag on it.
