@@ -383,14 +383,33 @@ public class StaticSiteRenderer {
                 card.emergencyNumber());
     }
 
+    /**
+     * How many different dates the stops cover: [start, end) for nights, so a
+     * night is the date it starts on, or [start, end] for days. Stops with a
+     * missing or backwards date count nothing, matching Destination.nights()
+     * and days().
+     */
+    private static long distinctDates(List<Destination> stops, boolean inclusiveEnd) {
+        Set<LocalDate> dates = new java.util.HashSet<>();
+        for (Destination stop : stops) {
+            LocalDate start = stop.getStartDate();
+            LocalDate end = stop.getEndDate();
+            if (start == null || end == null || end.isBefore(start)) continue;
+            LocalDate last = inclusiveEnd ? end.plusDays(1) : end;
+            for (LocalDate d = start; d.isBefore(last); d = d.plusDays(1)) dates.add(d);
+        }
+        return dates.size();
+    }
+
     private PublishedTrip.Country toCountry(String code, List<Destination> stops,
                                             PublishOptions options) {
         String flag = stops.stream().map(Destination::getCountryFlag)
                 .filter(f -> f != null && !f.isBlank()).findFirst().orElse("");
-        long nights = stops.stream().map(Destination::nights).filter(n -> n != null)
-                .mapToLong(Long::longValue).sum();
-        long days = stops.stream().map(Destination::days).filter(n -> n != null)
-                .mapToLong(Long::longValue).sum();
+        // Distinct calendar nights (and days) across the stops, not a sum of
+        // their counts: a stop can sit inside another one (Ollantaytambo
+        // within a Cusco stay) and the shared night is still one night.
+        long nights = distinctDates(stops, false);
+        long days = distinctDates(stops, true);
         var details = catalog == null ? null : catalog.byCode(code).orElse(null);
         String region = null, capital = null, calling = null, demonym = null;
         List<String> languages = null, currencies = null;

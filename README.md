@@ -41,9 +41,17 @@ lsof -ti :8080 | xargs -r kill; lsof -ti :3000 | xargs -r kill
 ```bash
 ./docker-start.sh
 ```
-#### Start the API in database mode and real email
+#### Start the API in database mode and real email is OFF
+```bash
+cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
+```
+#### Start the API in database mode and real email is ON
 ```bash
 cd planner-api && (set -a; . ./.env.resend; set +a; FEATURE_ENABLE_DATABASE=true MAIL_MODE=smtp SMTP_HOST=smtp.resend.com SMTP_PORT=465 SMTP_SSL=true SMTP_AUTH=true SMTP_USER=resend SMTP_PASSWORD="$RESEND_API_KEY" MAIL_FROM=no-reply@travellingllama.fun BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun)
+```
+#### Start the API in file storage mode and real email is OFF
+```bash
+cd planner-api && FEATURE_ENABLE_DATABASE=false BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
 ```
 #### Build the stylesheets & serve the FE
 ```bash
@@ -151,6 +159,28 @@ cd planner-api && ./gradlew test --tests 'MessageKeysTest'
 A language appears in the picker as soon as its API file exists. The web file is
 what makes the pages read in it; without one the pages stay English.
 
+## API documentation
+
+The full list of the planner's own endpoints is [`docs/api/openapi.yaml`](docs/api/openapi.yaml).
+It is **generated from the controllers**, never edited by hand. A test
+(`OpenApiDocTest`) compares the committed file with what the code produces, so
+adding or changing an endpoint without updating the file fails the build.
+
+Everything the planner calls outside itself (countries.dev, Open-Meteo, exchange
+rates, R2, email), with when and how often, is in
+[`docs/external-apis/README.md`](docs/external-apis/README.md).
+
+After changing a controller, request or response type, regenerate the spec and commit it.
+
+#### Regenerate docs/api/openapi.yaml
+```bash
+cd planner-api && ./gradlew openApiUpdate
+```
+#### Check the spec is current (also runs with the full suite)
+```bash
+cd planner-api && ./gradlew test --tests 'OpenApiDocTest'
+```
+
 ## Permissions
 
 | Action | Who |
@@ -191,7 +221,7 @@ locks and atomic renames, which is enough for a single API but not for two.
 
 Every repository is also backed by PostgreSQL, so the same app runs on a real
 database — needed for more than one instance, and what the [Cloud Run
-deployment](docs/deploy.md) uses. Locally, a Postgres 17 container
+deployment](docs/deploy/deploy.md) uses. Locally, a Postgres 17 container
 (`compose.yaml`) stands in for it. Start it, then point the API at it:
 
 #### Run the tests

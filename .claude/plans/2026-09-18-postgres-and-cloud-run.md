@@ -4,11 +4,11 @@
 (`b2223d9`); Phase 3 (importer, CLAUDE.md, brief, docs) in the working tree,
 uncommitted. 672 tests green, none skipped. The importer was rehearsed on a copy
 of the real data and verified end to end — see the brief. Next: deploying,
-per `docs/deploy.md`, by the 4 Oct milestone.
+per `../../docs/deploy/deploy.md`, by the 4 Oct milestone.
 Found during Phase 1: Testcontainers must be 1.21.4+ for this machine's
 Docker 29 (pinned in `build.gradle.kts`), and under Colima the container tests
 are skipped rather than failed unless Testcontainers is told where Docker is —
-now set once in `~/.testcontainers.properties` + `~/.zshrc` (`docs/deploy.md`,
+now set once in `~/.testcontainers.properties` + `~/.zshrc` (`../../docs/deploy/deploy.md`,
 *Local development*).
 **Date:** 2026-09-18
 **Revised:** same day. v1 assumed the frontend inside the container and pages
@@ -608,7 +608,7 @@ belongs to exactly one agent.
   `config.js` same-origin default.
 - The proxy shared-secret filter in the API, `ProxyProperties`, and its
   registration in `SecurityConfig` (C is the only agent touching it).
-- `docs/deploy.md` — the runbook in §9.
+- `../../docs/deploy/deploy.md` — the runbook in §9.
 
 **Agent D · Published pages on R2**
 - `PageStore`, `FileSystemPageStore`, `R2PageStore`, the three call sites
@@ -657,7 +657,7 @@ current setup worse.
 
 ---
 
-## 9. Deploy runbook (documented in `docs/deploy.md`, not executed)
+## 9. Deploy runbook (documented in `../../docs/deploy/deploy.md`, not executed)
 
 **Once, in order:** Neon project (Frankfurt, Postgres 17) → R2 bucket (location
 hint Western Europe) and an API token → Secret Manager: `JWT_SECRET`,
@@ -758,5 +758,5 @@ free; importing weather or rates; an offline mode for the planner.
       measured with and without CDS
 - [ ] The importer copies your real data with its totals comparison passing, and
       refuses a non-empty database
-- [ ] `docs/deploy.md` covers every setting and secret in §9
+- [ ] `../../docs/deploy/deploy.md` covers every setting and secret in §9
 - [ ] CLAUDE.md updated; brief written

@@ -21,7 +21,8 @@ user works elsewhere, so do not carry it into another repository or into
 ```
 .claude/memory/     project memory  ->  MEMORY.md is the index
 .claude/briefs/     mission-control briefs (job / why / guardrails / done means)
-.claude/plans/      implementation plans
+.claude/specs/      design specs (what and why; approved before a plan is written)
+.claude/plans/      implementation plans (order and steps, written from a spec)
 .claude/commands/   slash commands  ->  /<filename-without-.md>
 .claude/skills/     skills          ->  .claude/skills/<name>/SKILL.md
 .claude/agents/     subagent definitions
@@ -1268,6 +1269,37 @@ but an `INSERT` that names the column with a NULL value fails the constraint
 rather than taking the default. The JDBC mappers therefore write the default
 themselves when the domain field is null — budget `status` → `CONFIRMED`,
 the same "a row with no status reads as a charge" rule the YAML store follows.
+
+## Documenting APIs
+
+- **Own API:** `docs/api/openapi.yaml` is generated from the controllers
+  (springdoc, test scope only) and never hand-edited. After changing a
+  controller, route or request/response type, regenerate and commit it;
+  `OpenApiDocTest` fails the build if it is stale.
+
+#### Regenerate docs/api/openapi.yaml
+```bash
+cd planner-api && ./gradlew openApiUpdate
+```
+
+- **External services:** `docs/external-apis/`, one hand-written file per
+  service. Update a service's file and
+  its table row when its client, timeout, TTL, cron, cache rule or trigger
+  changes. For a new service, create `<service>.md` (what, auth, base URL and
+  config key, each call with trigger and frequency, caching, failure
+  behaviour, quirks) and add a table row. Browser-side callers count too — the
+  published page calls Open-Meteo itself.
+
+## Scheduled jobs
+
+Documented in `docs/scheduled/`, one hand-written file per job. When adding or changing a `@Scheduled` job, a startup
+runner or any recurring background work, create or update
+`docs/scheduled/<job>.md`. Each file states what the job does,
+its schedule and time zone, **the config key and environment variable that
+change the schedule** (and where the default lives), every Java class involved
+with its purpose, failure behaviour, and how it behaves on scale-to-zero Cloud
+Run. A new job needs a refresh-on-read style fallback, since a cron may never
+fire there.
 
 ## countries.dev
 

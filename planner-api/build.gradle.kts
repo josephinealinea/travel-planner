@@ -59,6 +59,11 @@ dependencies {
     // MinIO stands in for Cloudflare R2 in the page-store contract test.
     testImplementation("org.testcontainers:minio")
 
+    // Generates docs/api/openapi.yaml from the controllers. Test scope on purpose:
+    // the running API never serves its own spec, and the image carries no
+    // springdoc. See OpenApiDocTest.
+    testImplementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.8.9")
+
     // Published pages on Cloudflare R2 (app.publish.store=r2), over its
     // S3-compatible API. Only the lightweight URL-connection HTTP client — the
     // default Netty and Apache ones (apache5 since 2.3x) are excluded so they
@@ -79,4 +84,16 @@ tasks.withType<Test> {
 // Records + @RequestParam/@PathVariable name inference without explicit values.
 tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
+}
+
+// Rewrites docs/api/openapi.yaml from the controllers. The same test, in update mode.
+tasks.register<Test>("openApiUpdate") {
+    description = "Regenerates docs/api/openapi.yaml from the controllers"
+    group = "documentation"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform()
+    filter { includeTestsMatching("OpenApiDocTest") }
+    systemProperty("openapi.update", "true")
+    outputs.upToDateWhen { false }
 }

@@ -1,6 +1,6 @@
 # Checking free-tier usage by hand
 
-The deployment ([deploy.md](deploy.md)) is built to stay inside three free
+The deployment ([deploy.md](../deploy/deploy.md)) is built to stay inside three free
 tiers. This page shows where to look in each provider's dashboard, what each
 figure means, and what happens if it is exceeded. To get the same figures in
 one table from the terminal, run the `free-tier-usage` skill, or run

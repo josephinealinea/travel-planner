@@ -79,7 +79,7 @@ New `SettleSimplifiedTest`:
 ## Docs
 
 Update the Settle Expenses section of `CLAUDE.md`; mention `SIMPLIFY_DEBTS` in
-the README. (Deviation: `docs/deploy.md` lists no comparable flags such as
+the README. (Deviation: `../../docs/deploy/deploy.md` lists no comparable flags such as
 `REQUIRE_OWNER_APPROVAL`, so the README is where the sibling flag is
 documented and this one follows it.)
 

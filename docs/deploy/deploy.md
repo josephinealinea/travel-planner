@@ -5,8 +5,8 @@ done, from creating the accounts to the first sign-in. It doubles as the
 runbook for rebuilding it from scratch and for everyday redeploys.
 
 It was first set up on **19 September 2026**. The reasoning behind each design
-decision is in `.claude/plans/2026-09-18-postgres-and-cloud-run.md`, and
-[free-tier-usage.md](free-tier-usage.md) covers keeping it free.
+decision is in `../../.claude/plans/2026-09-18-postgres-and-cloud-run.md`, and
+[free-tier-usage.md](external-apis/free-tier-usage.md) covers keeping it free.
 
 ---
 
@@ -113,7 +113,7 @@ were used to check each step, but nothing here depends on them.
 ### 1.5 The private files
 
 Secrets and account identifiers never go in git. They live in three files in
-`planner-api/`, all covered by `.env.*` in `.gitignore` and `.dockerignore`,
+`../../planner-api`, all covered by `.env.*` in `.gitignore` and `.dockerignore`,
 and all `chmod 600` (only you can read them):
 
 | File | Holds | Written in |
@@ -143,7 +143,7 @@ In the Neon console, **Create project**:
 |---|---|---|
 | Name | `travel-planner` | |
 | Region | **AWS Europe Central 1 (Frankfurt)** | Same city as Cloud Run |
-| Postgres version | **17** | What the local `compose.yaml` and every test use |
+| Postgres version | **17** | What the local `../../compose.yaml` and every test use |
 | Database name | `planner` | |
 
 > **Postgres 17, not 18.** The project was first created on Neon's default,
@@ -158,7 +158,7 @@ Then, from **Connect** (connection details), with the database set to `planner`:
 - Remove `&channel_binding=require` from the end. That option exists only in
   `psql`'s own driver (libpq), not in Java's.
 
-Turn the string into the three lines of `planner-api/.env.neon`:
+Turn the string into the three lines of `../../planner-api/.env.neon`:
 
 ```
 DB_URL='jdbc:postgresql://<host>/planner?sslmode=require'
@@ -226,7 +226,7 @@ first time; the free allowance is 10 GB):
    - **Apply to specific buckets only** → `travel-planner-pages`
    - TTL Forever
 
-4. The next screen shows the keys **once**. Put them in `planner-api/.env.r2`:
+4. The next screen shows the keys **once**. Put them in `../../planner-api/.env.r2`:
 
    ```
    R2_ACCOUNT_ID='<32 hex characters>'
@@ -348,7 +348,7 @@ cd planner-api && ./gradlew test
 
 The first deploy ran after 672 tests passed, with 0 skipped.
 
-### 7.2 The settings file: `planner-api/.env.deploy`
+### 7.2 The settings file: `../../planner-api/.env.deploy`
 
 Every setting for the service comes from this file, never from a hand-typed
 command:
@@ -374,7 +374,7 @@ it here instead.
 
 ### 7.3 `./deploy.sh`
 
-`planner-api/deploy.sh` reads `.env.deploy`, plus the Neon host and user from
+`../../planner-api/deploy.sh` reads `.env.deploy`, plus the Neon host and user from
 `.env.neon` and the R2 IDs from `.env.r2`, and refuses to start if anything is
 missing. Then it:
 
@@ -432,7 +432,7 @@ Flyway at schema version 1, and exchange rates fetched.
 ## Part 8: The website (Cloudflare Pages)
 
 Pages hosts the static website, meaning the HTML, CSS and JavaScript in
-`planner-web/`, and runs two **Functions**: small pieces of code that run on
+`../../planner-web`, and runs two **Functions**: small pieces of code that run on
 Cloudflare's servers.
 
 | File | Catches | Does |
@@ -444,7 +444,7 @@ Cloudflare's servers.
 
 ### 8.1 Tell the proxy where the API is
 
-In `planner-web/wrangler.toml`, Cloudflare's settings file for the site, set the
+In `../../planner-web/wrangler.toml`, Cloudflare's settings file for the site, set the
 production API address to the one from Part 7:
 
 ```toml
@@ -601,7 +601,7 @@ their temporary passwords are in **Cloud Run → planner-api → Logs**.
 
 ### Option B: bring over the local data (the importer)
 
-The importer copies everything in the local YAML files (`planner-api/data/`)
+The importer copies everything in the local YAML files (`../../planner-api/data`)
 into Neon: every account with its password hash, every trip and every record.
 Everyone then signs in with the password they already had. It runs once, from
 the Mac.
@@ -670,7 +670,7 @@ To check where it stands:
 - **In Claude Code**, ask about free-tier usage. The global
   `free-tier-usage` skill prints one table for all five services.
 - **In a terminal**, run `~/.claude/skills/free-tier-usage/usage-report.sh`.
-- **By hand**, follow [free-tier-usage.md](free-tier-usage.md), which walks
+- **By hand**, follow [free-tier-usage.md](../external-apis/free-tier-usage.md), which walks
   through each dashboard.
 
 On the first day, everything was below 1 % except Artifact Registry, which
@@ -761,7 +761,7 @@ Cloud Run reads `latest` when an instance starts, so redeploy afterwards.
 
 ### 11.4 Switch the API over
 
-In `planner-api/.env.deploy`, change `MAIL_MODE` and add the rest:
+In `../../planner-api/.env.deploy`, change `MAIL_MODE` and add the rest:
 
 ```
 MAIL_MODE='smtp'
@@ -814,7 +814,7 @@ page shows every message it received and what became of it.
 ### 11.6 Turning an email off
 
 Each kind of email has its own switch, on by default. To stop one, add it to
-`planner-api/.env.deploy` set to `false` and redeploy. The email is then not
+`../../planner-api/.env.deploy` set to `false` and redeploy. The email is then not
 sent, and the log says so (`Not sending … switched off`).
 
 | Setting | Email | Sent to |
@@ -840,7 +840,7 @@ Locally, put the same variable in front of the run command, for example
 `./deploy.sh --no-build`. Nothing else needs undoing.
 
 **Local development is unchanged**: `MAIL_MODE` defaults to `file`, which writes
-`.eml` files to `planner-api/data/outbox/`. Nothing local ever reaches Resend.
+`.eml` files to `../../planner-api/data/outbox`. Nothing local ever reaches Resend.
 
 ---
 

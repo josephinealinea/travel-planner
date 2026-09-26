@@ -1,6 +1,6 @@
 # PostgreSQL behind the flag, and a free-tier deployment
 
-**Status:** **done** — Phases 1–2 committed (`b2223d9`); Phase 3 verified 2026-09-19, uncommitted. Next: deploy (`docs/deploy.md`), by 4 Oct.
+**Status:** **done** — Phases 1–2 committed (`b2223d9`); Phase 3 verified 2026-09-19, uncommitted. Next: deploy (`../../docs/deploy/deploy.md`), by 4 Oct.
 **Date:** 2026-09-18
 **Plan:** `.claude/plans/2026-09-18-postgres-and-cloud-run.md`
 
@@ -71,7 +71,7 @@ Phases 1–2 — verified 2026-09-18:
 - [x] Through the local Cloudflare proxy: login, `/auth/me`, a create with the
       CSRF token (201) and without it (403); a direct call without the proxy
       secret refused (403); unknown paths a real 404; `js/` served `no-cache`
-- [x] `docs/deploy.md` covers every resource, setting and secret
+- [x] `../../docs/deploy/deploy.md` covers every resource, setting and secret
 
 Phase 3:
 
@@ -92,8 +92,8 @@ Phase 3:
       published pages)
 - [x] The app in database mode, in the browser, on the imported copy — every
       tab's counts and the Settle Expenses table match
-- [x] **672 tests, 0 failures, 0 skipped**; `docs/deploy.md` step 7 is the
-      import procedure
+- [x] **672 tests, 0 failures, 0 skipped**; `../../docs/deploy/deploy.md` step 7 is the
+  import procedure
 - [x] CLAUDE.md: storage, schema rules, page store, deployment, rates
       refresh-on-read, three new Traps; the false "every repository is an
       interface" claim corrected
@@ -106,7 +106,7 @@ Phase 3:
 - **Container tests were silently skipped twice**: once for a Testcontainers
   version Docker 29 refuses, once for Colima's socket. Both fixed; both in Traps.
 - **Agents C and E both ran out of usage mid-task.** C's unfinished checks
-  (image, cold start, proxy end to end) and `docs/deploy.md` were done by the
+  (image, cold start, proxy end to end) and `../../docs/deploy/deploy.md` were done by the
   parent; so were E's tests, rehearsal and docs — its seven main classes were
   complete, reviewed, and kept unchanged.
 - **A GitHub personal access token sits in plain text in `~/.zshrc`**, and was

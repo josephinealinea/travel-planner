@@ -55,6 +55,7 @@ class StaticSiteRendererTest {
 
     private StaticSiteRenderer renderer;
     private Path publishDir;
+    private DestinationRepository destinationRepo;
 
     @BeforeEach
     void setUp(@TempDir Path dir) {
@@ -81,6 +82,7 @@ class StaticSiteRendererTest {
         var itinerary = new YamlItineraryRepository(store, paths, locks);
         var budget = new YamlBudgetRepository(store, paths, locks);
 
+        destinationRepo = destinations;
         seed(destinations, checklist, itinerary, budget);
 
         // The renderer only ever summarises a Trip it is handed, so the access
@@ -427,6 +429,28 @@ class StaticSiteRendererTest {
         assertThat(peru.get("days").isNull()).isTrue();
         assertThat(peru.get("emergencyNumber").asText()).isEqualTo("105");
         assertThat(peru.get("capital").isNull()).isTrue();
+    }
+
+    /**
+     * A stop inside another stop's dates — Ollantaytambo's night of 25-Oct is
+     * one of Cusco's — is one night, not two. The country row counts distinct
+     * dates rather than adding the stops' own counts, while each stop still
+     * shows its own.
+     */
+    @Test
+    void aCountryCountsDistinctNightsWhenItsStopsOverlap() throws Exception {
+        Destination ollantaytambo = new Destination();
+        ollantaytambo.setId("dest-2");
+        ollantaytambo.setTripId("trip-1");
+        ollantaytambo.setName("Ollantaytambo");
+        ollantaytambo.setCountryCode("PE");
+        ollantaytambo.setStartDate(LocalDate.of(2026, 10, 25));
+        ollantaytambo.setEndDate(LocalDate.of(2026, 10, 26));
+        destinationRepo.save(SLUG, ollantaytambo);
+
+        JsonNode nights = payload(render("minima", PublishOptions.hidden()));
+        assertThat(destination(nights, "Ollantaytambo").get("nights").asLong()).isEqualTo(1);
+        assertThat(nights.get("countries").get(0).get("nights").asLong()).isEqualTo(6);
     }
 
     private static JsonNode destination(JsonNode payload, String name) {
