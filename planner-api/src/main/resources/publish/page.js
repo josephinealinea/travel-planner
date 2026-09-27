@@ -329,8 +329,21 @@
   // fetch can be one batched call instead of one per card.
   var pending = [];
 
+  // Today and every day after it, ascending; a day already past drops to the
+  // bottom, so a trip under way opens on "what's next" rather than day one.
+  // Before the trip starts nothing is past yet, so this is plain ascending.
+  function orderFromToday(days) {
+    var today = new Date().toISOString().slice(0, 10);
+    var upcoming = [], past = [];
+    days.forEach(function (d) { (d.date && d.date < today ? past : upcoming).push(d); });
+    function byDate(a, b) { return String(a.date) < String(b.date) ? -1 : String(a.date) > String(b.date) ? 1 : 0; }
+    upcoming.sort(byDate);
+    past.sort(byDate);
+    return upcoming.concat(past);
+  }
+
   function itineraryPanel() {
-    var days = list(trip.days);
+    var days = orderFromToday(list(trip.days));
     var panel = section('weather itinerary', '🗓 ' + t('page.itinerary.title'));
     // The heading is rewritten by show() when only one half is on screen: a
     // column of weather cards under the word "Itinerary" reads wrong.
@@ -389,7 +402,7 @@
       card.setAttribute('data-part', 'itinerary');
       list(day.entries).forEach(function (entry) {
         var row = el('div', 'entry');
-        row.appendChild(el('div', 'entry-icon', entry.icon || '•'));
+        row.appendChild(el('div', 'entry-icon', transportIcon(entry) || entry.icon || '•'));
 
         var body = el('div', 'entry-body');
         body.appendChild(el('div', 'entry-desc', entry.description || ''));
@@ -400,6 +413,8 @@
         }
         if (entry.categoryLabel) meta.push(entry.categoryLabel);
         if (meta.length) body.appendChild(el('div', 'entry-meta', meta.join(' · ')));
+        if (entry.flight) body.appendChild(flightBlock(entry.flight, day.date));
+        if (entry.note) body.appendChild(el('div', 'entry-note', entry.note));
         row.appendChild(body);
 
         if (entry.cost) {
@@ -413,6 +428,238 @@
     });
 
     return panel;
+  }
+
+  // A transport entry with no flight number reads its mode from the
+  // description instead ("Bus to Cusco" -> 🚌); with a flight number the
+  // ordinary ✈️ category icon stands. Checked in this order so a description
+  // naming more than one mode picks the first that matches.
+  // Checked in this order, so a description naming more than one mode picks
+  // the first that matches. Anything transport that matches none of these
+  // (and has no flight number) is a car by default — 🚘 covers a drive, a
+  // taxi or a rideshare without needing to name every service.
+  var TRANSPORT_MODE_ICONS = [
+    [/train/i, '🚂'],
+    [/bus/i, '🚌'],
+    [/ferry|ship/i, '🚢'],
+    [/boat/i, '⛵'],
+    [/flight|plane/i, '✈️']
+  ];
+
+  function transportIcon(entry) {
+    if (entry.category !== 'transport' || (entry.flight && entry.flight.number)) return null;
+    var text = entry.description || '';
+    for (var i = 0; i < TRANSPORT_MODE_ICONS.length; i++) {
+      if (TRANSPORT_MODE_ICONS[i][0].test(text)) return TRANSPORT_MODE_ICONS[i][1];
+    }
+    return '🚘';
+  }
+
+  // ---- flights -----------------------------------------------------------
+  // Nothing is fetched on load. A click asks the API, which decides which of its
+  // two services to call; the answer is kept in this browser for the TTL the
+  // server sent, so reopening the page does not spend a call.
+
+  var FLIGHT_CACHE = 'publishedFlight:';
+
+  // Whole keys, so the key check can see every one of them.
+  var FLIGHT_STATUS = {
+    Expected: 'page.flight.status.Expected',
+    CheckIn: 'page.flight.status.CheckIn',
+    Boarding: 'page.flight.status.Boarding',
+    GateClosed: 'page.flight.status.GateClosed',
+    Departed: 'page.flight.status.Departed',
+    EnRoute: 'page.flight.status.EnRoute',
+    Delayed: 'page.flight.status.Delayed',
+    Approaching: 'page.flight.status.Approaching',
+    Arrived: 'page.flight.status.Arrived',
+    Canceled: 'page.flight.status.Canceled',
+    Diverted: 'page.flight.status.Diverted',
+    Unknown: 'page.flight.status.Unknown',
+    CanceledUncertain: 'page.flight.status.CanceledUncertain'
+  };
+
+  function flightSlug() {
+    var parts = location.pathname.split('/').filter(Boolean);
+    return parts[0] === 'p' ? parts[1] : null;
+  }
+
+  function readFlightCache(key) {
+    try {
+      var raw = localStorage.getItem(FLIGHT_CACHE + key);
+      if (!raw) return null;
+      var saved = JSON.parse(raw);
+      return saved.expires > Date.now() ? saved.view : null;
+    } catch (e) { return null; }
+  }
+
+  function writeFlightCache(key, view, ttlSeconds) {
+    try {
+      localStorage.setItem(FLIGHT_CACHE + key,
+        JSON.stringify({ expires: Date.now() + ttlSeconds * 1000, view: view }));
+    } catch (e) { /* private mode, or no storage at all */ }
+  }
+
+  // "14:20", with the date added when it is not today: the time we last fetched.
+  function fetchedLabel(iso) {
+    var when = new Date(iso);
+    var time = when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return when.toDateString() === new Date().toDateString()
+      ? time
+      : when.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + time;
+  }
+
+  function hhmm(iso) { return iso ? iso.substring(11, 16) : ''; }
+
+  /**
+   * One line per side of the flight: its time, terminal and (once live) gate
+   * or belt, all together — "Departs 10:35 • Departure terminal 5 • Departure
+   * gate 9" — so everything about leaving one airport reads as one fact
+   * instead of three lines that each repeat "Departure".
+   */
+  function sideLine(container, timeKey, time, terminalKey, terminal, extraKey, extraValue) {
+    var parts = [];
+    if (time) parts.push(t(timeKey, { time: time }));
+    if (terminal) parts.push(t(terminalKey, { terminal: terminal }));
+    if (extraValue) parts.push(t(extraKey, { gate: extraValue, belt: extraValue }));
+    if (parts.length) container.appendChild(el('div', 'entry-meta', parts.join(' • ')));
+  }
+
+  // What the published snapshot already knows, before anyone presses refresh:
+  // just where it leaves from and lands, nothing that can go stale.
+  function drawFlightSnapshot(box, flight) {
+    sideLine(box, null, null, 'page.flight.terminalDeparture', flight.terminalFrom, null, null);
+    sideLine(box, null, null, 'page.flight.terminalArrival', flight.terminalTo, null, null);
+  }
+
+  /**
+   * The live answer, in a collapsible <details> so it can be tucked away again
+   * after a click — a plain box could only ever grow, with nothing to put it
+   * back the way it looked before. Reopening it (or a later refresh) keeps
+   * whatever the reader last chose, since drawFlightStatus only ever replaces
+   * what is inside, never the <details> element itself.
+   */
+  function drawFlightStatus(box, view, flight) {
+    flight = flight || {};
+    var s = view.schedule, live = view.live;
+    var dep = (s && s.departure) || {}, arr = (s && s.arrival) || {};
+    var d = (live && live.departure) || {}, a = (live && live.arrival) || {};
+
+    var details = box.querySelector('details.flight-details');
+    var wasOpen = details ? details.open : true;
+    box.textContent = '';
+    details = el('details', 'flight-details');
+    details.open = wasOpen;
+    details.appendChild(el('summary', null, t('page.flight.detailsLabel')));
+    var body = el('div', 'flight-details-body');
+
+    // The schedule's own status, and (once live) whether it is running on time,
+    // as one line: "Scheduled • On time" reads as a single fact, not two.
+    var headline = [];
+    if (s) {
+      var statusKey = FLIGHT_STATUS[s.status];
+      if (statusKey) headline.push(t(statusKey));
+    }
+    // 0 is an answer: "on time", not "unknown".
+    if (d.delayMinutes != null) {
+      headline.push(d.delayMinutes > 0 ? t('page.flight.delayed', { minutes: d.delayMinutes }) : t('page.flight.onTime'));
+    }
+    if (headline.length) body.appendChild(el('div', 'entry-meta', headline.join(' • ')));
+
+    // Each side gets one line: its own local wall-clock time, terminal and
+    // (once live) gate or belt, so leaving one airport reads as a single
+    // fact rather than three separate lines.
+    var depTime = s ? hhmm(dep.revisedLocal || dep.scheduledLocal) : '';
+    var arrTime = s ? hhmm(arr.predictedLocal || arr.scheduledLocal) : '';
+    sideLine(body, 'page.flight.departsAt', depTime, 'page.flight.terminalDeparture', dep.terminal || flight.terminalFrom, 'page.flight.gate', d.gate);
+    sideLine(body, 'page.flight.arrivesAt', arrTime, 'page.flight.terminalArrival', arr.terminal || flight.terminalTo, 'page.flight.baggage', a.baggageBelt);
+
+    if (view.scheduleFetchedAt) {
+      body.appendChild(el('div', 'entry-meta flight-updated',
+        t('page.flight.updatedSchedule', { time: fetchedLabel(view.scheduleFetchedAt) })));
+    }
+    if (view.liveFetchedAt) {
+      body.appendChild(el('div', 'entry-meta flight-updated',
+        t('page.flight.updatedLive', { time: fetchedLabel(view.liveFetchedAt) })));
+    }
+
+    details.appendChild(body);
+    box.appendChild(details);
+  }
+
+  function flightBlock(flight, date) {
+    var wrap = el('div', 'flight');
+    var head = el('div', 'entry-meta');
+    var label = (flight.airline ? flight.airline + ' • ' : '') + flight.number + (flight.operatingNumber
+      ? ' (' + t('page.flight.operatedAs', { number: flight.operatingNumber }) + ')' : '');
+    // Number, then each airport as its own pill: the airport's name, then its code in
+    // brackets. An airport with a known map link opens it in a new tab, same as a
+    // destination's own coordinates do.
+    var airport = function (name, iata) { return iata ? (name ? name + ' (' + iata + ')' : iata) : ''; };
+    var pills = el('span', 'flight-pills');
+    [
+      { text: label ? '✈️ ' + label : '', mapUrl: null },
+      { text: airport(flight.fromName, flight.fromIata), mapUrl: flight.fromMapUrl },
+      { text: airport(flight.toName, flight.toIata), mapUrl: flight.toMapUrl }
+    ].forEach(function (part, i) {
+      if (!part.text) return;
+      var shown = i === 0 ? part.text : '📍 ' + part.text;
+      if (part.mapUrl) {
+        var link = el('a', 'chip', shown);
+        link.href = part.mapUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        pills.appendChild(link);
+      } else {
+        pills.appendChild(el('span', 'chip', shown));
+      }
+    });
+    head.appendChild(pills);
+    head.appendChild(document.createTextNode(' '));
+
+    var button = el('button', 'flight-refresh');
+    button.type = 'button';
+    button.setAttribute('aria-label', t('page.flight.refresh'));
+    button.appendChild(document.createTextNode('↻ '));
+    button.appendChild(el('span', 'flight-refresh-label', t('page.flight.reload')));
+    head.appendChild(button);
+    wrap.appendChild(head);
+
+    var box = el('div', 'flight-status');
+    wrap.appendChild(box);
+
+    var key = flight.number + ':' + date;
+    var cached = readFlightCache(key);
+    if (cached) drawFlightStatus(box, cached, flight);
+    else drawFlightSnapshot(box, flight);
+
+    button.addEventListener('click', function () {
+      var slug = flightSlug();
+      if (!slug) return;
+      var hit = readFlightCache(key);
+      if (hit) { drawFlightStatus(box, hit, flight); return; }
+      button.disabled = true;
+      fetch('/api/v1/public/trips/' + encodeURIComponent(slug) + '/flights?number='
+            + encodeURIComponent(flight.number) + '&date=' + encodeURIComponent(date))
+        .then(function (response) {
+          // 204: nothing to show yet. 404: the plan has moved on since this file was
+          // written. Either way the card stays as published, without an error.
+          if (response.status === 200) return response.json();
+          if (response.status === 204 || response.status === 404) return null;
+          throw new Error('status ' + response.status);
+        })
+        .then(function (view) {
+          if (!view) return;
+          drawFlightStatus(box, view, flight);
+          writeFlightCache(key, view, view.ttlSeconds || 300);
+        })
+        .catch(function () {
+          box.textContent = '';
+          box.appendChild(el('div', 'entry-meta', t('page.flight.unavailable')));
+        })
+        .then(function () { button.disabled = false; });
+    });
+    return wrap;
   }
 
   function checklistPanel() {

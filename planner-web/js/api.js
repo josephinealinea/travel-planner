@@ -139,8 +139,11 @@ export const api = {
 
   // ── itinerary ──────────────────────────────────────
   itinerary: (id) => get(`${trip(id)}/itinerary`),
-  addPlan: (id, data) => post(`${trip(id)}/itinerary`, data),
-  updatePlan: (id, planId, data) => patch(`${trip(id)}/itinerary/${planId}`, data),
+  // Fills a form from a flight number and a start date. Never saves anything.
+  lookupFlight: (id, number, date) =>
+    get(`${trip(id)}/flights/lookup?number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}`),
+  addItinerary: (id, data) => post(`${trip(id)}/itinerary`, data),
+  updateItinerary: (id, planId, data) => patch(`${trip(id)}/itinerary/${planId}`, data),
   // One day of a plan.
   deleteEntry: (id, itemId) => del(`${trip(id)}/itinerary/${itemId}`),
   // The plan and every day it covers.

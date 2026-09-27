@@ -8,7 +8,10 @@
 //   2. a key in en.js is used nowhere (a word nobody sees, still to translate);
 //   3. another language file has a key en.js does not (a typo);
 //   4. a toast, alert or textContent is given a sentence in code instead of a key;
-//   5. the English kept in <title> / <meta> for crawlers has drifted from en.js.
+//   5. the English kept in <title> / <meta> for crawlers has drifted from en.js;
+//   6. placeholder text is not named <area>.placeholder.<field> (so every example a
+//      field shows can be found, and renamed, by searching ".placeholder."), or a
+//      ".placeholder." key is used for anything other than a placeholder.
 // 5 exists because link previews and search engines read the HTML without running
 // any script, so those few elements keep their English in the file; the check is
 // what keeps that copy honest.
@@ -118,6 +121,28 @@ for (const file of htmlFiles) {
       : whole.replace(/\s*data-i18n-content=/, ` content="${encodeAttr(english)}" data-i18n-content=`);
   });
   if (fix && rewritten !== head) writeFileSync(file, rewritten + text.slice(head.length));
+}
+
+// ── 6. placeholder keys are named <area>.placeholder.<field>
+// A field's example text is data-i18n-placeholder="key" (or :placeholder="$t('key')").
+// The rule is checked both ways, so the name always tells the truth.
+const PLACEHOLDER_KEY = /\.placeholder\./;
+for (const { file, text } of sources) {
+  const asPlaceholder = new Set();
+  for (const m of text.matchAll(new RegExp(`data-i18n-placeholder="(${KEY})"`, 'g'))) asPlaceholder.add(m[1]);
+  for (const m of text.matchAll(new RegExp(`:placeholder="[^"]*?\\$?\\bth?\\(\\s*'(${KEY})'`, 'g'))) asPlaceholder.add(m[1]);
+  for (const key of asPlaceholder) {
+    if (!PLACEHOLDER_KEY.test(key)) fail(`${file}: '${key}' is used as placeholder text, so it should be named <area>.placeholder.<field>`);
+  }
+  // ... and a ".placeholder." key must not be used as anything else
+  const lines = text.split('\n');
+  lines.forEach((line, i) => {
+    for (const m of line.matchAll(new RegExp(`(?:\\$?\\bth?\\(\\s*'|data-i18n(?:-(?!placeholder)[a-z-]+)?=")(${KEY})['"]`, 'g'))) {
+      if (PLACEHOLDER_KEY.test(m[1]) && !/placeholder/i.test(line.replace(m[0], ''))) {
+        fail(`${file}:${i + 1}: '${m[1]}' is a placeholder key but is used as ordinary text`);
+      }
+    }
+  });
 }
 
 if (problems.length) {

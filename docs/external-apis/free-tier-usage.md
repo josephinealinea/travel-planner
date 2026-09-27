@@ -23,6 +23,30 @@ the rest of the time.
 Only three of these can cost money: Cloud Run, Artifact Registry and R2. The
 other two stop working instead of billing.
 
+### Flight APIs (counted by the app, not by a dashboard)
+
+The flight lookup spends two more metered services, and the app counts its own
+calls in the `api_usage` table (`data/api-usage.yml` locally), one row per
+service and UTC month:
+
+| Service | Free allowance | The app stops at | Resets | Over the limit |
+|---|---|---|---|---|
+| AeroDataBox (RapidAPI) | 400 calls | 90% (360) | monthly | the app stops calling; lookups answer "unavailable" |
+| AviationStack | 100 calls | 90% (90) | monthly | the app stops calling; live extras disappear |
+
+Both limits and the cap percentage are plain values in `application.yml`
+(`app.flights.<service>.monthly-limit` / `cap-percent`; see
+[aerodatabox.md](aerodatabox.md) and [aviationstack.md](aviationstack.md)), changed
+by editing the file and redeploying. During an outage the
+[circuit breaker](circuit-breaker.md) stops calls after 3 consecutive failures, so
+an outage costs a few calls rather than the month's allowance.
+Every attempt counts, including a failed one. To see this month's use:
+
+#### Read the counters in Postgres
+```sql
+SELECT service, month, calls FROM api_usage ORDER BY month DESC;
+```
+
 ---
 
 ## Google Cloud

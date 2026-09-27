@@ -55,6 +55,9 @@ public class SecurityConfig {
                 // Carries no user data and is the same for everyone; the
                 // sign-in page may need it before anybody has signed in.
                 .requestMatchers(HttpMethod.GET, "/api/v1/config").permitAll()
+                // The refresh icon on a published page: no sign-in exists there.
+                // FlightStatusService refuses anything not on a published trip.
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                 .requestMatchers("/api/v1/auth/login",
                                  "/api/v1/auth/logout",
                                  "/api/v1/auth/csrf",

@@ -11,6 +11,7 @@ import {
   detailChips, detailsTitle,
 } from '../../weather.js';
 import { t } from '../../i18n/index.js';
+import { blankFlight, flightFromRecord } from './flight-lookup.js';
 
 /**
  * One entry's row.
@@ -19,6 +20,13 @@ import { t } from '../../i18n/index.js';
  * shows no time; check-in and check-out show theirs. `item` is kept whole so
  * selecting, editing and deleting act on that entry itself.
  */
+function orderFromToday(dates) {
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = dates.filter((d) => d >= today).sort();
+  const past = dates.filter((d) => d < today).sort();
+  return [...upcoming, ...past];
+}
+
 function entryView(item) {
   return {
     item,
@@ -60,6 +68,7 @@ function weatherView(day) {
 export function itineraryTab() {
   const blankEntry = () => ({
     id: null,
+    ...blankFlight(),
     category: 'OTHERS',
     description: '',
     note: '',
@@ -216,10 +225,12 @@ export function itineraryTab() {
       });
 
       // Only days inside the trip are shown; an entry dated beyond it stays
-      // saved but is left off the timeline.
-      const dates = [...new Set([...byDay.keys(), ...weatherByDay.keys()])]
-        .filter((date) => !this.isOutsideTrip(date))
-        .sort();
+      // saved but is left off the timeline. Today and every day after it come
+      // first, ascending; a day already past drops to the bottom, so a trip
+      // under way reads as "what's next" rather than starting back at day one.
+      // Before the trip starts nothing is past yet, so this is plain ascending.
+      const dates = orderFromToday([...new Set([...byDay.keys(), ...weatherByDay.keys()])]
+        .filter((date) => !this.isOutsideTrip(date)));
       const days = dates.map((date) => ({
         date,
         label: longDate(date),
@@ -271,6 +282,7 @@ export function itineraryTab() {
     openEditEntry(item) {
       this.entryForm = {
         id: item.id,
+        ...flightFromRecord(item),
         category: item.category,
         description: item.description || '',
         note: item.note || '',
@@ -372,18 +384,19 @@ export function itineraryTab() {
           // Always sent: absent would leave the payer alone, '' clears it.
           costPaidByUserId: this.entryForm.paidByUserId || '',
           countryCodes: this.entryForm.countryCodes,
+          ...this.flightPayload(this.entryForm, this.entryForm.category === 'TRANSPORTATION'),
           // Never for a later day of a stay: the API refuses it there.
           ...(this.entryForm.planId ? {} : travellersPayload(this.entryForm.travellers, this.entryForm.travellersInitial)),
         };
         let savedId;
         let message;
         if (this.entryForm.id) {
-          await this.api.updatePlan(this.trip.id, this.entryForm.id,
+          await this.api.updateItinerary(this.trip.id, this.entryForm.id,
             { ...payload, cost: cost == null ? 0 : cost });
           savedId = this.entryForm.id;
           message = t('itinerary.entryUpdated');
         } else {
-          const created = await this.api.addPlan(this.trip.id, { ...payload, cost });
+          const created = await this.api.addItinerary(this.trip.id, { ...payload, cost });
           savedId = created?.id;
           message = t('itinerary.entryAdded');
         }

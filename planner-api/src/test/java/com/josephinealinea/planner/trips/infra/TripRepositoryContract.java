@@ -274,6 +274,20 @@ public abstract class TripRepositoryContract {
         assertThat(repository().findAllForUser("nobody")).isEmpty();
     }
 
+    @Test
+    void findAllPublishedIsExactlyThePublishedTrips() {
+        givenUser("owner");
+        Trip draft = trip("t-d", "draft-trip", "owner");
+        Trip live = trip("t-p", "live-trip", "owner");
+        live.setStatus(TripStatus.PUBLISHED);
+        repository().save(draft);
+        repository().save(live);
+
+        assertThat(repository().findAllPublished()).extracting(Trip::getSlug)
+                .containsExactly("live-trip");
+        assertThat(repository().findAllPublished().get(0).getMembers()).hasSize(1);
+    }
+
     /** What the YAML filter (Trip.isMember) does, pinned so the database agrees. */
     @Test
     void owningATripWithoutBeingInItsMemberListDoesNotListIt() {

@@ -112,9 +112,10 @@ were used to check each step, but nothing here depends on them.
 
 ### 1.5 The private files
 
-Secrets and account identifiers never go in git. They live in three files in
-`../../planner-api`, all covered by `.env.*` in `.gitignore` and `.dockerignore`,
-and all `chmod 600` (only you can read them):
+Secrets and account identifiers never go in git. They live in one file per
+service in `../../planner-api`, all covered by `.env.*` in `.gitignore` and
+`.dockerignore`, and all `chmod 600` (only you can read them). A file holds a
+service's key; `.env.deploy` alone holds settings, none of them secret:
 
 | File | Holds | Written in |
 |---|---|---|
@@ -122,6 +123,12 @@ and all `chmod 600` (only you can read them):
 | `.env.r2` | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Part 4 |
 | `.env.deploy` | Project, region, domain, image tag, app settings (no secrets) | Part 7 |
 | `.env.resend` | `RESEND_API_KEY`, only needed once, to store it in Secret Manager | Part 11 |
+| `.env.aerodatabox` | `AERODATABOX_KEY` (the RapidAPI key), optional: switches on flight lookup | Part 5 |
+| `.env.aviationstack` | `AVIATIONSTACK_KEY`, optional: codeshares and live gate/delay | Part 5 |
+
+Each key file serves two uses, like `.env.r2`: it is sourced for a local run, and
+it is what the Secret Manager secret is created from, so a key lives in one place
+on the laptop.
 
 Values are written in single quotes, one per line, like `DB_USER='planner_owner'`.
 A command loads a file with `set -a && . ./.env.neon && set +a`, which makes
@@ -264,8 +271,25 @@ so they never sit in the service's settings, in git or in the image.
 
 A fifth, `smtp-password`, is added in Part 11 when real email is switched on.
 
-`jwt-secret` matters most. Without it the app generates one inside its data
-folder, which Cloud Run throws away on every restart, logging everybody out.
+Two optional ones, `aerodatabox-key` and `aviationstack-key`, switch on flight
+lookup. Without them the deploy still works and lookups answer "unavailable"; the
+script attaches each only if it exists. The creation commands are below, after
+Secret Manager is switched on. See [aerodatabox.md](../external-apis/aerodatabox.md)
+and [aviationstack.md](../external-apis/aviationstack.md).
+
+**How flight lookup reaches Cloud Run.** The keys are the only part of it that is
+an environment setting: each lives in Secret Manager, and `deploy.sh` attaches
+it to the service as the environment variable `AERODATABOX_KEY` or
+`AVIATIONSTACK_KEY`. Nothing else about flights goes in `.env.deploy`. The
+tunables (monthly limits, cap percentages, TTLs, the prewarm schedule, the public
+refresh window and the circuit breaker under `app.circuit-breaker`) are plain
+values in `planner-api/src/main/resources/application.yml` and ship with the
+image. To change one, edit the yml, bump `IMAGE_TAG` in `.env.deploy` and run
+`./deploy.sh`. That is the standard route. Spring's relaxed binding would also
+read an environment variable such as `APP_CIRCUIT_BREAKER_FAILURE_THRESHOLD` set
+by hand on the service (`gcloud run services update --update-env-vars`), but such
+an override lasts only until the next `./deploy.sh`: the script writes a fixed
+list of variables and `--env-vars-file` replaces all of them on every deploy.
 
 #### Turn on Secret Manager
 ```bash
@@ -287,6 +311,47 @@ cd planner-api && (set -a; . ./.env.neon; set +a; printf '%s' "$DB_PASSWORD" | g
 ```bash
 cd planner-api && (set -a; . ./.env.r2; set +a; printf '%s' "$R2_SECRET_ACCESS_KEY" | gcloud secrets create r2-secret-access-key --data-file=- --replication-policy=automatic --project=travellingllama)
 ```
+
+The two flight keys are optional. Each goes in its own private file first, one
+line: `AERODATABOX_KEY='<your RapidAPI key>'` in `.env.aerodatabox`, and
+`AVIATIONSTACK_KEY='<your key>'` in `.env.aviationstack`.
+
+#### Create the AeroDataBox key file, private from the start
+```bash
+cd planner-api && touch .env.aerodatabox && chmod 600 .env.aerodatabox && open -e .env.aerodatabox
+```
+#### Create the AviationStack key file, private from the start
+```bash
+cd planner-api && touch .env.aviationstack && chmod 600 .env.aviationstack && open -e .env.aviationstack
+```
+#### Store the AeroDataBox key, read from .env.aerodatabox
+```bash
+cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATABOX_KEY" | gcloud secrets create aerodatabox-key --data-file=- --replication-policy=automatic --project=travellingllama)
+```
+#### Store the AviationStack key, read from .env.aviationstack
+```bash
+cd planner-api && (set -a; . ./.env.aviationstack; set +a; printf '%s' "$AVIATIONSTACK_KEY" | gcloud secrets create aviationstack-key --data-file=- --replication-policy=automatic --project=travellingllama)
+```
+
+To **rotate** a flight key, put the new value in the same file and add a new
+version of the secret rather than creating it again. `deploy.sh` attaches
+`:latest`, and Cloud Run reads it when an instance starts, so redeploy afterwards.
+
+#### Rotate the AeroDataBox key, read from .env.aerodatabox
+```bash
+cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATABOX_KEY" | gcloud secrets versions add aerodatabox-key --data-file=- --project=travellingllama)
+```
+#### Rotate the AviationStack key, read from .env.aviationstack
+```bash
+cd planner-api && (set -a; . ./.env.aviationstack; set +a; printf '%s' "$AVIATIONSTACK_KEY" | gcloud secrets versions add aviationstack-key --data-file=- --project=travellingllama)
+```
+
+`deploy.sh` attaches each flight key only if `gcloud secrets describe` finds it. That
+check also passes for a secret that exists but has **no version**, and the `:latest`
+reference would then fail the deploy, so create at least one version (the commands
+above do). Access needs no extra step: the deploy already grants the compute service
+account `roles/secretmanager.secretAccessor` on the whole project, which covers
+these two secrets.
 
 Each value is **piped** (`|`) straight into `gcloud`, so it's never printed.
 To check a secret without revealing it, count its characters:

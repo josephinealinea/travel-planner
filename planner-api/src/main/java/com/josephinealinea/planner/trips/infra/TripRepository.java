@@ -10,6 +10,9 @@ public interface TripRepository {
     /** Trips the user owns or is a member of. */
     List<Trip> findAllForUser(String userId);
 
+    /** Every published trip. The nightly flight job is the only reader. */
+    List<Trip> findAllPublished();
+
     Optional<Trip> findById(String tripId);
 
     Optional<Trip> findBySlug(String slug);

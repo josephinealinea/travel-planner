@@ -219,6 +219,10 @@ public abstract class ItineraryRepositoryContract extends TripScopedRepositoryCo
         item.setUpdatedAt(Instant.parse("2026-09-02T08:00:00Z"));
         item.setUpdatedByUserId("user-ben");
         item.setTravellerIds(List.of("user-ana", "user-ben"));
+        item.setFlight(new com.josephinealinea.planner.flights.domain.FlightSnapshot("KL2842", "BT857",
+                new com.josephinealinea.planner.flights.domain.Airport("TLL", "EETN", "Tallinn Lennart Meri", "Tallinn", "EE", "Europe/Tallinn", 59.4133, 24.8328),
+                new com.josephinealinea.planner.flights.domain.Airport("AMS", "EHAM", "Amsterdam Schiphol", "Amsterdam", "NL", "Europe/Amsterdam", 52.3086, 4.7639),
+                "1", "2", "airBaltic"));
         return item;
     }
 }

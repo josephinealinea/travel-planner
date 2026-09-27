@@ -598,3 +598,25 @@ a.dest-meta, .brand-footer a { display: inline-flex; align-items: center; min-he
   .theme-btn, .panel-btn { min-height: 44px; }
   a.dest-meta, .brand-footer a { display: inline-flex; align-items: center; min-height: 44px; }
 }
+
+.flight-pills { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+.flight-pills .chip { margin-left: 0; }
+a.chip { text-decoration: none; }
+a.chip:hover, a.chip:focus-visible { text-decoration: underline; }
+.flight-refresh { background: none; border: 0; padding: 0 4px; font: inherit; color: inherit; cursor: pointer; }
+.flight-refresh-label { font-size: 0.85em; text-decoration: underline; }
+.flight-refresh:disabled { opacity: .5; cursor: default; }
+.flight-status:empty { display: none; }
+.flight-details { margin-top: 2px; }
+.flight-details summary {
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--tp-muted, inherit);
+  list-style: none;
+}
+.flight-details summary::-webkit-details-marker { display: none; }
+.flight-details summary::before { content: "▸ "; }
+.flight-details[open] summary::before { content: "▾ "; }
+.flight-details-body { margin-top: 2px; }
+.entry-note { margin-top: 4px; font-size: 0.85em; opacity: .8; }
+.flight-updated { opacity: .7; font-size: .85em; }

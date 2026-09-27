@@ -145,7 +145,7 @@
             <div class="field grow">
               <label for="member-email" data-i18n="trip.addATravelBuddy"></label>
               <input id="member-email" type="email" x-model="memberEmail"
-                     data-i18n-placeholder="trip.nameExampleCom" required>
+                     data-i18n-placeholder="trip.placeholder.memberEmail" required>
               <p class="field-hint" data-i18n="trip.theyWillGetAn"></p>
             </div>
             <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
@@ -538,9 +538,12 @@
                   <span class="timeline-time" x-text="entryTime(entry)"></span>
                   <div class="timeline-body">
                     <div class="timeline-desc" x-text="entry.item.description"></div>
-                    <template x-for="name in travellerNameList('itinerary', entry.item.id)" :key="name">
-                    <span class="badge badge-traveller" x-text="'👥 ' + name"></span>
-                  </template>
+                    <div class="timeline-tags" x-show="entry.item.flight || travellerNameList('itinerary', entry.item.id).length" x-cloak>
+                      <template x-for="pill in flightPills(entry.item.flight)" :key="pill"><span class="chip" x-text="pill"></span></template>
+                      <template x-for="name in travellerNameList('itinerary', entry.item.id)" :key="name">
+                        <span class="badge badge-traveller" x-text="'👥 ' + name"></span>
+                      </template>
+                    </div>
                     <!-- The category reads as one icon-and-label chip here too,
                          the way the checklist and budget rows show it. -->
                     <div class="timeline-meta">
@@ -554,6 +557,7 @@
                       <span x-show="sourceChecklist(entry.item)"
                             x-text="$t('trip.fromChecklistItem', { item: sourceChecklist(entry.item) })"></span>
                     </div>
+                    <div class="timeline-note" x-show="entry.item.note" x-text="entry.item.note"></div>
                   </div>
                   <span class="timeline-cost" x-show="entry.cost" x-text="entryCost(entry)"></span>
                   <span class="timeline-actions btn-row">
@@ -951,7 +955,7 @@
               <div class="field">
                 <label for="request-note" data-i18n="trip.noteOptional"></label>
                 <input id="request-note" x-model="requestNote"
-                       data-i18n-placeholder="trip.readyToShareWith">
+                       data-i18n-placeholder="trip.placeholder.publishRequestNote">
               </div>
               <button type="submit" class="btn btn-primary" :disabled="publishBusy"
                       x-text="publishBusy ? $t('common.sending') : $t('trip.requestToPublish')"></button>
@@ -1041,13 +1045,8 @@
                 <h3 class="drawer-section-title"></h3>
                 <div class="field">
                   <label for="drawer-description" data-i18n="trip.description"></label>
-                  <textarea id="drawer-description" x-model="drawerForm.description"
-                            maxlength="300"></textarea>
-                </div>
-                <div class="field">
-                  <label for="drawer-note" data-i18n="trip.noteOptional"></label>
-                  <textarea id="drawer-note" x-model="drawerForm.note"
-                            data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
+                  <input id="drawer-description" x-model="drawerForm.description"
+                         maxlength="300" required>
                 </div>
                 <div class="field-row">
                   <div class="field">
@@ -1085,7 +1084,11 @@
                     </template>
                   </div>
                 </div>
-
+                <div class="field">
+                  <label for="drawer-note" data-i18n="trip.noteOptional"></label>
+                  <textarea id="drawer-note" x-model="drawerForm.note"
+                            data-i18n-placeholder="trip.placeholder.note"></textarea>
+                </div>
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn" :disabled="drawerBusy"
@@ -1113,6 +1116,10 @@
                             x-text="planNights(plan)"></span>
                     </div>
                     <div class="plan-desc" x-text="plan.description"></div>
+                    <div class="flight-pills" x-show="plan.flight" x-cloak>
+                      <template x-for="pill in flightPills(plan.flight)" :key="pill"><span class="chip" x-text="pill"></span></template>
+                    </div>
+                    <div class="plan-note" x-show="plan.note" x-text="plan.note"></div>
                     <div class="row row-between">
                       <span class="plan-cost" x-show="plan.cost" x-text="planCost(plan)"></span>
                       <span class="btn-row">
@@ -1150,10 +1157,41 @@
                     </div>
                   </div>
 
+                  <div class="flight-block" x-show="openItem && openItem.category === 'TRANSPORTATION'" x-cloak>
+                    <div class="field-row flight-row">
+                      <div class="field">
+                        <label for="plan-flight" data-i18n="flight.label"></label>
+                        <input id="plan-flight" :value="planForm.flightNumber" maxlength="12"
+                               autocapitalize="characters" autocomplete="off"
+                               @input="onFlightNumberInput(planForm, $event)">
+                      </div>
+                      <div class="field flight-find">
+                        <button type="button" class="btn flight-lookup-btn"
+                                :disabled="!flightCanLookup(planForm)"
+                                :aria-label="$t('flight.lookup')" :title="planForm.startDate ? $t('flight.lookup') : $t('flight.lookupNeedsDate')"
+                                @click="flightLookup(planForm)">
+                          <span x-show="planForm.flightStatus !== 'busy'" aria-hidden="true">🔍</span>
+                          <span x-show="planForm.flightStatus === 'busy'" x-cloak data-i18n="flight.busy"></span>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="field-hint" x-show="(planForm.flightNumber || '').trim() && !planForm.startDate" x-cloak data-i18n="flight.lookupNeedsDate"></p>
+                    <p class="field-hint" role="status" x-show="planForm.flightNote" x-text="planForm.flightNote" x-cloak></p>
+                    <div class="flight-choices" x-show="planForm.flightStatus === 'choose'" x-cloak
+                     @keydown.escape="flightChanged(planForm, false)" @click.outside="planForm.flightStatus === 'choose' && flightChanged(planForm, false)">
+                      <template x-for="choice in planForm.flightChoices" :key="choice.flight.from?.iata + choice.departureTime">
+                        <button type="button" class="btn" x-text="flightChoiceLabel(choice)" @click="flightPick(planForm, choice)"></button>
+                      </template>
+                    </div>
+                    <p class="field-hint" role="status" x-show="planForm.flightStatus === 'notFound'" x-cloak data-i18n="flight.notFound"></p>
+                    <p class="field-hint" role="status" x-show="planForm.flightStatus === 'unavailable'" x-cloak data-i18n="flight.unavailable"></p>
+                  </div>
+
                   <div class="field-row">
                     <div class="field">
                       <label for="plan-start-date" data-i18n="common.startDate"></label>
-                      <input id="plan-start-date" type="date" x-model="planForm.startDate">
+                      <input id="plan-start-date" type="date" x-model="planForm.startDate"
+                             @change="flightChanged(planForm, false)">
                     </div>
                     <div class="field">
                       <label for="plan-start-time" data-i18n="trip.startTime"></label>
@@ -1243,7 +1281,7 @@
                   <div class="field">
                     <label for="plan-note" data-i18n="trip.noteOptional"></label>
                     <textarea id="plan-note" x-model="planForm.note"
-                              data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
+                              data-i18n-placeholder="trip.placeholder.note"></textarea>
                   </div>
 
                   <div class="row row-end" style="margin-top:12px">
@@ -1392,7 +1430,7 @@
                      @keydown.escape.prevent.stop="dismissSuggestions()"
                      @blur="dismissSuggestions()"
                      autocomplete="off" maxlength="120"
-                     data-i18n-placeholder="trip.cusco" required>
+                     data-i18n-placeholder="trip.placeholder.destination" required>
 
               <!-- Suggestions are a convenience: free text always saves.
                    The list sits over the fields below it, so it has to be
@@ -1439,7 +1477,7 @@
                        @focus="onCountryInput()"
                        @keydown.escape.prevent.stop="resolveCountry()"
                        @blur="resolveCountry()"
-                       autocomplete="off" data-i18n-placeholder="common.startTypingPeru">
+                       autocomplete="off" data-i18n-placeholder="common.placeholder.country">
 
                 <ul class="autocomplete-list" x-show="countryListOpen && countryMatches.length" x-cloak>
                   <template x-for="option in countryMatches" :key="option.code">
@@ -1514,7 +1552,7 @@
             <div class="field">
               <label for="dest-note" data-i18n="trip.noteOptional"></label>
               <textarea id="dest-note" x-model="destForm.note"
-                        data-i18n-placeholder="trip.anythingWorthRememberingSeason"></textarea>
+                        data-i18n-placeholder="trip.placeholder.destinationNote"></textarea>
             </div>
 
             <div class="modal-footer">
@@ -1565,7 +1603,7 @@
               <label for="new-check-description" data-i18n="trip.description"></label>
               <input id="new-check-description" x-ref="newCheckDescription"
                      x-model="newCheck.description" maxlength="300"
-                     data-i18n-placeholder="trip.purchaseATravelInsurance" required>
+                     data-i18n-placeholder="trip.placeholder.checklistDescription" required>
             </div>
             <div class="field">
               <label for="new-check-category" data-i18n="trip.category"></label>
@@ -1604,7 +1642,7 @@
             <div class="field">
               <label for="new-check-note" data-i18n="trip.noteOptional"></label>
               <textarea id="new-check-note" x-model="newCheck.note"
-                        data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
+                        data-i18n-placeholder="trip.placeholder.note"></textarea>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn" @click="addCheckOpen = false" data-i18n="common.cancel"></button>
@@ -1632,7 +1670,7 @@
               <label for="entry-description" data-i18n="trip.description"></label>
               <input id="entry-description" x-ref="entryDescription"
                      x-model="entryForm.description" maxlength="300"
-                     data-i18n-placeholder="trip.deltaFlightDl6071" required>
+                     data-i18n-placeholder="trip.placeholder.entryDescription" required>
             </div>
             <div class="field">
               <label for="entry-category" data-i18n="trip.category"></label>
@@ -1654,10 +1692,41 @@
                 <span class="tiny muted" x-show="!tripCountries.length" data-i18n="trip.noCountriesYet"></span>
               </div>
             </div>
+            <div class="flight-block" x-show="entryForm.category === 'TRANSPORTATION'" x-cloak>
+              <div class="field-row flight-row">
+                <div class="field">
+                  <label for="entry-flight" data-i18n="flight.label"></label>
+                  <input id="entry-flight" :value="entryForm.flightNumber" maxlength="12"
+                         autocapitalize="characters" autocomplete="off"
+                         @input="onFlightNumberInput(entryForm, $event)">
+                </div>
+                <div class="field flight-find">
+                  <button type="button" class="btn flight-lookup-btn"
+                          :disabled="!flightCanLookup(entryForm)"
+                          :aria-label="$t('flight.lookup')" :title="entryForm.startDate ? $t('flight.lookup') : $t('flight.lookupNeedsDate')"
+                          @click="flightLookup(entryForm)">
+                    <span x-show="entryForm.flightStatus !== 'busy'" aria-hidden="true">🔍</span>
+                    <span x-show="entryForm.flightStatus === 'busy'" x-cloak data-i18n="flight.busy"></span>
+                  </button>
+                </div>
+              </div>
+              <p class="field-hint" x-show="(entryForm.flightNumber || '').trim() && !entryForm.startDate" x-cloak data-i18n="flight.lookupNeedsDate"></p>
+              <p class="field-hint" role="status" x-show="entryForm.flightNote" x-text="entryForm.flightNote" x-cloak></p>
+              <div class="flight-choices" x-show="entryForm.flightStatus === 'choose'" x-cloak
+                     @keydown.escape="flightChanged(entryForm, false)" @click.outside="entryForm.flightStatus === 'choose' && flightChanged(entryForm, false)">
+                <template x-for="choice in entryForm.flightChoices" :key="choice.flight.from?.iata + choice.departureTime">
+                  <button type="button" class="btn" x-text="flightChoiceLabel(choice)" @click="flightPick(entryForm, choice)"></button>
+                </template>
+              </div>
+              <p class="field-hint" role="status" x-show="entryForm.flightStatus === 'notFound'" x-cloak data-i18n="flight.notFound"></p>
+              <p class="field-hint" role="status" x-show="entryForm.flightStatus === 'unavailable'" x-cloak data-i18n="flight.unavailable"></p>
+            </div>
+
             <div class="field-row">
               <div class="field">
                 <label for="entry-start-date" data-i18n="common.startDate"></label>
-                <input id="entry-start-date" type="date" x-model="entryForm.startDate" :min="trip.startDate" :max="trip.endDate">
+                <input id="entry-start-date" type="date" x-model="entryForm.startDate" :min="trip.startDate" :max="trip.endDate"
+                       @change="flightChanged(entryForm, false)">
               </div>
               <div class="field">
                 <label for="entry-start-time" data-i18n="trip.startTime"></label>
@@ -1743,7 +1812,7 @@
             <div class="field">
               <label for="entry-note" data-i18n="trip.noteOptional"></label>
               <textarea id="entry-note" x-model="entryForm.note"
-                        data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
+                        data-i18n-placeholder="trip.placeholder.note"></textarea>
             </div>
 
             <div class="modal-footer">
@@ -1863,7 +1932,7 @@
               <label for="expense-description" data-i18n="trip.description"></label>
               <input id="expense-description" x-ref="expenseDescription"
                      x-model="expenseForm.description"
-                     data-i18n-placeholder="trip.worldwideTravelInsurance" required>
+                     data-i18n-placeholder="trip.placeholder.expenseDescription" required>
             </div>
             <div class="field">
               <label for="expense-category" data-i18n="trip.category"></label>
@@ -1951,7 +2020,7 @@
             <div class="field">
               <label for="expense-note" data-i18n="trip.noteOptional"></label>
               <textarea id="expense-note" x-model="expenseForm.note"
-                        data-i18n-placeholder="trip.anythingWorthRememberingBooking"></textarea>
+                        data-i18n-placeholder="trip.placeholder.note"></textarea>
             </div>
 
             <div class="modal-footer">
@@ -2119,7 +2188,7 @@
             <div class="field">
               <label for="pay-note" data-i18n="trip.noteOptional"></label>
               <input id="pay-note" x-model="payForm.note" maxlength="200"
-                     data-i18n-placeholder="trip.paidInCash">
+                     data-i18n-placeholder="trip.placeholder.paymentNote">
             </div>
             <div class="modal-footer">
               <button type="button" class="btn" @click="payOpen = false" data-i18n="common.cancel"></button>

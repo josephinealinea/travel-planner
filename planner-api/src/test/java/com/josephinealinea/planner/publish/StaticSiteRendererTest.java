@@ -136,7 +136,7 @@ class StaticSiteRendererTest {
         flight.setTripId("trip-1");
         flight.setChecklistItemId("check-1");
         flight.setCategory(ChecklistCategory.TRANSPORTATION);
-        flight.setDescription("Delta flight (DL 6071) from LAX to LIM");
+        flight.setDescription("Flight from Los Angeles to Lima");
         flight.setStartAt(LocalDateTime.of(2026, 10, 24, 22, 15));
         flight.setEndAt(LocalDateTime.of(2026, 10, 25, 8, 40));
         flight.setCost(new BigDecimal("246.22"));
@@ -157,7 +157,7 @@ class StaticSiteRendererTest {
         expense.setTripId("trip-1");
         expense.setItineraryItemId("plan-1");
         expense.setCategory(ChecklistCategory.TRANSPORTATION);
-        expense.setDescription("Delta flight (DL 6071) from LAX to LIM");
+        expense.setDescription("Flight from Los Angeles to Lima");
         expense.setAmount(new BigDecimal("246.22"));
         expense.setCurrency("USD");
         expense.setDate(LocalDate.of(2026, 10, 24));
@@ -304,7 +304,7 @@ class StaticSiteRendererTest {
 
         assertThat(html).contains("LATAM Trip 2026");
         assertThat(html).contains("Plan 6N accommodation in Cusco");
-        assertThat(html).contains("Delta flight (DL 6071) from LAX to LIM");
+        assertThat(html).contains("Flight from Los Angeles to Lima");
         assertThat(html).contains("Cusco");
         assertThat(html).contains("US / UK Visa");
     }

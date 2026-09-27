@@ -8,6 +8,7 @@ import {
   defaultCostSharers,
 } from '../../traveller-picker.js';
 import { t } from '../../i18n/index.js';
+import { blankFlight, flightFromRecord } from './flight-lookup.js';
 
 /**
  * The Checklist tab and its detail drawer — the centre of the app.
@@ -23,6 +24,7 @@ import { t } from '../../i18n/index.js';
 export function checklistTab() {
   const blankPlan = () => ({
     id: null,
+    ...blankFlight(),
     description: '',
     note: '',
     startDate: '',
@@ -459,6 +461,7 @@ export function checklistTab() {
       this.planError = '';
       this.planForm = {
         id: plan.id,
+        ...flightFromRecord(plan),
         description: plan.description || '',
         note: plan.note || '',
         startDate: dateOf(plan.startAt),
@@ -506,7 +509,7 @@ export function checklistTab() {
       this.planBusy = true;
       try {
         if (this.planForm.id) {
-          await this.api.updatePlan(this.trip.id, this.planForm.id, {
+          await this.api.updateItinerary(this.trip.id, this.planForm.id, {
             description,
             note: this.planForm.note.trim() || null,
             startAt,
@@ -520,11 +523,12 @@ export function checklistTab() {
             costPaidByUserId: this.planForm.paidByUserId || '',
             // An empty array clears every link server-side.
             countryCodes: this.planForm.countryCodes,
+            ...this.flightPayload(this.planForm, this.openItem?.category === 'TRANSPORTATION'),
             ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
           });
           toast.success(t('checklist.planUpdated'));
         } else {
-          await this.api.addPlan(this.trip.id, {
+          await this.api.addItinerary(this.trip.id, {
             checklistItemId: this.openItem.id,
             category: this.openItem.category,
             description,
@@ -541,6 +545,7 @@ export function checklistTab() {
             costSharedByUserIds: this.planSharersShown(),
             costPaidByUserId: this.planForm.paidByUserId || '',
             countryCodes: this.planForm.countryCodes,
+            ...this.flightPayload(this.planForm, this.openItem?.category === 'TRANSPORTATION'),
             ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
           });
           toast.success(cost == null

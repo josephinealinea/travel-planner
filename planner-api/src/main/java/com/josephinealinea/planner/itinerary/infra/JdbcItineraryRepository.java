@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.itinerary.infra;
 
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
+import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.storage.jdbc.JdbcValues;
 import com.josephinealinea.planner.storage.jdbc.TripScopedJdbcRepository;
@@ -14,6 +15,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Itinerary entries in the {@code itinerary_items} table, with the database
@@ -50,7 +52,9 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
                 List.of("checklist_item_id", "plan_id", "category", "description", "note",
                         "start_at", "end_at", "all_day", "cost", "currency", "budget_item_id",
                         "country_codes", "sort_order",
-                        "created_at", "created_by_user_id", "updated_at", "updated_by_user_id", "traveller_ids"),
+                        "created_at", "created_by_user_id", "updated_at", "updated_by_user_id", "traveller_ids",
+                        "flight"),
+                Set.of("flight"),
                 ItineraryItem::getId);
     }
 
@@ -76,6 +80,7 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
         values.put("updated_at", JdbcValues.timestamptz(item.getUpdatedAt()));
         values.put("updated_by_user_id", item.getUpdatedByUserId());
         values.put("traveller_ids", JdbcValues.nullableTextArray(item.getTravellerIds()));
+        values.put("flight", JdbcValues.json(item.getFlight()));
         return values;
     }
 
@@ -103,6 +108,7 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
         item.setUpdatedByUserId(rs.getString("updated_by_user_id"));
         // NULL and '{}' are different states: see Travellers.
         item.setTravellerIds(JdbcValues.nullableTextList(rs, "traveller_ids"));
+        item.setFlight(JdbcValues.json(rs, "flight", FlightSnapshot.class));
         return item;
     }
 }

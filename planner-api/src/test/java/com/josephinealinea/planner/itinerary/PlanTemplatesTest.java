@@ -58,7 +58,7 @@ class PlanTemplatesTest {
 
         assertThat(templates.forChecklistItem(item(ChecklistCategory.TRANSPORTATION), cusco,
                 List.of(lima, cusco), "PEN").description())
-                .isEqualTo("Flight (XX 000) from Lima to Cusco");
+                .isEqualTo("Flight from Lima to Cusco");
     }
 
     @Test

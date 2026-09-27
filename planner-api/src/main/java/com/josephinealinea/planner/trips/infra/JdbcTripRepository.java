@@ -137,6 +137,17 @@ public class JdbcTripRepository implements TripRepository {
     }
 
     @Override
+    public List<Trip> findAllPublished() {
+        return transactions.execute(status -> withChildren(jdbc.sql("""
+                        SELECT t.* FROM trips t
+                        WHERE t.status = 'PUBLISHED'
+                        ORDER BY t.created_at, t.id
+                        """)
+                .query((rs, n) -> mapTrip(rs))
+                .list()));
+    }
+
+    @Override
     public Optional<Trip> findById(String tripId) {
         return findOne("id", tripId);
     }

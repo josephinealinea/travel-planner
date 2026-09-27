@@ -6,6 +6,7 @@ import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import com.josephinealinea.planner.shared.HttpCallLog;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -23,7 +24,7 @@ public class RatesConfig {
         var settings = ClientHttpRequestFactorySettings.defaults()
                 .withConnectTimeout(timeout)
                 .withReadTimeout(timeout);
-        return RestClient.builder()
+        return HttpCallLog.on(RestClient.builder(), "ER-API")
                 .baseUrl(props.rates().baseUrl())
                 .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
                 .defaultHeader("Accept", "application/json")

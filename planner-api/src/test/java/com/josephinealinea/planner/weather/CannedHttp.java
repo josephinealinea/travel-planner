@@ -31,32 +31,32 @@ import java.util.List;
  * recorded so a test can assert how many calls were made and what they asked
  * for — which is the point of the bulk-coordinate design.
  */
-final class CannedHttp implements ClientHttpRequestFactory {
+public final class CannedHttp implements ClientHttpRequestFactory {
 
     private final List<Canned> script = new ArrayList<>();
     private final List<URI> asked = new ArrayList<>();
 
     private record Canned(HttpStatusCode status, String body) {}
 
-    CannedHttp ok(String body) {
+    public CannedHttp ok(String body) {
         script.add(new Canned(HttpStatus.OK, body));
         return this;
     }
 
-    CannedHttp status(int code, String body) {
+    public CannedHttp status(int code, String body) {
         script.add(new Canned(HttpStatusCode.valueOf(code), body));
         return this;
     }
 
-    List<URI> asked() {
+    public List<URI> asked() {
         return List.copyOf(asked);
     }
 
-    int callCount() {
+    public int callCount() {
         return asked.size();
     }
 
-    RestClient client() {
+    public RestClient client() {
         return RestClient.builder().requestFactory(this).build();
     }
 
@@ -135,11 +135,11 @@ final class CannedHttp implements ClientHttpRequestFactory {
     }
 
     /** Convenience for the "never called" client in a test that only uses one. */
-    static RestClient unused() {
+    public static RestClient unused() {
         return new CannedHttp().client();
     }
 
-    static IOException unreachable() {
+    public static IOException unreachable() {
         return new IOException("unreachable");
     }
 }

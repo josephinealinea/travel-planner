@@ -48,6 +48,7 @@
 
 .timeline-body { flex: 1; min-width: 0; }
 .timeline-desc { font-size: 0.94rem; font-weight: 500; }
+.timeline-note { margin-top: 4px; font-size: 0.8rem; color: var(--tp-muted); }
 
 // Carries the category chip, so it lays out like the checklist's tag row
 // rather than as a run of plain text.

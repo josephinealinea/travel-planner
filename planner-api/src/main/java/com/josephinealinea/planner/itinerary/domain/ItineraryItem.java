@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
+import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 
 import com.josephinealinea.planner.shared.Audited;
 
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A concrete plan — "Delta flight (DL 6071) from LAX to LIM". Usually created
+ * A concrete plan — "Flight from Los Angeles to Lima". Usually created
  * from a checklist item's Plan button, but checklistItemId is nullable so an
  * entry can also be added straight to the itinerary.
  *
@@ -76,6 +77,13 @@ public class ItineraryItem implements Audited {
      * trips.api.Travellers; never read directly to decide who sees what.
      */
     private List<String> travellerIds;
+
+    /**
+     * The flight a transport entry is about, when the member gave one. Absent
+     * on every other entry. Only the plan's own row carries it, like the cost;
+     * the later days of a stay never do. See FlightSnapshot.
+     */
+    private FlightSnapshot flight;
 
     public ItineraryItem() {}
 
@@ -174,6 +182,9 @@ public class ItineraryItem implements Audited {
 
     public String getUpdatedByUserId() { return updatedByUserId; }
     public void setUpdatedByUserId(String updatedByUserId) { this.updatedByUserId = updatedByUserId; }
+
+    public FlightSnapshot getFlight() { return flight; }
+    public void setFlight(FlightSnapshot flight) { this.flight = flight; }
 
     public List<String> getTravellerIds() { return travellerIds; }
     public void setTravellerIds(List<String> travellerIds) {

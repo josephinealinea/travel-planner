@@ -11,6 +11,8 @@ import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.checklist.infra.ChecklistRepository;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.flights.domain.Airport;
+import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.publish.infra.PageStore;
@@ -565,7 +567,29 @@ public class StaticSiteRenderer {
                 // Off by default, and omitted rather than hidden — see render().
                 showItineraryCost && item.getCost() != null
                         ? item.getCost().toPlainString() : null,
-                showItineraryCost ? item.getCurrency() : null);
+                showItineraryCost ? item.getCurrency() : null,
+                flightOf(item),
+                item.getNote());
+    }
+
+    /** Only the plan's own entry carries a flight, and only transport ever has one. */
+    private static PublishedTrip.Flight flightOf(ItineraryItem item) {
+        FlightSnapshot flight = item.getFlight();
+        if (flight == null) return null;
+        var from = flight.from();
+        var to = flight.to();
+        return new PublishedTrip.Flight(flight.number(), flight.operatingNumber(), flight.airline(),
+                from == null ? null : from.iata(), from == null ? null : from.city(), from == null ? null : from.name(),
+                airportMapUrl(from),
+                to == null ? null : to.iata(), to == null ? null : to.city(), to == null ? null : to.name(),
+                airportMapUrl(to),
+                flight.terminalFrom(), flight.terminalTo());
+    }
+
+    /** Same shape as a destination's own map link — the coordinates ride inside the URL, never shipped bare. */
+    private static String airportMapUrl(Airport airport) {
+        return airport == null || airport.lat() == null || airport.lon() == null ? null
+                : "https://www.google.com/maps/search/?api=1&query=%s,%s".formatted(airport.lat(), airport.lon());
     }
 
     private PublishedTrip.Budget toView(BudgetService.Summary summary, PublishOptions options, Locale locale) {

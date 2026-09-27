@@ -6,6 +6,8 @@ import com.josephinealinea.planner.checklist.domain.ChecklistItem;
 import com.josephinealinea.planner.destinations.domain.Destination;
 import com.josephinealinea.planner.destinations.api.TripCountries;
 import com.josephinealinea.planner.destinations.infra.DestinationRepository;
+import com.josephinealinea.planner.flights.FlightNumbers;
+import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.geocoding.CountryCatalog;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
@@ -61,7 +63,23 @@ public class ItineraryService {
                         List<String> travellerIds,
                         /** True clears it back to "not set", i.e. following its checklist item. */
                         Boolean inheritTravellers,
-                        String note) {
+                        String note,
+                        /**
+                         * The flight, for a transport entry. Null leaves it alone; a
+                         * number that is empty clears the whole document.
+                         */
+                        FlightSnapshot flight) {
+
+        /** The shape from before flights existed: says nothing about them. */
+        public Input(String checklistItemId, ChecklistCategory category, String description,
+                     LocalDateTime startAt, LocalDateTime endAt, Boolean allDay, BigDecimal cost,
+                     String currency, Boolean costCharged, List<String> costSharedByUserIds,
+                     String costPaidByUserId, List<String> countryCodes,
+                     List<String> travellerIds, Boolean inheritTravellers, String note) {
+            this(checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
+                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
+                    travellerIds, inheritTravellers, note, null);
+        }
 
         /** The shape from before travellers existed: says nothing about them. */
         public Input(String checklistItemId, ChecklistCategory category, String description,
@@ -82,6 +100,28 @@ public class ItineraryService {
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
                     travellerIds, inheritTravellers, null);
         }
+    }
+
+    /**
+     * The flight rule, in one place: transport only, well-formed, one spelling.
+     * Returns what should be stored: null for "nothing".
+     */
+    private static FlightSnapshot checkedFlight(ChecklistCategory category, FlightSnapshot wanted) {
+        String number = FlightNumbers.normalise(wanted.number());
+        if (number == null || number.isEmpty()) return null;
+        if (category != ChecklistCategory.TRANSPORTATION) {
+            throw ApiException.badRequest("error.flight.transportOnly");
+        }
+        if (!FlightNumbers.valid(number)) {
+            throw ApiException.badRequest("error.flight.numberInvalid");
+        }
+        String operating = FlightNumbers.normalise(wanted.operatingNumber());
+        if (operating != null && operating.isEmpty()) operating = null;
+        if (operating != null && !FlightNumbers.valid(operating)) {
+            throw ApiException.badRequest("error.flight.numberInvalid");
+        }
+        return new FlightSnapshot(number, operating, wanted.from(), wanted.to(),
+                wanted.terminalFrom(), wanted.terminalTo(), wanted.airline());
     }
 
     private final ItineraryRepository itinerary;
@@ -167,6 +207,7 @@ public class ItineraryService {
 
         plan.setDescription(input.description().trim());
         plan.setNote(blankToNull(input.note()));
+        if (input.flight() != null) plan.setFlight(checkedFlight(plan.getCategory(), input.flight()));
         plan.setStartAt(input.startAt());
         plan.setEndAt(input.endAt());
         // A date with no time belongs to a day rather than an hour, which is
@@ -265,6 +306,11 @@ public class ItineraryService {
             throw ApiException.badRequest(
                     "error.itinerary.dayFollowsBooking");
         }
+        // Nor may it carry a flight: the stay's own row is the booking.
+        if (plan.getPlanId() != null && input.flight() != null) {
+            String number = FlightNumbers.normalise(input.flight().number());
+            if (number != null && !number.isEmpty()) throw ApiException.badRequest("error.flight.dayFollowsBooking");
+        }
         plan.setTravellerIds(Travellers.change(trip, plan.getTravellerIds(),
                 input.travellerIds(), input.inheritTravellers()));
 
@@ -274,6 +320,13 @@ public class ItineraryService {
         }
         if (input.note() != null) plan.setNote(blankToNull(input.note()));
         if (input.category() != null) plan.setCategory(input.category());
+        if (input.flight() != null) {
+            // An empty number clears it; a value sets it. Absent leaves it alone.
+            plan.setFlight(checkedFlight(plan.getCategory(), input.flight()));
+        } else if (plan.getFlight() != null && plan.getCategory() != ChecklistCategory.TRANSPORTATION) {
+            // Moved away from transport: a flight on a meal would be nonsense.
+            plan.setFlight(null);
+        }
         if (input.startAt() != null) plan.setStartAt(input.startAt());
         if (input.endAt() != null) plan.setEndAt(input.endAt());
         // Null leaves it alone; false is how adding a time clears it again.

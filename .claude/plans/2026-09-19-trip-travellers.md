@@ -1688,7 +1688,7 @@ In each of `destinations.js`, `checklist.js` and `itinerary.js`, import what it 
 - `planForm`, in `blankPlan()` and the edit branch (`this.planForm = {`): add `travellers` / `travellersInitial` from `newTravellers()` or `travellersFromRecord(plan)`, and `sharedTouched: false` for a new plan (`true` when editing a plan that already has a budget row).
 - The Shared by chips' `@click` for the plan form also sets `planForm.sharedTouched = true`.
 - Both plan payloads spread `...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial)`.
-- In the `addPlan` payload, replace `costSharedByUserIds: this.planForm.sharedByUserIds,` with:
+- In the `addItinerary` payload, replace `costSharedByUserIds: this.planForm.sharedByUserIds,` with:
 
 ```js
             // Untouched, the server shares the new cost by the plan's own

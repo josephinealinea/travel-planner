@@ -8,4 +8,5 @@ Sign in at {{signInUrl}}
   Password: {{password}}
 
 You will be asked to choose your own password and a screen name the
-first time you sign in.
+first time you sign in. Your screen name is what your travel buddies
+will see.

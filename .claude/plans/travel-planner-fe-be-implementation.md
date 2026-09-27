@@ -597,7 +597,7 @@ your own row.
   - **Plans** list — each showing date/time range, description, cost, with **Edit** · **Delete**
   - **Plan** button → **Plan form** (pre-filled from `GET .../plan-template`):
     **Start date & time** · **End date & time** · **Description** (e.g.
-    *"Delta flight (DL 6071) from LAX to LIM"* — fully editable) · **Cost** (optional) ·
+    *"Flight from Los Angeles to Lima"* — fully editable) · **Cost** (optional) ·
     **Currency** (select, defaults to the destination country's currency)
     → **Save plan** · **Cancel**. Helper under Cost: *"Added cost creates a matching budget."*
   - Footer buttons: **Set this Checklist to Complete** *(always enabled; becomes

@@ -2,6 +2,7 @@ package com.josephinealinea.planner.itinerary.web;
 
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.config.CurrentUserContext;
+import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.itinerary.api.ItineraryService;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
 import jakarta.validation.Valid;
@@ -48,13 +49,15 @@ public class ItineraryController {
             List<String> travellerIds,
             /** True puts it back to following its checklist item. */
             Boolean inheritTravellers,
-            String note) {
+            String note,
+            /** The flight for a transport entry. Absent leaves it; an empty number clears it. */
+            FlightSnapshot flight) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
-                    travellerIds, inheritTravellers, note);
+                    travellerIds, inheritTravellers, note, flight);
         }
     }
 
@@ -75,13 +78,15 @@ public class ItineraryController {
             List<String> travellerIds,
             /** True puts it back to following its checklist item. */
             Boolean inheritTravellers,
-            String note) {
+            String note,
+            /** The flight for a transport entry. Absent leaves it; an empty number clears it. */
+            FlightSnapshot flight) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     null, category, description, startAt, endAt, allDay, cost, currency,
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
-                    travellerIds, inheritTravellers, note);
+                    travellerIds, inheritTravellers, note, flight);
         }
     }
 

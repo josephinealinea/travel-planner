@@ -34,6 +34,14 @@ public class YamlPaths {
     /** Global, not per trip: exchange rates are a property of the day. */
     public Path rates() { return root.resolve("rates.yml"); }
 
+    /** Global, shared by every API the install counts: calls per service per month. */
+    public Path apiUsage() { return root.resolve("api-usage.yml"); }
+
+    /** Global flight caches: not per trip, they hold public schedule facts. */
+    public Path flightRecords() { return root.resolve("flights").resolve("records.yml"); }
+
+    public Path flightCodeshares() { return root.resolve("flights").resolve("codeshares.yml"); }
+
     public Path outbox() { return root.resolve("outbox"); }
 
     public Path publishDir() { return publishDir; }

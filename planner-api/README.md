@@ -45,6 +45,150 @@ Everything has a working default; these are the ones worth knowing.
 | `app.cors.allowed-origins` | `http://localhost:3000` | Cookie auth needs the frontend origin listed |
 | `app.bootstrap.owner-email` | — | Seeds the first account, since there is no self-signup |
 
+## Private settings files (`.env.*`)
+
+Secrets and account identifiers never go in git. They live in one file per
+service, **in this folder** (`planner-api/`). Every `.env.*` file is git-ignored
+(`planner-api/.gitignore`) and left out of the Docker image (`.dockerignore`).
+Create each one private from the start (`chmod 600`, so only you can read it),
+put one `KEY='value'` per line, and never paste a key into a chat or a command
+line.
+
+| File | Holds | Needed for | Where it comes from |
+|---|---|---|---|
+| `.env.local` | Bootstrap owner, storage mode, mail settings | Running the API on your machine | Written by hand, contents below (there is no template file) |
+| `.env.neon` | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Deploying, and the one-off data import | Neon, [deploy.md](../docs/deploy/deploy.md) Part 2 |
+| `.env.r2` | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Deploying (published pages in R2) | Cloudflare R2, deploy.md Part 4 |
+| `.env.deploy` | Project, region, domain, image tag, app settings (no secrets) | `./deploy.sh` | Written by hand, deploy.md Part 7 |
+| `.env.resend` | `RESEND_API_KEY` | Real email: locally, and to store the key in Secret Manager | Resend, deploy.md Part 11 |
+| `.env.aerodatabox` | `AERODATABOX_KEY` (your RapidAPI key) | Flight lookup: schedule, airports, status | RapidAPI, [aerodatabox.md](../docs/external-apis/aerodatabox.md) |
+| `.env.aviationstack` | `AVIATIONSTACK_KEY` | Flight lookup: codeshares, gate, baggage, delay | AviationStack, [aviationstack.md](../docs/external-apis/aviationstack.md) |
+
+Only `.env.local` is needed to run the API on your machine. The two flight-key
+files are optional: without a key that service is simply off and lookups answer
+"unavailable". Tunables (limits, TTLs, the circuit breaker) are **not** in these
+files; they are plain values in `src/main/resources/application.yml`.
+
+### Create each file
+
+Each file is created the same way, then opened to fill in. Replace the name.
+
+#### Create a private file and open it (example: `.env.neon`)
+```bash
+cd planner-api && touch .env.neon && chmod 600 .env.neon && open -e .env.neon
+```
+
+Then paste the contents shown below and save.
+
+#### `.env.local` contents
+```
+BOOTSTRAP_OWNER_EMAIL=you@example.com
+BOOTSTRAP_OWNER_PASSWORD=password123
+FEATURE_ENABLE_DATABASE=true
+MAIL_MODE=smtp
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_SSL=true
+SMTP_AUTH=true
+SMTP_USER=resend
+SMTP_PASSWORD="$RESEND_API_KEY"
+MAIL_FROM=no-reply@travellingllama.fun
+```
+
+This is the one file for running the API on your machine, and it is created the
+same way as the others, with the command above (`touch .env.local && chmod 600
+.env.local && open -e .env.local`). The bootstrap owner is the first account,
+since there is no self-signup; it is only created if the account does not exist
+yet, so an existing account keeps its own password. `FEATURE_ENABLE_DATABASE=true`
+uses the local Postgres (start it first with `./docker-start.sh`), and `false`
+uses the YAML files under `data/`. **The two stores are separate: trips made in
+one are not visible in the other.** For quiet local testing without real email,
+set `MAIL_MODE=log`.
+
+`SMTP_PASSWORD="$RESEND_API_KEY"` is written with double quotes on purpose, and
+reads `.env.resend`, so that file has to be loaded **before** `.env.local` (see
+below).
+
+#### `.env.neon` contents
+```
+DB_URL='jdbc:postgresql://<host>/planner?sslmode=require'
+DB_USER='<role>'
+DB_PASSWORD='<password>'
+```
+
+Use Neon's **direct** connection string (the host without `-pooler`), converted
+to the `jdbc:postgresql://` form with the user and password kept separate, and
+without `&channel_binding=require`. Details: deploy.md Part 2.
+
+#### `.env.r2` contents
+```
+R2_ACCOUNT_ID='<32 hex characters>'
+R2_ACCESS_KEY_ID='<32 hex characters>'
+R2_SECRET_ACCESS_KEY='<64 hex characters>'
+```
+
+The account ID is your Cloudflare account's ID, not the bucket name. The access
+keys are shown once, when the API token is created. Details: deploy.md Part 4.
+
+#### `.env.deploy` contents
+```
+PROJECT_ID='travellingllama'
+REGION='europe-west3'
+SERVICE='planner-api'
+IMAGE_TAG='v1'                      # bump for every new build
+DOMAIN='travellingllama.fun'
+FEATURE_ENABLE_DATABASE='true'
+PUBLISH_STORE='r2'
+R2_BUCKET='travel-planner-pages'
+MAIL_MODE='log'                     # 'smtp' for real email (then also SMTP_HOST, SMTP_PORT, SMTP_USER, MAIL_FROM)
+```
+
+No secrets here. Every deploy replaces the service's whole environment with
+exactly what this file (plus the secrets in Secret Manager) provides, so a setting
+changed only in the Cloud Run console is undone by the next deploy. Details:
+deploy.md Part 7 and Part 11.
+
+#### `.env.resend` contents
+```
+RESEND_API_KEY='re_...'
+```
+
+#### `.env.aerodatabox` contents
+```
+AERODATABOX_KEY='<your RapidAPI key>'
+```
+
+#### `.env.aviationstack` contents
+```
+AVIATIONSTACK_KEY='<your AviationStack key>'
+```
+
+### Use them
+
+A file is loaded for one command with `set -a; . ./.env.x; set +a`, which makes
+its values available to that command without printing them.
+
+#### Run the API locally, with real email and the flight keys
+```bash
+cd planner-api && (set -a; . ./.env.resend; . ./.env.local; . ./.env.aerodatabox; . ./.env.aviationstack; set +a; ./gradlew bootRun)
+```
+
+Source `.env.resend` **before** `.env.local`, because `SMTP_PASSWORD="$RESEND_API_KEY"`
+is expanded at the moment `.env.local` is read. A file that does not exist only
+prints an error and the run carries on without it. More run variants (database
+mode, no email) are in the [root README](../README.md).
+
+#### Store a key in Secret Manager for Cloud Run (example: AeroDataBox)
+```bash
+cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATABOX_KEY" | gcloud secrets create aerodatabox-key --data-file=- --replication-policy=automatic --project=travellingllama)
+```
+
+The same pattern stores the others (`aviationstack-key`, `db-password`,
+`r2-secret-access-key`, `smtp-password`) and rotating a key is a
+`gcloud secrets versions add ...` from the same file. `./deploy.sh` attaches the
+secrets that exist. The full list and the rotation commands are in
+[deploy.md](../docs/deploy/deploy.md).
+
 ## Auth
 
 A JWT in an httpOnly cookie (`tp_session`), so no token is ever readable from

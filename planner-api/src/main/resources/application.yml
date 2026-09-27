@@ -140,6 +140,50 @@ app:
     # Daily, an hour after the provider's own update (~00:30 UTC).
     cron: ${RATES_CRON:0 30 1 * * *}
     timeout: 10s
+  # Tunables are plain values: change one here and redeploy. Only the two keys
+  # are environment settings (secrets). Spring's relaxed binding still lets an
+  # environment variable override any property without a placeholder, e.g.
+  # APP_CIRCUIT_BREAKER_FAILURE_THRESHOLD, but that is not the standard route.
+  flights:
+    aerodatabox:
+      base-url: https://aerodatabox.p.rapidapi.com
+      key: ${AERODATABOX_KEY:}
+      monthly-limit: 400
+      cap-percent: 90
+      timeout: 8s
+    aviationstack:
+      base-url: http://api.aviationstack.com/v1
+      key: ${AVIATIONSTACK_KEY:}
+      monthly-limit: 100
+      cap-percent: 90
+      timeout: 8s
+    ttl:
+      far-ahead: 72h
+      within-three-days: 24h
+      within-one-day: 1h
+    live:
+      window: 2h
+      ttl: 15m
+    negative-ttl: 6h
+    prewarm:
+      cron: 0 0 1 * * *
+    # What a reader's refresh on a published page may cost.
+    public-refresh:
+      window-before: 2d                  # no lookup for a flight that left longer ago than this
+      window-after: 7d                   # nor for one further ahead than this
+      max-live-attempts-per-flight: 8    # AviationStack attempts per operating flight and date
+      stale-browser-ttl: 5m              # how soon a page served something stale asks again
+  # One breaker for every outside service that adopts it (today AeroDataBox and
+  # AviationStack). After failure-threshold consecutive failed calls the service
+  # is paused (calls answer "unavailable" and spend no quota) for the next rung
+  # of back-off; a success closes it and resets the ladder. The same ladder is
+  # the per-flight retry delay on the public refresh.
+  circuit-breaker:
+    failure-threshold: 3            # consecutive failed calls before a service is paused
+    back-off: [15m, 1h, 6h]         # escalating pause / per-key retry delay; the last rung repeats
+    # services:                     # optional per-service overrides (any field may be omitted)
+    #   aviationstack:
+    #     failure-threshold: 2
   bootstrap:
     owner-email: ${BOOTSTRAP_OWNER_EMAIL:}
     owner-password: ${BOOTSTRAP_OWNER_PASSWORD:}

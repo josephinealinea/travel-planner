@@ -96,7 +96,26 @@ public record PublishedTrip(
                         String startTime,
                         String endTime,
                         String cost,
-                        String currency) {}
+                        String currency,
+                        Flight flight,
+                        String note) {
+
+        /** The shape from before flights existed. */
+        public Entry(String category, String categoryLabel, String icon, String description,
+                     String startTime, String endTime, String cost, String currency) {
+            this(category, categoryLabel, icon, description, startTime, endTime, cost, currency, null, null);
+        }
+    }
+
+    /**
+     * What a published flight card can draw without a lookup. Coordinates and
+     * country are left out on purpose: the page never draws them, and a public
+     * file gets what it needs to draw itself.
+     */
+    public record Flight(String number, String operatingNumber, String airline,
+                         String fromIata, String fromCity, String fromName, String fromMapUrl,
+                         String toIata, String toCity, String toName, String toMapUrl,
+                         String terminalFrom, String terminalTo) {}
 
     public record Checklist(String category,
                             String categoryLabel,

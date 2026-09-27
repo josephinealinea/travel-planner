@@ -178,6 +178,24 @@ class YamlImporterTest {
     }
 
     /** Everyone's history survives, rather than being rewritten as "the day of the import". */
+    private static final com.josephinealinea.planner.flights.domain.FlightSnapshot LIMA_FLIGHT =
+            new com.josephinealinea.planner.flights.domain.FlightSnapshot("KL2842", "BT857",
+                    new com.josephinealinea.planner.flights.domain.Airport("TLL", "EETN", "Tallinn Lennart Meri",
+                            "Tallinn", "EE", "Europe/Tallinn", 59.4133, 24.8328),
+                    new com.josephinealinea.planner.flights.domain.Airport("LIM", "SPJC", "Jorge Chávez",
+                            "Lima", "PE", "America/Lima", -12.0219, -77.1143),
+                    "1", "B");
+
+    @Test
+    void anEntrysFlightSnapshotSurvivesTheImport() {
+        ImportReport report = importer.run(dir, false);
+
+        assertThat(report.outcome).as(explain(report)).isEqualTo(ImportReport.Outcome.COMMITTED);
+        assertThat(report.verifier.passed()).isTrue();
+        assertThat(itinerary.findAll(LATAM)).filteredOn(i -> i.getId().equals("i-flight")).singleElement()
+                .satisfies(i -> assertThat(i.getFlight()).isEqualTo(LIMA_FLIGHT));
+    }
+
     @Test
     void timestampsAndPasswordHashesSurviveUnchanged() {
         importer.run(dir, false);
@@ -417,6 +435,8 @@ class YamlImporterTest {
         // pointing back at it through planId.
         ItineraryItem flight = itineraryItem("i-flight", ChecklistCategory.TRANSPORTATION, "Flight to Lima",
                 "2026-10-24T06:00", "2026-10-24T11:00");
+        // A full flight snapshot: both numbers, both airports with every field, both terminals.
+        flight.setFlight(LIMA_FLIGHT);
         ItineraryItem stay = itineraryItem("i-stay", ChecklistCategory.LODGING, "Airbnb in Cusco",
                 "2026-10-27T15:00", "2026-10-29T11:00");
         stay.setChecklistItemId("c-lodging");

@@ -8,7 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.LinkedHashMap;
@@ -88,6 +91,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ErrorResponseException.class)
     ProblemDetail onErrorResponse(ErrorResponseException e) {
         return e.getBody();
+    }
+
+    /** A bad or missing query parameter is the caller's mistake: 400, and no stack trace. */
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, ServletRequestBindingException.class})
+    ProblemDetail onBadParameter(Exception e) {
+        String name = e instanceof MethodArgumentTypeMismatchException m ? m.getName()
+                : e instanceof MissingServletRequestParameterException p ? p.getParameterName()
+                : "request";
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, messages.get("error.request.invalidParameter", name));
+        problem.setProperty("code", "invalid_parameter");
+        return problem;
     }
 
     @ExceptionHandler(Exception.class)

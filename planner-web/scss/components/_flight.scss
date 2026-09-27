@@ -1,0 +1,36 @@
+// The number takes one column of the form grid and the lookup button the next,
+// so the pair lines up with the date and time fields around it.
+.flight-row { align-items: end; }
+.flight-find .btn { width: auto; padding-inline: 10px; }
+
+.flight-pills, .timeline-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+
+  .chip, .badge { margin-left: 0; }
+}
+
+// The legs to pick from when one flight number flies several that day: a small
+// overlay under the number field, so the fields below are not pushed down.
+.flight-block { position: relative; }
+.flight-choices {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  max-width: 100%;
+  padding: 6px;
+  border: 1px solid var(--tp-border);
+  border-radius: 8px;
+  background: var(--tp-surface);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+
+  .btn { text-align: left; }
+}

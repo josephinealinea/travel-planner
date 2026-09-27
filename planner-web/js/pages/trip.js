@@ -12,6 +12,7 @@ import { membersTab } from './trip/members.js';
 import { destinationsTab } from './trip/destinations.js';
 import { checklistTab } from './trip/checklist.js';
 import { itineraryTab } from './trip/itinerary.js';
+import { flightLookup } from './trip/flight-lookup.js';
 import { budgetTab } from './trip/budget.js';
 import { publishTab } from './trip/publish.js';
 import { t } from '../i18n/index.js';
@@ -404,6 +405,7 @@ export function tripPage() {
     destinationsTab(),
     checklistTab(),
     itineraryTab(),
+    flightLookup(),
     budgetTab(),
     publishTab());
 }

@@ -79,6 +79,9 @@ yaml() { printf "%s: '%s'\n" "$1" "${2//\'/\'\'}"; }
            MAIL_EVENT_TRIP_PUBLISHED MAIL_EVENT_PAYMENT_RECORDED; do
     if [[ -n ${!v:-} ]]; then yaml "$v" "${!v}"; fi
   done
+  # Flight-lookup and circuit-breaker tunables are not environment settings: they
+  # are plain values in application.yml and ship with the image. Only the two
+  # flight keys reach the service, as secrets, below.
   # Only meaningful in smtp mode; the password comes from Secret Manager below.
   if [[ $MAIL_MODE == smtp ]]; then
     for v in SMTP_HOST SMTP_PORT SMTP_USER MAIL_FROM; do
@@ -96,6 +99,15 @@ yaml() { printf "%s: '%s'\n" "$1" "${2//\'/\'\'}"; }
 
 secrets=JWT_SECRET=jwt-secret:latest,DB_PASSWORD=db-password:latest,R2_SECRET_ACCESS_KEY=r2-secret-access-key:latest,PROXY_SECRET=proxy-secret:latest
 [[ $MAIL_MODE == smtp ]] && secrets+=,SMTP_PASSWORD=smtp-password:latest
+# Flight-lookup keys: attached only if the secret exists, so a missing key leaves
+# that service off (flights fall back to "unavailable") instead of failing the deploy.
+for pair in AERODATABOX_KEY=aerodatabox-key AVIATIONSTACK_KEY=aviationstack-key; do
+  if gcloud secrets describe "${pair#*=}" --project="$PROJECT_ID" >/dev/null 2>&1; then
+    secrets+=",${pair%%=*}=${pair#*=}:latest"
+  else
+    echo "note: secret ${pair#*=} not found, ${pair%%=*} left unset (that flight service stays off)"
+  fi
+done
 
 echo "==> Deploying $SERVICE ($image)"
 gcloud run deploy "$SERVICE" \

@@ -57,6 +57,8 @@ public class PasswordChangeGate extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getRequestURI().startsWith("/p/");
+        String uri = request.getRequestURI();
+        // Published pages, and the refresh calls they make: neither has a signed-in reader.
+        return uri.startsWith("/p/") || uri.startsWith("/api/v1/public/");
     }
 }

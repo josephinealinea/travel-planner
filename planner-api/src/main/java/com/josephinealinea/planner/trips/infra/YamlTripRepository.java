@@ -50,6 +50,15 @@ public class YamlTripRepository implements TripRepository {
     }
 
     @Override
+    public List<Trip> findAllPublished() {
+        return index().stream()
+                .map(entry -> loadBySlug(entry.slug()))
+                .flatMap(Optional::stream)
+                .filter(Trip::isPublished)
+                .toList();
+    }
+
+    @Override
     public Optional<Trip> findById(String tripId) {
         return index().stream()
                 .filter(entry -> entry.id().equals(tripId))

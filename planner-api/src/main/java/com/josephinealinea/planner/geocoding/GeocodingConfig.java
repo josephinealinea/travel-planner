@@ -5,6 +5,7 @@ import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import com.josephinealinea.planner.shared.HttpCallLog;
 import org.springframework.web.client.RestClient;
 
 @Configuration
@@ -16,7 +17,7 @@ public class GeocodingConfig {
         var settings = ClientHttpRequestFactorySettings.defaults()
                 .withConnectTimeout(timeout)
                 .withReadTimeout(timeout);
-        return RestClient.builder()
+        return HttpCallLog.on(RestClient.builder(), "countries.dev")
                 .baseUrl(props.geocoding().baseUrl())
                 .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
                 .defaultHeader("Accept", "application/json")

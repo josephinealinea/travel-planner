@@ -1,0 +1,2548 @@
+openapi: 3.0.1
+info:
+  title: Travelling Llama planner API
+  description: Generated from the controllers by OpenApiDocTest. Do not edit by hand.
+  version: v1
+servers:
+- url: http://localhost
+  description: Generated server url
+paths:
+  /api/v1/trips:
+    get:
+      tags:
+      - trip-controller
+      operationId: list
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TripSummary"
+    post:
+      tags:
+      - trip-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTripRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TripDetail"
+  /api/v1/trips/{tripId}/settlements/payments:
+    post:
+      tags:
+      - settlement-controller
+      operationId: record
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SettlementPayment"
+  /api/v1/trips/{tripId}/publish:
+    post:
+      tags:
+      - publish-controller
+      operationId: publish
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishRequestBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublishView"
+    delete:
+      tags:
+      - publish-controller
+      operationId: unpublish
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublishView"
+  /api/v1/trips/{tripId}/publish-requests:
+    get:
+      tags:
+      - publish-controller
+      operationId: requests
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublishView"
+    post:
+      tags:
+      - publish-controller
+      operationId: request
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestPublishBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublishView"
+  /api/v1/trips/{tripId}/publish-requests/{requestId}/reject:
+    post:
+      tags:
+      - publish-controller
+      operationId: reject
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublishView"
+  /api/v1/trips/{tripId}/publish-requests/{requestId}/cancel:
+    post:
+      tags:
+      - publish-controller
+      operationId: cancel
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublishView"
+  /api/v1/trips/{tripId}/publish-requests/{requestId}/approve:
+    post:
+      tags:
+      - publish-controller
+      operationId: approve
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishRequestBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublishView"
+  /api/v1/trips/{tripId}/members:
+    get:
+      tags:
+      - trip-controller
+      operationId: members
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberView"
+    post:
+      tags:
+      - trip-controller
+      operationId: addMember
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMemberRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberView"
+  /api/v1/trips/{tripId}/itinerary:
+    get:
+      tags:
+      - itinerary-controller
+      operationId: list_1
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItineraryItem"
+    post:
+      tags:
+      - itinerary-controller
+      operationId: create_1
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ItineraryItem"
+  /api/v1/trips/{tripId}/destinations:
+    get:
+      tags:
+      - destination-controller
+      operationId: list_2
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Destination"
+    post:
+      tags:
+      - destination-controller
+      operationId: create_2
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DestinationRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CreatedResponse"
+  /api/v1/trips/{tripId}/destinations/reorder:
+    post:
+      tags:
+      - destination-controller
+      operationId: reorder
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderRequest"
+        required: true
+      responses:
+        "204":
+          description: No Content
+  /api/v1/trips/{tripId}/checklist:
+    get:
+      tags:
+      - checklist-controller
+      operationId: list_3
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChecklistItem"
+    post:
+      tags:
+      - checklist-controller
+      operationId: create_3
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ChecklistItem"
+  /api/v1/trips/{tripId}/budget:
+    get:
+      tags:
+      - budget-controller
+      operationId: summary
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Summary"
+    post:
+      tags:
+      - budget-controller
+      operationId: create_4
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BudgetItem"
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - auth-controller
+      operationId: logout
+      responses:
+        "200":
+          description: OK
+  /api/v1/auth/login:
+    post:
+      tags:
+      - auth-controller
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/account/password:
+    post:
+      tags:
+      - account-controller
+      operationId: changePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/account/deactivate-email:
+    post:
+      tags:
+      - account-controller
+      operationId: deactivateEmail
+      responses:
+        "200":
+          description: OK
+  /api/v1/trips/{tripId}:
+    get:
+      tags:
+      - trip-controller
+      operationId: detail
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TripDetail"
+    delete:
+      tags:
+      - trip-controller
+      operationId: delete
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+    patch:
+      tags:
+      - trip-controller
+      operationId: update
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTripRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TripDetail"
+  /api/v1/trips/{tripId}/itinerary/{itemId}:
+    delete:
+      tags:
+      - itinerary-controller
+      operationId: delete_1
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+    patch:
+      tags:
+      - itinerary-controller
+      operationId: update_1
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ItineraryItem"
+  /api/v1/trips/{tripId}/destinations/{destinationId}:
+    delete:
+      tags:
+      - destination-controller
+      operationId: delete_2
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: destinationId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+    patch:
+      tags:
+      - destination-controller
+      operationId: update_2
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: destinationId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchDestinationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Destination"
+  /api/v1/trips/{tripId}/checklist/{itemId}:
+    delete:
+      tags:
+      - checklist-controller
+      operationId: delete_3
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+    patch:
+      tags:
+      - checklist-controller
+      operationId: update_3
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ChecklistItem"
+  /api/v1/trips/{tripId}/checklist/{itemId}/status:
+    patch:
+      tags:
+      - checklist-controller
+      operationId: setStatus
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ChecklistItem"
+  /api/v1/trips/{tripId}/budget/{itemId}:
+    delete:
+      tags:
+      - budget-controller
+      operationId: delete_4
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+    patch:
+      tags:
+      - budget-controller
+      operationId: update_4
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BudgetItem"
+  /api/v1/account/published-page:
+    patch:
+      tags:
+      - account-controller
+      operationId: updatePublishedPage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePublishedPageRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/account/profile:
+    patch:
+      tags:
+      - account-controller
+      operationId: updateProfile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/account/language:
+    patch:
+      tags:
+      - account-controller
+      operationId: updateLanguage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LanguageRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/account/display-currency:
+    patch:
+      tags:
+      - account-controller
+      operationId: updateDisplayCurrency
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDisplayCurrencyRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/account/currencies:
+    patch:
+      tags:
+      - account-controller
+      operationId: updateCurrencies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCurrenciesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /p/{slug}:
+    get:
+      tags:
+      - public-page-controller
+      operationId: page
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /p/{slug}/trip.json:
+    get:
+      tags:
+      - public-page-controller
+      operationId: data
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /p/{slug}/m/{member}/trip.json:
+    get:
+      tags:
+      - public-page-controller
+      operationId: memberData
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: member
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /p/{slug}/m/{member}/:
+    get:
+      tags:
+      - public-page-controller
+      operationId: memberPage
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: member
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /p/{slug}/m/{member}:
+    get:
+      tags:
+      - public-page-controller
+      operationId: memberPage_1
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: member
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /p/{slug}/:
+    get:
+      tags:
+      - public-page-controller
+      operationId: pageWithSlash
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /api/v1/trips/{tripId}/weather:
+    get:
+      tags:
+      - weather-controller
+      operationId: forTrip
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/WeatherResponse"
+  /api/v1/trips/{tripId}/publish/preview:
+    get:
+      tags:
+      - publish-controller
+      operationId: preview
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            text/html:
+              schema:
+                type: string
+  /api/v1/trips/{tripId}/flights/lookup:
+    get:
+      tags:
+      - flight-controller
+      operationId: lookup
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: number
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LookupResponse"
+  /api/v1/trips/{tripId}/checklist/{itemId}/plan-template:
+    get:
+      tags:
+      - checklist-controller
+      operationId: planTemplate
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Template"
+  /api/v1/rates:
+    get:
+      tags:
+      - rates-controller
+      operationId: current
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RatesResponse"
+  /api/v1/public/trips/{slug}/flights:
+    get:
+      tags:
+      - public-flight-controller
+      operationId: flight
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: number
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicFlightView"
+  /api/v1/geocode:
+    get:
+      tags:
+      - geocoding-controller
+      operationId: search
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlaceSuggestion"
+  /api/v1/geocode/countries:
+    get:
+      tags:
+      - geocoding-controller
+      operationId: countries
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CountryOption"
+  /api/v1/config:
+    get:
+      tags:
+      - config-controller
+      operationId: config
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfigResponse"
+  /api/v1/auth/me:
+    get:
+      tags:
+      - auth-controller
+      operationId: me
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/auth/csrf:
+    get:
+      tags:
+      - auth-controller
+      operationId: csrf
+      responses:
+        "200":
+          description: OK
+  /api/v1/trips/{tripId}/settlements/payments/{paymentId}:
+    delete:
+      tags:
+      - settlement-controller
+      operationId: delete_5
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: paymentId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+  /api/v1/trips/{tripId}/members/{userId}:
+    delete:
+      tags:
+      - trip-controller
+      operationId: removeMember
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberView"
+  /api/v1/trips/{tripId}/itinerary/{itemId}/plan:
+    delete:
+      tags:
+      - itinerary-controller
+      operationId: deletePlan
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: No Content
+components:
+  schemas:
+    CreateTripRequest:
+      required:
+      - endDate
+      - startDate
+      - title
+      type: object
+      properties:
+        title:
+          maxLength: 120
+          minLength: 0
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+    Airport:
+      type: object
+      properties:
+        iata:
+          type: string
+        icao:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        countryCode:
+          type: string
+        timezone:
+          type: string
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+    Balance:
+      type: object
+      properties:
+        currency:
+          type: string
+        net:
+          type: number
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Line"
+    Breakdown:
+      type: object
+      properties:
+        byCategory:
+          type: object
+          additionalProperties:
+            type: number
+        byCountry:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountryAmount"
+        nativeTotals:
+          type: array
+          items:
+            $ref: "#/components/schemas/NativeAmount"
+        total:
+          type: number
+        currenciesMissingRates:
+          type: array
+          items:
+            type: string
+    BudgetItem:
+      type: object
+      properties:
+        id:
+          type: string
+        tripId:
+          type: string
+        itineraryItemId:
+          type: string
+        category:
+          type: string
+          enum:
+          - TRANSPORTATION
+          - LODGING
+          - ACTIVITIES
+          - SHOPPING
+          - FOOD
+          - OTHERS
+        description:
+          type: string
+        note:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        date:
+          type: string
+          format: date
+        countryCodes:
+          type: array
+          items:
+            type: string
+        sharedByUserIds:
+          type: array
+          items:
+            type: string
+        paidByUserId:
+          type: string
+        status:
+          type: string
+          enum:
+          - CONFIRMED
+          - PENDING
+        confirmedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedByUserId:
+          type: string
+        destinationIds:
+          type: array
+          writeOnly: true
+          items:
+            type: string
+    BudgetView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetItem"
+        displayCurrency:
+          type: string
+        totalsCurrency:
+          type: string
+        ratesBase:
+          type: string
+        ratesDate:
+          type: string
+        exchangeRates:
+          type: object
+          additionalProperties:
+            type: number
+        shares:
+          type: object
+          additionalProperties:
+            type: number
+        charged:
+          $ref: "#/components/schemas/Breakdown"
+        forecast:
+          $ref: "#/components/schemas/Breakdown"
+        settlements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Settlement"
+        settlementsSimplified:
+          type: boolean
+        balances:
+          type: array
+          items:
+            $ref: "#/components/schemas/Balance"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SettlementPayment"
+    ChecklistItem:
+      type: object
+      properties:
+        id:
+          type: string
+        tripId:
+          type: string
+        countryCodes:
+          type: array
+          items:
+            type: string
+        seededFromDestinationId:
+          type: string
+        category:
+          type: string
+          enum:
+          - TRANSPORTATION
+          - LODGING
+          - ACTIVITIES
+          - SHOPPING
+          - FOOD
+          - OTHERS
+        description:
+          type: string
+        note:
+          type: string
+        status:
+          type: string
+          enum:
+          - TODO
+          - COMPLETED
+        autoSeeded:
+          type: boolean
+        sortOrder:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedByUserId:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        travellerIds:
+          type: array
+          items:
+            type: string
+        destinationIds:
+          type: array
+          writeOnly: true
+          items:
+            type: string
+        destinationId:
+          type: string
+          writeOnly: true
+    CountryAmount:
+      type: object
+      properties:
+        key:
+          type: string
+        flag:
+          type: string
+        amount:
+          type: number
+    Destination:
+      type: object
+      properties:
+        id:
+          type: string
+        tripId:
+          type: string
+        name:
+          type: string
+        countryCode:
+          type: string
+        countryFlag:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        geonameId:
+          type: integer
+          format: int64
+        timezone:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        note:
+          type: string
+        sortOrder:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedByUserId:
+          type: string
+        lodgingSeeded:
+          type: boolean
+        suppressChecklist:
+          type: boolean
+        travellerIds:
+          type: array
+          items:
+            type: string
+    FlightSnapshot:
+      type: object
+      properties:
+        number:
+          type: string
+        operatingNumber:
+          type: string
+        from:
+          $ref: "#/components/schemas/Airport"
+        to:
+          $ref: "#/components/schemas/Airport"
+        terminalFrom:
+          type: string
+        terminalTo:
+          type: string
+        airline:
+          type: string
+    ItineraryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        tripId:
+          type: string
+        checklistItemId:
+          type: string
+        planId:
+          type: string
+        category:
+          type: string
+          enum:
+          - TRANSPORTATION
+          - LODGING
+          - ACTIVITIES
+          - SHOPPING
+          - FOOD
+          - OTHERS
+        description:
+          type: string
+        note:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        allDay:
+          type: boolean
+        cost:
+          type: number
+        currency:
+          type: string
+        budgetItemId:
+          type: string
+        countryCodes:
+          type: array
+          items:
+            type: string
+        sortOrder:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedByUserId:
+          type: string
+        travellerIds:
+          type: array
+          items:
+            type: string
+        flight:
+          $ref: "#/components/schemas/FlightSnapshot"
+        destinationIds:
+          type: array
+          writeOnly: true
+          items:
+            type: string
+    Line:
+      type: object
+      properties:
+        itemId:
+          type: string
+        paymentId:
+          type: string
+        amount:
+          type: number
+    MemberView:
+      type: object
+      properties:
+        userId:
+          type: string
+        emailLabel:
+          type: string
+        displayName:
+          type: string
+        screenName:
+          type: string
+        homeCountryCode:
+          type: string
+        role:
+          type: string
+          enum:
+          - OWNER
+          - MEMBER
+        hasSignedIn:
+          type: boolean
+        invitedAt:
+          type: string
+          format: date-time
+    Mine:
+      type: object
+      properties:
+        destinationIds:
+          type: array
+          items:
+            type: string
+        checklistItemIds:
+          type: array
+          items:
+            type: string
+        itineraryItemIds:
+          type: array
+          items:
+            type: string
+    Named:
+      type: object
+      properties:
+        destinations:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        checklist:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        itinerary:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    NativeAmount:
+      type: object
+      properties:
+        currency:
+          type: string
+        amount:
+          type: number
+    PublishRequestView:
+      type: object
+      properties:
+        id:
+          type: string
+        requestedByUserId:
+          type: string
+        requestedByDisplayName:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - CANCELLED
+        requestedAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+    PublishView:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        publicUrl:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublishRequestView"
+        myPublicUrl:
+          type: string
+        requireOwnerApproval:
+          type: boolean
+        personalPageUrls:
+          type: array
+          items:
+            type: string
+    Settlement:
+      type: object
+      properties:
+        otherUserId:
+          type: string
+        currency:
+          type: string
+        owesYou:
+          type: number
+        youOwe:
+          type: number
+        paidYou:
+          type: number
+        youPaid:
+          type: number
+        net:
+          type: number
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Line"
+    SettlementPayment:
+      type: object
+      properties:
+        id:
+          type: string
+        tripId:
+          type: string
+        fromUserId:
+          type: string
+        toUserId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        date:
+          type: string
+          format: date
+        note:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedByUserId:
+          type: string
+    TripDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        ownerUserId:
+          type: string
+        isOwner:
+          type: boolean
+        currentUserId:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberView"
+        destinations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Destination"
+        checklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+        itinerary:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItineraryItem"
+        budget:
+          $ref: "#/components/schemas/BudgetView"
+        publish:
+          $ref: "#/components/schemas/PublishView"
+        mine:
+          $ref: "#/components/schemas/Mine"
+        travellers:
+          $ref: "#/components/schemas/Named"
+    RecordRequest:
+      required:
+      - amount
+      - fromUserId
+      - toUserId
+      type: object
+      properties:
+        fromUserId:
+          minLength: 1
+          type: string
+        toUserId:
+          minLength: 1
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        date:
+          type: string
+          format: date
+        note:
+          type: string
+    PublishRequestBody:
+      type: object
+      properties:
+        theme:
+          type: string
+    RequestPublishBody:
+      type: object
+      properties:
+        note:
+          type: string
+        theme:
+          type: string
+    AddMemberRequest:
+      required:
+      - email
+      type: object
+      properties:
+        email:
+          minLength: 1
+          type: string
+    CreateRequest:
+      required:
+      - description
+      type: object
+      properties:
+        checklistItemId:
+          type: string
+        category:
+          type: string
+          enum:
+          - TRANSPORTATION
+          - LODGING
+          - ACTIVITIES
+          - SHOPPING
+          - FOOD
+          - OTHERS
+        description:
+          maxLength: 300
+          minLength: 0
+          type: string
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        allDay:
+          type: boolean
+        cost:
+          type: number
+        currency:
+          type: string
+        costCharged:
+          type: boolean
+        costSharedByUserIds:
+          type: array
+          items:
+            type: string
+        costPaidByUserId:
+          type: string
+        countryCodes:
+          type: array
+          items:
+            type: string
+        travellerIds:
+          type: array
+          items:
+            type: string
+        inheritTravellers:
+          type: boolean
+        note:
+          type: string
+        flight:
+          $ref: "#/components/schemas/FlightSnapshot"
+    DestinationRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 120
+          minLength: 0
+          type: string
+        countryCode:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        geonameId:
+          type: integer
+          format: int64
+        timezone:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        note:
+          type: string
+        suppressChecklist:
+          type: boolean
+        travellerIds:
+          type: array
+          items:
+            type: string
+        inheritTravellers:
+          type: boolean
+    CreatedResponse:
+      type: object
+      properties:
+        destination:
+          $ref: "#/components/schemas/Destination"
+        seededChecklist:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+    ReorderRequest:
+      type: object
+      properties:
+        orderedIds:
+          type: array
+          items:
+            type: string
+    LoginRequest:
+      required:
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          minLength: 1
+          type: string
+        password:
+          minLength: 1
+          type: string
+    MeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        screenName:
+          type: string
+        homeCountryCode:
+          type: string
+        languageCode:
+          type: string
+        tierLevel:
+          type: string
+          enum:
+          - BASIC
+          - PRO
+          - ROCKSTAR
+        displayName:
+          type: string
+        mustChangePassword:
+          type: boolean
+        currencies:
+          type: array
+          items:
+            type: string
+        displayCurrency:
+          type: string
+        publishedPage:
+          $ref: "#/components/schemas/PublishedPage"
+    PublishedPage:
+      type: object
+      properties:
+        itineraryCost:
+          type: boolean
+        destinationDays:
+          type: boolean
+        forecastExpenses:
+          type: boolean
+        displayHomeCountry:
+          type: boolean
+        displayBudget:
+          type: boolean
+    ChangePasswordRequest:
+      required:
+      - currentPassword
+      - newPassword
+      type: object
+      properties:
+        currentPassword:
+          minLength: 1
+          type: string
+        newPassword:
+          maxLength: 2147483647
+          minLength: 8
+          type: string
+        screenName:
+          type: string
+    UpdateTripRequest:
+      type: object
+      properties:
+        title:
+          maxLength: 120
+          minLength: 0
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        displayCurrency:
+          type: string
+    PatchRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - TRANSPORTATION
+          - LODGING
+          - ACTIVITIES
+          - SHOPPING
+          - FOOD
+          - OTHERS
+        description:
+          maxLength: 300
+          minLength: 0
+          type: string
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        allDay:
+          type: boolean
+        cost:
+          type: number
+        currency:
+          type: string
+        costCharged:
+          type: boolean
+        costSharedByUserIds:
+          type: array
+          items:
+            type: string
+        costPaidByUserId:
+          type: string
+        countryCodes:
+          type: array
+          items:
+            type: string
+        travellerIds:
+          type: array
+          items:
+            type: string
+        inheritTravellers:
+          type: boolean
+        note:
+          type: string
+        flight:
+          $ref: "#/components/schemas/FlightSnapshot"
+    PatchDestinationRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 120
+          minLength: 0
+          type: string
+        countryCode:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        geonameId:
+          type: integer
+          format: int64
+        timezone:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        note:
+          type: string
+        suppressChecklist:
+          type: boolean
+        travellerIds:
+          type: array
+          items:
+            type: string
+        inheritTravellers:
+          type: boolean
+    StatusRequest:
+      required:
+      - status
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - TODO
+          - COMPLETED
+    UpdatePublishedPageRequest:
+      type: object
+      properties:
+        itineraryCost:
+          type: boolean
+        destinationDays:
+          type: boolean
+        forecastExpenses:
+          type: boolean
+        displayHomeCountry:
+          type: boolean
+        displayBudget:
+          type: boolean
+    ProfileRequest:
+      type: object
+      properties:
+        screenName:
+          type: string
+        homeCountryCode:
+          type: string
+        email:
+          type: string
+    LanguageRequest:
+      type: object
+      properties:
+        languageCode:
+          type: string
+    UpdateDisplayCurrencyRequest:
+      type: object
+      properties:
+        displayCurrency:
+          type: string
+    UpdateCurrenciesRequest:
+      type: object
+      properties:
+        currencies:
+          type: array
+          items:
+            type: string
+    TripSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        isOwner:
+          type: boolean
+        ownerDisplayName:
+          type: string
+        memberCount:
+          type: integer
+          format: int32
+        checklistTotal:
+          type: integer
+          format: int32
+        checklistCompleted:
+          type: integer
+          format: int32
+        publicUrl:
+          type: string
+        myPublicUrl:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+    DayWeather:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        destinationId:
+          type: string
+        destinationName:
+          type: string
+        countryCode:
+          type: string
+        countryFlag:
+          type: string
+        weatherCode:
+          type: integer
+          format: int32
+        temperatureMax:
+          type: number
+          format: double
+        temperatureMin:
+          type: number
+          format: double
+        precipitation:
+          type: number
+          format: double
+        source:
+          type: string
+          enum:
+          - FORECAST
+          - CLIMATE
+          - UNAVAILABLE
+        details:
+          type: object
+          additionalProperties:
+            type: object
+    WeatherResponse:
+      type: object
+      properties:
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayWeather"
+    Choice:
+      type: object
+      properties:
+        departureTime:
+          type: string
+        arrivalDate:
+          type: string
+        arrivalTime:
+          type: string
+        flight:
+          $ref: "#/components/schemas/FlightSnapshot"
+    LookupResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        operatingNumber:
+          type: string
+        departureTime:
+          type: string
+        arrivalDate:
+          type: string
+        arrivalTime:
+          type: string
+        flight:
+          $ref: "#/components/schemas/FlightSnapshot"
+        choices:
+          type: array
+          items:
+            $ref: "#/components/schemas/Choice"
+    Template:
+      type: object
+      properties:
+        description:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        currency:
+          type: string
+    Summary:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetItem"
+        displayCurrency:
+          type: string
+        totalsCurrency:
+          type: string
+        shares:
+          type: object
+          additionalProperties:
+            type: number
+        charged:
+          $ref: "#/components/schemas/Breakdown"
+        forecast:
+          $ref: "#/components/schemas/Breakdown"
+        settlements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Settlement"
+        settlementsSimplified:
+          type: boolean
+        balances:
+          type: array
+          items:
+            $ref: "#/components/schemas/Balance"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SettlementPayment"
+    RatesResponse:
+      type: object
+      properties:
+        base:
+          type: string
+        date:
+          type: string
+        fetchedAt:
+          type: string
+        rates:
+          type: object
+          additionalProperties:
+            type: number
+    LiveLeg:
+      type: object
+      properties:
+        gate:
+          type: string
+        baggageBelt:
+          type: string
+        delayMinutes:
+          type: integer
+          format: int32
+        actualLocal:
+          type: string
+    PublicAirport:
+      type: object
+      properties:
+        iata:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        countryCode:
+          type: string
+        timezone:
+          type: string
+    PublicFlightView:
+      type: object
+      properties:
+        number:
+          type: string
+        operatingNumber:
+          type: string
+        schedule:
+          $ref: "#/components/schemas/PublicSchedule"
+        live:
+          $ref: "#/components/schemas/PublicLive"
+        scheduleFetchedAt:
+          type: string
+          format: date-time
+        liveFetchedAt:
+          type: string
+          format: date-time
+        stale:
+          type: boolean
+        ttlSeconds:
+          type: integer
+          format: int64
+    PublicLive:
+      type: object
+      properties:
+        status:
+          type: string
+        departure:
+          $ref: "#/components/schemas/LiveLeg"
+        arrival:
+          $ref: "#/components/schemas/LiveLeg"
+    PublicSchedule:
+      type: object
+      properties:
+        status:
+          type: string
+        aircraftModel:
+          type: string
+        airline:
+          type: string
+        departure:
+          $ref: "#/components/schemas/ScheduleLeg"
+        arrival:
+          $ref: "#/components/schemas/ScheduleLeg"
+    ScheduleLeg:
+      type: object
+      properties:
+        airport:
+          $ref: "#/components/schemas/PublicAirport"
+        scheduledLocal:
+          type: string
+        scheduledUtc:
+          type: string
+        revisedLocal:
+          type: string
+        predictedLocal:
+          type: string
+        terminal:
+          type: string
+    PlaceSuggestion:
+      type: object
+      properties:
+        geonameId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        countryCode:
+          type: string
+        countryFlag:
+          type: string
+        currency:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        population:
+          type: integer
+          format: int64
+        timezone:
+          type: string
+    CountryOption:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        flag:
+          type: string
+    ConfigResponse:
+      type: object
+      properties:
+        currencies:
+          type: array
+          items:
+            type: string
+        defaultDisplayCurrency:
+          type: string
+        languages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Language"
+    Language:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    DeleteResponse:
+      type: object
+      properties:
+        checklistItemsUnlinked:
+          type: integer
+          format: int32
+        itineraryItemsUnlinked:
+          type: integer
+          format: int32
+        budgetItemsUnlinked:
+          type: integer
+          format: int32
