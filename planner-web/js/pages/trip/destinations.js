@@ -7,9 +7,19 @@ import {
   toggleTraveller, everyoneGoes,
 } from '../../traveller-picker.js';
 import { t } from '../../i18n/index.js';
+import { savedShowNews } from '../../show-news.js';
 
 const LOOKUP_DEBOUNCE_MS = 250;
 const COUNTRY_MATCH_LIMIT = 8;
+
+function shuffled(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 /**
  * The Destinations tab, including the countries.dev name lookup.
@@ -54,6 +64,8 @@ export function destinationsTab() {
     destSelectedIds: [],
     destBulkOpen: false,
     destBulkBusy: false,
+
+    newsArticles: [],
 
     suggestions: [],
     lookupBusy: false,
@@ -397,6 +409,48 @@ export function destinationsTab() {
       // saying nothing about any of them.
       return this.scopedChecklist.filter(
         (item) => item.seededFromDestinationId === destination.id).length;
+    },
+
+    /**
+     * Fetched every time the Destinations tab is shown, not guarded by a
+     * loaded flag: the endpoint's own 24h Cache-Control is what keeps this
+     * cheap, so a repeat call within a day costs the browser's cache, not a
+     * network round trip. The API still groups articles by destination (each
+     * destination gets its own lookup, up to max-articles-per-destination);
+     * here they are flattened into one merged, shuffled list so the carousel
+     * is a single scrollable row regardless of how many destinations the trip
+     * has, with each card keeping its own place tag for context.
+     *
+     * The "Show news" account setting is checked first and is a real gate,
+     * not just a display filter: off means this never calls the API at all.
+     */
+    async loadNews() {
+      if (!savedShowNews()) {
+        this.newsArticles = [];
+        return;
+      }
+      try {
+        const groups = await this.api.news(this.trip.id);
+        const flat = groups.flatMap((group) => group.articles.map((article) => ({
+          ...article,
+          destinationName: group.destinationName,
+          countryFlag: group.countryFlag,
+        })));
+        this.newsArticles = shuffled(flat);
+      } catch {
+        this.newsArticles = [];
+      }
+    },
+
+    /** "Source · 2h ago" / "Source · 3d ago", falling back to just the source
+     * when the article has no publish date. */
+    newsMeta(article) {
+      if (!article.publishedAt) return article.sourceName || '';
+      const hours = Math.max(0, Math.floor((Date.now() - new Date(article.publishedAt).getTime()) / 3600000));
+      const when = hours < 1 ? t('news.justNow')
+        : hours < 24 ? t('news.hoursAgo', { count: hours })
+        : t('news.daysAgo', { count: Math.floor(hours / 24) });
+      return article.sourceName ? `${article.sourceName} · ${when}` : when;
     },
   };
 }

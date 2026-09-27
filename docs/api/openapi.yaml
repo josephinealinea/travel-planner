@@ -1027,6 +1027,26 @@ paths:
             text/html:
               schema:
                 type: string
+  /api/v1/trips/{tripId}/news:
+    get:
+      tags:
+      - news-controller
+      operationId: news
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DestinationNewsGroup"
   /api/v1/trips/{tripId}/flights/lookup:
     get:
       tags:
@@ -2307,6 +2327,35 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DayWeather"
+    DestinationNewsGroup:
+      type: object
+      properties:
+        destinationName:
+          type: string
+        countryCode:
+          type: string
+        countryFlag:
+          type: string
+        articles:
+          type: array
+          items:
+            $ref: "#/components/schemas/NewsArticle"
+    NewsArticle:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        imageUrl:
+          type: string
+        sourceName:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
     Choice:
       type: object
       properties:

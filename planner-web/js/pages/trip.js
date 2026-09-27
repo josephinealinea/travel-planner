@@ -93,6 +93,9 @@ export function tripPage() {
       // reload() warms the weather itself, so opening a trip is what triggers
       // the lookup — not switching to the Itinerary tab. See reload().
       await this.reload();
+      // Unlike weather, news is lazy: covers opening the trip directly on the
+      // #destinations hash, which showTab is never called for.
+      if (this.tab === 'destinations') this.loadNews();
       this.loading = false;
       this.syncTitle();
       // The tabs only render once loading is false.
@@ -133,6 +136,9 @@ export function tripPage() {
       // first attempt failed, since loadWeather() is a no-op while the
       // destinations are unchanged.
       if (id === 'itinerary') this.loadWeather();
+      // Unlike loadWeather(), not a no-op on repeat: the endpoint's own
+      // Cache-Control is what keeps a repeat call within a day cheap.
+      if (id === 'destinations') this.loadNews();
     },
 
     selectTab(id) {

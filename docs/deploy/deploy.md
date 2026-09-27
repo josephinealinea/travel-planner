@@ -125,6 +125,8 @@ service's key; `.env.deploy` alone holds settings, none of them secret:
 | `.env.resend` | `RESEND_API_KEY`, only needed once, to store it in Secret Manager | Part 11 |
 | `.env.aerodatabox` | `AERODATABOX_KEY` (the RapidAPI key), optional: switches on flight lookup | Part 5 |
 | `.env.aviationstack` | `AVIATIONSTACK_KEY`, optional: codeshares and live gate/delay | Part 5 |
+| `.env.newsdata` | `NEWSDATA_KEY`, optional: switches on Llama Lookout's NewsData.io provider | Part 5 |
+| `.env.newscurrents` | `NEWSCURRENTS_KEY`, optional: switches on Llama Lookout's Currents provider | Part 5 |
 
 Each key file serves two uses, like `.env.r2`: it is sourced for a local run, and
 it is what the Secret Manager secret is created from, so a key lives in one place
@@ -277,6 +279,12 @@ script attaches each only if it exists. The creation commands are below, after
 Secret Manager is switched on. See [aerodatabox.md](../external-apis/aerodatabox.md)
 and [aviationstack.md](../external-apis/aviationstack.md).
 
+Two more, `newsdata-key` and `newscurrents-key`, switch on Llama Lookout's two
+news providers the same way — without one, that provider is simply off and
+contributes no articles; the script attaches each only if it exists. See
+[newsdata.md](../external-apis/newsdata.md) and
+[currents.md](../external-apis/currents.md).
+
 **How flight lookup reaches Cloud Run.** The keys are the only part of it that is
 an environment setting: each lives in Secret Manager, and `deploy.sh` attaches
 it to the service as the environment variable `AERODATABOX_KEY` or
@@ -333,8 +341,29 @@ cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATAB
 cd planner-api && (set -a; . ./.env.aviationstack; set +a; printf '%s' "$AVIATIONSTACK_KEY" | gcloud secrets create aviationstack-key --data-file=- --replication-policy=automatic --project=travellingllama)
 ```
 
-To **rotate** a flight key, put the new value in the same file and add a new
-version of the secret rather than creating it again. `deploy.sh` attaches
+The two news keys are optional the same way. Each goes in its own private file
+first, one line: `NEWSDATA_KEY='<your NewsData.io key>'` in `.env.newsdata`, and
+`NEWSCURRENTS_KEY='<your Currents key>'` in `.env.newscurrents`.
+
+#### Create the NewsData.io key file, private from the start
+```bash
+cd planner-api && touch .env.newsdata && chmod 600 .env.newsdata && open -e .env.newsdata
+```
+#### Create the Currents key file, private from the start
+```bash
+cd planner-api && touch .env.newscurrents && chmod 600 .env.newscurrents && open -e .env.newscurrents
+```
+#### Store the NewsData.io key, read from .env.newsdata
+```bash
+cd planner-api && (set -a; . ./.env.newsdata; set +a; printf '%s' "$NEWSDATA_KEY" | gcloud secrets create newsdata-key --data-file=- --replication-policy=automatic --project=travellingllama)
+```
+#### Store the Currents key, read from .env.newscurrents
+```bash
+cd planner-api && (set -a; . ./.env.newscurrents; set +a; printf '%s' "$NEWSCURRENTS_KEY" | gcloud secrets create newscurrents-key --data-file=- --replication-policy=automatic --project=travellingllama)
+```
+
+To **rotate** a flight or news key, put the new value in the same file and add a
+new version of the secret rather than creating it again. `deploy.sh` attaches
 `:latest`, and Cloud Run reads it when an instance starts, so redeploy afterwards.
 
 #### Rotate the AeroDataBox key, read from .env.aerodatabox
@@ -345,6 +374,14 @@ cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATAB
 ```bash
 cd planner-api && (set -a; . ./.env.aviationstack; set +a; printf '%s' "$AVIATIONSTACK_KEY" | gcloud secrets versions add aviationstack-key --data-file=- --project=travellingllama)
 ```
+#### Rotate the NewsData.io key, read from .env.newsdata
+```bash
+cd planner-api && (set -a; . ./.env.newsdata; set +a; printf '%s' "$NEWSDATA_KEY" | gcloud secrets versions add newsdata-key --data-file=- --project=travellingllama)
+```
+#### Rotate the Currents key, read from .env.newscurrents
+```bash
+cd planner-api && (set -a; . ./.env.newscurrents; set +a; printf '%s' "$NEWSCURRENTS_KEY" | gcloud secrets versions add newscurrents-key --data-file=- --project=travellingllama)
+```
 
 `deploy.sh` attaches each flight key only if `gcloud secrets describe` finds it. That
 check also passes for a secret that exists but has **no version**, and the `:latest`
@@ -352,6 +389,28 @@ reference would then fail the deploy, so create at least one version (the comman
 above do). Access needs no extra step: the deploy already grants the compute service
 account `roles/secretmanager.secretAccessor` on the whole project, which covers
 these two secrets.
+
+**Attaching an already-created secret to the running service without a full
+deploy.** Once a secret exists (created above), the standard route is to just
+run `./deploy.sh` — it re-attaches every secret on every deploy. To attach one
+sooner, without rebuilding or pushing an image, two ways:
+
+*Console:* Cloud Run → `planner-api` → **Edit & Deploy New Revision** → **Variables
+& Secrets** tab → **Reference a secret** → pick the secret, set the environment
+variable name (`AERODATABOX_KEY` or `AVIATIONSTACK_KEY`), version `latest` →
+**Done** → **Deploy**.
+
+#### Attach both flight keys to the running service, no rebuild
+```bash
+gcloud run services update planner-api --project=travellingllama --region=europe-west3 --set-secrets=AERODATABOX_KEY=aerodatabox-key:latest,AVIATIONSTACK_KEY=aviationstack-key:latest
+```
+
+Both are a **temporary override**: `deploy.sh` rewrites the whole `--set-secrets`
+list from `.env.deploy` and Secret Manager on every run, so the next `./deploy.sh`
+reproduces the same result anyway (or drops the key if the secret has since been
+deleted). Use these two only to skip waiting for a rebuild; `./deploy.sh
+--no-build` is the equivalent one-command route that also goes through the
+documented script.
 
 Each value is **piped** (`|`) straight into `gcloud`, so it's never printed.
 To check a secret without revealing it, count its characters:

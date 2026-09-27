@@ -173,6 +173,18 @@ app:
       window-after: 7d                   # nor for one further ahead than this
       max-live-attempts-per-flight: 8    # AviationStack attempts per operating flight and date
       stale-browser-ttl: 5m              # how soon a page served something stale asks again
+  news:
+    enabled: true
+    cap-fraction: 0.9
+    max-articles-per-destination: 3
+    newsdata:
+      base-url: https://newsdata.io
+      key: ${NEWSDATA_KEY:}
+      daily-limit: 200
+    currents:
+      base-url: https://api.currentsapi.services
+      key: ${NEWSCURRENTS_KEY:}
+      daily-limit: 250
   # One breaker for every outside service that adopts it (today AeroDataBox and
   # AviationStack). After failure-threshold consecutive failed calls the service
   # is paused (calls answer "unavailable" and spend no quota) for the next rung

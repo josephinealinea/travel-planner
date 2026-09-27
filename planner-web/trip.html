@@ -279,6 +279,36 @@
             </tbody>
           </table>
         </div>
+
+        <div class="news-carousel" x-show="newsArticles.length" x-cloak>
+          <div class="section-head">
+            <h3 class="section-title" data-i18n="trip.llamaLookout"></h3>
+          </div>
+          <div class="news-row-wrap">
+            <button type="button" class="news-arrow news-arrow-prev" :aria-label="$t('news.scrollPrevious')"
+                    @click="$el.nextElementSibling.scrollBy({ left: -240, behavior: 'smooth' })">‹</button>
+            <div class="news-row">
+              <template x-for="article in newsArticles" :key="article.url">
+                <a class="news-card" :href="article.url" target="_blank" rel="noopener">
+                  <div class="news-card-image">
+                    <img x-show="article.imageUrl" :src="article.imageUrl" loading="lazy" alt="">
+                    <span class="news-card-fallback" x-show="!article.imageUrl">🦙</span>
+                    <span class="news-card-tag">
+                      <span x-text="article.countryFlag"></span>
+                      <span x-text="article.destinationName"></span>
+                    </span>
+                  </div>
+                  <div class="news-card-body">
+                    <div class="news-card-title" x-text="article.title"></div>
+                    <div class="news-card-meta" x-text="newsMeta(article)"></div>
+                  </div>
+                </a>
+              </template>
+            </div>
+            <button type="button" class="news-arrow news-arrow-next" :aria-label="$t('news.scrollNext')"
+                    @click="$el.previousElementSibling.scrollBy({ left: 240, behavior: 'smooth' })">›</button>
+          </div>
+        </div>
       </section>
 
       <!-- ══ CHECKLIST ══════════════════════════ -->

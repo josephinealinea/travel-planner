@@ -120,6 +120,14 @@
       </div>
 
       <div class="field">
+        <label class="checkbox">
+          <input type="checkbox" id="show-news">
+          <span data-i18n="account.showNews"></span>
+        </label>
+        <p class="field-hint" data-i18n="account.showNewsHint"></p>
+      </div>
+
+      <div class="field">
         <label for="budget-page-size" data-i18n="account.paginationExpenseRecordsIn"></label>
         <select id="budget-page-size" class="control-narrow"></select>
         <p class="field-hint" data-i18n="account.appliesTheNextTime"></p>
@@ -173,6 +181,7 @@
   import { requireUser, clearCachedUser } from './js/session.js';
   import { passwordScore } from './js/password-toggle.js';
   import { THEME_REGISTRY, THEME_NAMES, applyTheme, savedTheme } from './js/theme-selector.js';
+  import { savedShowNews, saveShowNews } from './js/show-news.js';
   import { toast } from './js/toast.js';
   import { BUDGET_PAGE_SIZES, savedBudgetPageSize, saveBudgetPageSize } from './js/page-size.js';
 
@@ -388,6 +397,13 @@
     const radio = radios.querySelector(`input[value="${event.detail.theme}"]`);
     if (radio) radio.checked = true;
   });
+
+  // Whether Llama Lookout is shown at all — localStorage like the theme, read
+  // by the trip page when it loads. Off skips the API call entirely, not just
+  // the display.
+  const showNewsBox = document.querySelector('#show-news');
+  showNewsBox.checked = savedShowNews();
+  showNewsBox.addEventListener('change', () => saveShowNews(showNewsBox.checked));
 
   // Budget rows per page — localStorage like the theme, read by the trip page
   // when it loads, so a change applies the next time a trip is opened.

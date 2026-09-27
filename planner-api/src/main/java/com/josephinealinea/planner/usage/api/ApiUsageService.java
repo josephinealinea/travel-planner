@@ -41,4 +41,18 @@ public class ApiUsageService {
         var utc = instant.atZone(ZoneOffset.UTC);
         return "%04d-%02d".formatted(utc.getYear(), utc.getMonthValue());
     }
+
+    /** True when the call may go out; it is counted when granted, even if it then fails. */
+    public boolean tryAcquireDaily(String service, int cap) {
+        return repository.tryAcquire(service, dayOf(clock.instant()), cap);
+    }
+
+    public int callsToday(String service) {
+        return repository.calls(service, dayOf(clock.instant()));
+    }
+
+    static String dayOf(Instant instant) {
+        var utc = instant.atZone(ZoneOffset.UTC);
+        return "%04d-%02d-%02d".formatted(utc.getYear(), utc.getMonthValue(), utc.getDayOfMonth());
+    }
 }

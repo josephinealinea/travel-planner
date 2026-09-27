@@ -99,13 +99,15 @@ yaml() { printf "%s: '%s'\n" "$1" "${2//\'/\'\'}"; }
 
 secrets=JWT_SECRET=jwt-secret:latest,DB_PASSWORD=db-password:latest,R2_SECRET_ACCESS_KEY=r2-secret-access-key:latest,PROXY_SECRET=proxy-secret:latest
 [[ $MAIL_MODE == smtp ]] && secrets+=,SMTP_PASSWORD=smtp-password:latest
-# Flight-lookup keys: attached only if the secret exists, so a missing key leaves
-# that service off (flights fall back to "unavailable") instead of failing the deploy.
-for pair in AERODATABOX_KEY=aerodatabox-key AVIATIONSTACK_KEY=aviationstack-key; do
+# Flight-lookup and news keys: attached only if the secret exists, so a missing
+# key leaves that service off (flights fall back to "unavailable", news is
+# simply absent from that provider) instead of failing the deploy.
+for pair in AERODATABOX_KEY=aerodatabox-key AVIATIONSTACK_KEY=aviationstack-key \
+            NEWSDATA_KEY=newsdata-key NEWSCURRENTS_KEY=newscurrents-key; do
   if gcloud secrets describe "${pair#*=}" --project="$PROJECT_ID" >/dev/null 2>&1; then
     secrets+=",${pair%%=*}=${pair#*=}:latest"
   else
-    echo "note: secret ${pair#*=} not found, ${pair%%=*} left unset (that flight service stays off)"
+    echo "note: secret ${pair#*=} not found, ${pair%%=*} left unset (that service stays off)"
   fi
 done
 

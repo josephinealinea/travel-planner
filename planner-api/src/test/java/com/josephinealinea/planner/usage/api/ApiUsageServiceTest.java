@@ -51,4 +51,21 @@ class ApiUsageServiceTest {
         assertThat(november.tryAcquire("aerodatabox", 1)).isTrue();
         assertThat(november.calls("aerodatabox")).isEqualTo(1);
     }
+
+    @Test
+    void dayIsTheUtcCalendarDay() {
+        assertThat(ApiUsageService.dayOf(Instant.parse("2026-09-27T23:59:59Z"))).isEqualTo("2026-09-27");
+        assertThat(ApiUsageService.dayOf(Instant.parse("2026-09-28T00:00:00Z"))).isEqualTo("2026-09-28");
+    }
+
+    @Test
+    void aNewDayNeedsNoResetJob() {
+        Memory memory = new Memory();
+        assertThat(new ApiUsageService(memory, at("2026-09-27T23:59:00Z")).tryAcquireDaily("newsdata", 1)).isTrue();
+        assertThat(new ApiUsageService(memory, at("2026-09-27T23:59:30Z")).tryAcquireDaily("newsdata", 1)).isFalse();
+
+        ApiUsageService tomorrow = new ApiUsageService(memory, at("2026-09-28T00:00:01Z"));
+        assertThat(tomorrow.tryAcquireDaily("newsdata", 1)).isTrue();
+        assertThat(tomorrow.callsToday("newsdata")).isEqualTo(1);
+    }
 }

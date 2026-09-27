@@ -128,6 +128,9 @@ export const api = {
   updateDestination: (id, destId, data) => patch(`${trip(id)}/destinations/${destId}`, data),
   deleteDestination: (id, destId) => del(`${trip(id)}/destinations/${destId}`),
   reorderDestinations: (id, orderedIds) => post(`${trip(id)}/destinations/reorder`, { orderedIds }),
+  // Below the destinations list. The response carries its own 24h
+  // Cache-Control, so most calls here never leave the browser's HTTP cache.
+  news: (id) => get(`${trip(id)}/news`),
 
   // ── checklist ──────────────────────────────────────
   checklist: (id) => get(`${trip(id)}/checklist`),

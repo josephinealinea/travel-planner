@@ -31,4 +31,8 @@ public final class CountryTable {
     public static boolean isKnown(String code) {
         return code != null && NAMES.containsKey(code.trim().toUpperCase(Locale.ROOT));
     }
+
+    public static String nameOf(String code) {
+        return code == null ? null : NAMES.get(code.trim().toUpperCase(Locale.ROOT));
+    }
 }

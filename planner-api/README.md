@@ -63,6 +63,8 @@ line.
 | `.env.resend` | `RESEND_API_KEY` | Real email: locally, and to store the key in Secret Manager | Resend, deploy.md Part 11 |
 | `.env.aerodatabox` | `AERODATABOX_KEY` (your RapidAPI key) | Flight lookup: schedule, airports, status | RapidAPI, [aerodatabox.md](../docs/external-apis/aerodatabox.md) |
 | `.env.aviationstack` | `AVIATIONSTACK_KEY` | Flight lookup: codeshares, gate, baggage, delay | AviationStack, [aviationstack.md](../docs/external-apis/aviationstack.md) |
+| `.env.newsdata` | `NEWSDATA_KEY` | Llama Lookout: destination news | NewsData.io, [newsdata.md](../docs/external-apis/newsdata.md) |
+| `.env.newscurrents` | `NEWSCURRENTS_KEY` | Llama Lookout: destination news | Currents, [currents.md](../docs/external-apis/currents.md) |
 
 Only `.env.local` is needed to run the API on your machine. The two flight-key
 files are optional: without a key that service is simply off and lookups answer
@@ -163,14 +165,24 @@ AERODATABOX_KEY='<your RapidAPI key>'
 AVIATIONSTACK_KEY='<your AviationStack key>'
 ```
 
+#### `.env.newsdata` contents
+```
+NEWSDATA_KEY='<your NewsData.io key>'
+```
+
+#### `.env.newscurrents` contents
+```
+NEWSCURRENTS_KEY='<your Currents key>'
+```
+
 ### Use them
 
 A file is loaded for one command with `set -a; . ./.env.x; set +a`, which makes
 its values available to that command without printing them.
 
-#### Run the API locally, with real email and the flight keys
+#### Run the API locally, with real email, the flight keys and the news keys
 ```bash
-cd planner-api && (set -a; . ./.env.resend; . ./.env.local; . ./.env.aerodatabox; . ./.env.aviationstack; set +a; ./gradlew bootRun)
+cd planner-api && (set -a; . ./.env.resend; . ./.env.local; . ./.env.aerodatabox; . ./.env.aviationstack; . ./.env.newsdata; . ./.env.newscurrents; set +a; ./gradlew bootRun)
 ```
 
 Source `.env.resend` **before** `.env.local`, because `SMTP_PASSWORD="$RESEND_API_KEY"`

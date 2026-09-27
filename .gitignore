@@ -1,3 +1,6 @@
 .DS_Store
 .idea/
 .claude/settings.local.json
+
+# Visual brainstorming companion scratch files
+.superpowers/

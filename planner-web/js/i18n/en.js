@@ -105,6 +105,8 @@ export default {
   'account.saveProfile': "Save profile",
   'account.saved': "Saved.",
   'account.savedToYourAccount': "Saved to your account, and applied to your own page the next time a trip is published.",
+  'account.showNews': "Show news",
+  'account.showNewsHint': "🦙 Llama Lookout on the Destinations tab. Off skips its API calls entirely, not just the display. Remembered in this browser.",
   'account.showYourTotalTravel': "Show your Total Travel Cost in",
   'account.shownBesideYourName': "Shown beside your name on the Travel Buddies tab.",
   'account.theAmountPresentedIs': "The amount presented is just a projection amount and is based on the exchange rate.",
@@ -254,6 +256,15 @@ export default {
   'members.invited': "{email} added — an invitation email has been sent",
   'members.left': "You have left the trip",
   'members.removed': "{name} removed",
+
+  // ── news
+  'news.scrollPrevious': "See earlier stories",
+  'news.scrollNext': "See later stories",
+  'news.justNow': "just now",
+  'news.hoursAgo.one': "{count}h ago",
+  'news.hoursAgo.other': "{count}h ago",
+  'news.daysAgo.one': "{count}d ago",
+  'news.daysAgo.other': "{count}d ago",
 
   // ── overview
   'overview.checklistDone': "Checklist done",
@@ -430,6 +441,7 @@ export default {
   'trip.leaveThisTrip': "Leave this trip?",
   'trip.leaveTrip': "Leave trip",
   'trip.live': "Live",
+  'trip.llamaLookout': "📢 Llama Lookout",
   'trip.loadingTheTrip': "Loading the trip…",
   'trip.locationOptional': "Location (optional)",
   'trip.longitude': "Longitude",
