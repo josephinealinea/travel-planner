@@ -285,7 +285,7 @@ suggested description + default times; every field stays editable:
 
 | Category | Description | Default times |
 |---|---|---|
-| `TRANSPORTATION` | `Flight (XX 000) from {previous destination} to {name}` — or `Transport to {name}` if it's the first | destination `startDate` 00:00 |
+| `TRANSPORTATION` | `Flight from {previous destination} to {name}` — or `Transport to {name}` if it's the first | destination `startDate` 00:00 |
 | `LODGING` | `Hotel in {name} — check-in {d MMM}, check-out {d MMM}` | `startDate` 15:00 → `endDate` 11:00 |
 | `ACTIVITIES` | `Activity in {name}` | `startDate` 09:00 |
 | `OTHERS` | the checklist description verbatim | none |

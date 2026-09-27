@@ -408,7 +408,6 @@
                   <template x-for="name in travellerNameList('checklist', item.id)" :key="name">
                     <span class="badge badge-traveller" x-text="'👥 ' + name"></span>
                   </template>
-                  <span class="check-note" x-show="item.note" x-text="item.note"></span>
                   <span class="check-tags">
                     <span class="chip">
                       <span x-text="categoryOf(item.category).icon"></span>
@@ -422,6 +421,7 @@
                     <span class="chip" x-show="planCountFor(item)"
                           x-text="$t('trip.plansCount', { count: planCountFor(item) })"></span>
                   </span>
+                  <span class="check-note" x-show="item.note" x-text="item.note"></span>
                 </span>
                   <span class="check-side btn-row">
                     <button type="button" class="btn btn-sm"
@@ -584,8 +584,7 @@
                       <template x-for="label in countryLabels(entry.item.countryCodes)" :key="label">
                         <span class="chip" x-text="label"></span>
                       </template>
-                      <span x-show="sourceChecklist(entry.item)"
-                            x-text="$t('trip.fromChecklistItem', { item: sourceChecklist(entry.item) })"></span>
+                      <span x-show="sourceChecklistLabel(entry.item)" x-text="sourceChecklistLabel(entry.item)"></span>
                     </div>
                     <div class="timeline-note" x-show="entry.item.note" x-text="entry.item.note"></div>
                   </div>

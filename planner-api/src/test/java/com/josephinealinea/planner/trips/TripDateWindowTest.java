@@ -171,7 +171,7 @@ class TripDateWindowTest {
     // ── itinerary, and the checklist's Plan form behind it ──
 
     private ItineraryService.Input plan(String startAt, String endAt) {
-        return new ItineraryService.Input(null, ChecklistCategory.TRANSPORTATION, "Flight LIM to CUZ", startAt == null ? null : LocalDateTime.parse(startAt), endAt == null ? null : LocalDateTime.parse(endAt), null, null, null, null, null, null, List.of());
+        return new ItineraryService.Input(null, ChecklistCategory.TRANSPORTATION, "Flight from LIM to CUZ", startAt == null ? null : LocalDateTime.parse(startAt), endAt == null ? null : LocalDateTime.parse(endAt), null, null, null, null, null, null, List.of());
     }
 
     @Test

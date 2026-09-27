@@ -60,8 +60,8 @@ public class PlanTemplates {
                         .map(Destination::getName)
                         .orElse(null);
                 String description = previous == null
-                        ? messages.get("plan.transport", name)
-                        : messages.get("plan.flight", previous, name);
+                        ? messages.get("plan.placeholder.transport", name)
+                        : messages.get("plan.placeholder.flight", previous, name);
                 yield new Template(description, at(start, LocalTime.MIDNIGHT), null, currency);
             }
             case LODGING -> {
@@ -69,20 +69,20 @@ public class PlanTemplates {
                 //        ? "Hotel in %s — check-in %s, check-out %s"
                 //                .formatted(name, DAY_MONTH.format(start), DAY_MONTH.format(end))
                 //        : "Hotel in %s".formatted(name);
-                String description = messages.get("plan.hotel", name);
+                String description = messages.get("plan.placeholder.hotel", name);
                 yield new Template(description,
                         at(start, LocalTime.of(15, 0)),
                         at(end, LocalTime.of(11, 0)),
                         currency);
             }
-            case ACTIVITIES -> new Template(messages.get("plan.activity", name),
+            case ACTIVITIES -> new Template(messages.get("plan.placeholder.activity", name),
                     at(start, LocalTime.of(9, 0)), null, currency);
             // No sensible default hour for either — you shop and eat whenever —
             // so these pre-fill the place and leave the time to the member,
             // the way OTHERS does.
-            case SHOPPING -> new Template(messages.get("plan.shopping", name),
+            case SHOPPING -> new Template(messages.get("plan.placeholder.shopping", name),
                     at(start, LocalTime.of(9, 0)), null, currency);
-            case FOOD -> new Template(messages.get("plan.food", name),
+            case FOOD -> new Template(messages.get("plan.placeholder.food", name),
                     at(start, LocalTime.of(18, 0)), null, currency);
             case OTHERS -> new Template(item.getDescription(), at(start, LocalTime.MIDNIGHT), null, currency);
         };

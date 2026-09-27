@@ -494,10 +494,25 @@ export function itineraryTab() {
     entryCost: (item) => money(item.cost, item.currency),
     categoryOf: (value) => category(value),
 
-    /** Shows which checklist item a plan came from. */
+    /** The checklist item a plan came from, if any — description and note both live. */
     sourceChecklist(item) {
       if (!item.checklistItemId) return null;
-      return this.checklist.find((check) => check.id === item.checklistItemId)?.description || null;
+      return this.checklist.find((check) => check.id === item.checklistItemId) || null;
+    },
+
+    /**
+     * The line naming that source, always computed from the checklist item's
+     * current text rather than copied onto the plan — so it reads correctly
+     * even after the checklist item is renamed or its note is edited. This is
+     * separate from the plan's own note (entry.item.note), which is the
+     * member's note for the itinerary entry itself.
+     */
+    sourceChecklistLabel(item) {
+      const source = this.sourceChecklist(item);
+      if (!source) return null;
+      return source.note
+        ? t('trip.fromChecklistItemWithNote', { item: source.description, note: source.note })
+        : t('trip.fromChecklistItem', { item: source.description });
     },
 
     // ── location picker (shared with the checklist and expense forms) ──
