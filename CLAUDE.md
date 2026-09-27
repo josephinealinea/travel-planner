@@ -1009,6 +1009,15 @@ a bug that a test catches first.
   `data-i18n-html`, `data-i18n-<attribute>`; Alpine uses `$t` and `$th`.
   Plurals are `key.one` / `key.other` picked by `{count}` through
   `Intl.PluralRules`, never `"item" + (n === 1 ? "" : "s")`.
+  **Placeholder text (`data-i18n-placeholder`) is named `<area>.placeholder.<field>`**
+  (`trip.placeholder.destination`, `trips.placeholder.tripTitle`), so every
+  example text a field shows can be found, and changed, by searching
+  `.placeholder.`. `npm run check` enforces it both ways (`i18n-check.mjs`,
+  check 6): placeholder text under any other name fails, and so does a
+  `.placeholder.` key used as ordinary text; `scripts/i18n-check.test.mjs`
+  proves each. A few placeholders are still literal (the `—` on a read-only
+  field and the example coordinates in the destination form): they are values,
+  not words.
 - **Published pages** — the same `messages_en.properties`, `page.*` keys only,
   inlined as `window.I18N` and read by `page.js`. Only `page.*` is shipped:
   a public file gets what it needs to draw itself, not the API's errors or
@@ -1537,6 +1546,139 @@ readable and no code nobody can pick ever appears in it.
   already the one catalogue the whole app selects from. Note the hardcoded
   fallback inside `AppProperties.Currencies` is majors-only, so a deployment
   that omits the list gets no LATAM currencies at all.
+
+## Flight lookup (AeroDataBox + AviationStack)
+
+Two metered APIs behind `flights/`, documented in
+`docs/external-apis/aerodatabox.md` and `aviationstack.md`; the nightly job in
+`docs/scheduled/flights-prewarm.md`. The RapidAPI URL and headers were not yet
+verified against the live service when this was written.
+
+- **Two roles.** AeroDataBox is the source of truth (schedule, airports, offsets,
+  terminals). AviationStack does two jobs only: finding a codeshare's operating
+  flight, and live extras (gate, belt, delay) near departure. Its scheduled times
+  are never used: it labels airport local time as UTC. Its free plan is HTTP
+  only, so the key is a plain-text query parameter; exception messages are
+  redacted.
+- **Codeshare resolution is best-effort and lives only in the entry form's
+  lookup** (`GET /trips/{id}/flights/lookup`, member only). The pairing is stored
+  once in `codeshare_mappings`. AeroDataBox cannot find a codeshare number.
+  AviationStack is asked only when AeroDataBox was *just* asked and answered empty
+  (`FlightData.Result.fromCache` false), so an unresolved number costs at most one
+  call per negative-TTL window, and none once a pairing is stored. An empty
+  answer over a good held record stores nothing and serves it stale.
+- **The entry's `flight` snapshot is not the cache.** `itinerary_items.flight`
+  is what the member saved and may edit; `flight_records` is the install-wide
+  cache keyed by operating number and local date. Gate and baggage are live
+  values that change within the hour, so they are never copied onto the entry.
+  Only a `transport` entry may carry one; changing category clears it; a later
+  day of a stay (`planId` set) may not; the operating number must be well-formed.
+- **One number, several legs** (AV 105: BOG-CUZ then CUZ-LPB). `FlightRecord.schedule`
+  is the first leg and `otherLegs` (`other_legs jsonb`, V14) the rest, so old rows read
+  unchanged; read the flight through `allLegs()` / `narrowedTo(departureIata)`, never
+  `schedule()` alone. The form lookup answers with `choices` only when there is more
+  than one leg (top-level times and `flight` are then null) and the member picks;
+  the entry's saved `from.iata` is what identifies its leg afterwards, in the public
+  refresh (`FlightStatusService.departureIata`). `FlightFreshness.active` follows the
+  first unlanded leg so a landed first leg cannot freeze the second.
+- **Every outbound HTTP call is logged at INFO** by `shared/HttpCallLog` (logger
+  `external-api`), attached in each client's `*Config`; headers never, secret query
+  params masked. A new client must use `HttpCallLog.on(RestClient.builder(), "Name")`.
+- **Three lookup statuses**: `found`, `notFound`, `unavailable` (no key, cap,
+  timeout, error). **Only a genuine empty answer is cached as a miss**
+  (`app.flights.negative-ttl`, 6 h); an outage is never remembered as "no such flight".
+- **The counter is keyed by service and UTC month** (`api_usage`,
+  `ApiUsageService.tryAcquire` over `ApiUsageRepository.tryAcquire`, check and increment in one step; a call counts when
+  attempted), so a new month is a new row and **there is no reset job**.
+  Caps: 360 of 400 and 90 of 100.
+- **Refresh-on-read is the real mechanism.** A reader's click refetches when the
+  record is missing or past its TTL (72 h / 24 h / 1 h by time to departure,
+  frozen once landed). `FlightPrewarmJob` only warms the cache; on scale-to-zero
+  the cron may never fire. It stops when AeroDataBox's circuit breaker is open
+  and calls AeroDataBox only.
+- **The public endpoint is never an open proxy.** `GET
+  /api/v1/public/trips/{slug}/flights?number=&date=` matches a real entry on a
+  published trip by number and local date, else 404. Throttling is inside
+  `FlightStatusService`: no call at all unless the entry departs between 2 days
+  ago and 7 days ahead (else the held record or nothing); an AviationStack attempt
+  is stamped before the call, holds for the live TTL whatever the result, is keyed
+  by operating flight and date, and stops after 8 per flight and date; AeroDataBox
+  failures back off that flight 15 min, then 1 h, then 6 h (the breaker's per-key
+  ladder), reset by a real answer; a per-key
+  `tryLock` allows one call per flight; the maps are bounded, in memory and
+  single-instance. `ttlSeconds` sent to the page stops at the next tier boundary. The member lookup is never throttled by that
+  per-flight back-off, only by the service-wide breaker. `PasswordChangeGate` exempts `/api/v1/public/`;
+  `GlobalExceptionHandler` answers 400 `invalid_parameter` for binding errors.
+- **`FlightSnapshot.airline`** comes from AeroDataBox only (AviationStack's response has no airline field); it is set once, at lookup time, and carried through `checkedFlight`'s whitelist and into the published snapshot, drawn as `Airline • Number` (`page.js`, the planner's `flightPills`).
+- **A flight number is normalised as it is typed**, not only on save: `onFlightNumberInput` upper-cases and strips everything but letters and digits in the browser (`sanitiseFlightNumber`), the same shape `FlightNumbers.valid` requires server-side, so a stray character or space never reaches Save. Both fields use `:value` + `@input` rather than `x-model` for this reason.
+- **A published entry's flight ships each airport's name and IATA code** (`PublishedTrip.Flight.fromName`/`toName`), drawn as pills, `Name (IATA)`, by `page.js` and by the planner's `flightPills`. Each pill also carries that airport's Google Maps link (`fromMapUrl`/`toMapUrl`, built the same way as a destination's own `mapUrl` — the coordinates ride inside the URL, never shipped bare) and opens it in a new tab; this is the static snapshot only, so the live refresh (`PublicFlightView`, next bullet) still carries no coordinates at all.
+- **Coordinates and ICAO codes are never shipped on a published page**
+  (`PublicFlightView`); keys never reach the frontend or a page.
+- `TripRepository.findAllPublished()` exists for the job.
+- **Tunables are plain yml; only the keys are environment settings.** In the
+  `app.flights` block the sole placeholders are `key: ${AERODATABOX_KEY:}` and
+  `key: ${AVIATIONSTACK_KEY:}`. Limits, cap percents, timeouts, TTLs, the live
+  window, the negative TTL, the prewarm cron and `public-refresh` (`window-before`
+  2d, `window-after` 7d, `max-live-attempts-per-flight` 8, `stale-browser-ttl` 5m)
+  are plain values: change one by editing `application.yml` and redeploying, never
+  through `.env.deploy` or `deploy.sh`. (Spring's relaxed binding can still
+  override any property from the environment without a placeholder, e.g.
+  `APP_CIRCUIT_BREAKER_FAILURE_THRESHOLD`; that is an escape hatch, not the
+  route, and on Cloud Run a hand-set variable is wiped by the next `./deploy.sh`,
+  whose `--env-vars-file` replaces them all.) The keys live in one git-ignored file per service,
+  `planner-api/.env.aerodatabox` and `.env.aviationstack` — sourced for a local
+  run, and the file each Secret Manager secret is created from, like `.env.r2`
+  and `.env.resend`. `deploy.sh` attaches the secrets only if they exist.
+  `FlightProperties` has a second, six-argument constructor for the tests, so its
+  canonical one carries `@ConstructorBinding` (two constructors on a bound record
+  otherwise fail with "No default constructor found").
+- **The circuit breaker is general** (`resilience/CircuitBreaker`, settings
+  `app.circuit-breaker` in `CircuitBreakerProperties`). Service-wide: after
+  `failure-threshold` (3) consecutive failed calls a service is open for the next
+  rung of `back-off` ([15m, 1h, 6h], last rung repeats); when it lapses exactly
+  one trial call goes out — `isOpen` **claims** it atomically for the first
+  caller, everyone else still sees it open until the trial reports or
+  `TRIAL_TIMEOUT` (30 s) passes — and a success closes it and resets streak and
+  ladder. **So `isOpen(service)` is for the client about to call, never for a
+  bystander**: a caller that only wants to know (to avoid spending something of
+  its own) uses `paused(service)`, which does not claim; calling `isOpen` there
+  would steal the trial and the client would then skip it. Per key (the public
+  refresh, `operating|date`): every failure pauses that key for the next rung, no
+  trial is claimed, and `FlightStatusService` records a failure **only for a
+  call that actually went out** (the AeroDataBox usage counter advanced under the
+  per-key lock and the service was not paused) — a click during a paused
+  service, with no key or past the cap must not hold that flight for hours after
+  recovery. Likewise a paused AviationStack neither calls nor stamps a live
+  attempt. Bad settings (threshold < 1, zero/negative rungs, an empty ladder)
+  are replaced at startup with a WARN. Both clients check it **after** "enabled" and **before**
+  `usage.tryAcquire`, so a paused service spends no quota, and report each
+  attempt: `UNAVAILABLE` from a call actually made is a failure, found or a
+  genuine "no such flight" is a success. No key, cap reached and open are not
+  attempts and are never reported. It protects every path at once — the member's
+  form, the public refresh and the prewarm (which simply stops when it is open).
+  In memory, single-instance, reset by a restart.
+
+### Adopting the circuit breaker in another client
+
+Weather, exchange rates, countries.dev and mail do not use it yet. A client
+adopts it by injecting `CircuitBreaker` (one bean, one clock) and naming itself
+with a `SERVICE` constant, then three calls:
+
+1. `if (breaker.isOpen(SERVICE)) return <its unavailable answer>;` — before any
+   quota check or outbound call, and never reported. Call it exactly once per
+   intended call and only where the call is made: after a pause it hands the one
+   trial to its caller. Anything else that just wants to know uses
+   `breaker.paused(SERVICE)`.
+2. `breaker.success(SERVICE);` — after a call that got a real answer, including
+   a genuine "nothing found".
+3. `breaker.failure(SERVICE);` — after a call that was made and got none
+   (timeout, connection error, 429/5xx, an unreadable or error body).
+
+Optionally tune it with `app.circuit-breaker.services.<service>.failure-threshold`
+/ `back-off` in `application.yml`. For a per-item back-off instead, the same three
+calls take a key: `isOpen(SERVICE, key)`, `success(SERVICE, key)`,
+`failure(SERVICE, key)`. Document the service's breaker behaviour in its
+`docs/external-apis/<service>.md`.
 
 ## Deployment: Cloud Run + Neon + Cloudflare
 

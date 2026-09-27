@@ -41,18 +41,11 @@ lsof -ti :8080 | xargs -r kill; lsof -ti :3000 | xargs -r kill
 ```bash
 ./docker-start.sh
 ```
-#### Start the API in database mode and real email is OFF
+#### Start the API from your local settings files
 ```bash
-cd planner-api && FEATURE_ENABLE_DATABASE=true BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
+cd planner-api && (set -a; . ./.env.resend; . ./.env.local; . ./.env.aerodatabox; . ./.env.aviationstack; set +a; ./gradlew bootRun)
 ```
-#### Start the API in database mode and real email is ON
-```bash
-cd planner-api && (set -a; . ./.env.resend; set +a; FEATURE_ENABLE_DATABASE=true MAIL_MODE=smtp SMTP_HOST=smtp.resend.com SMTP_PORT=465 SMTP_SSL=true SMTP_AUTH=true SMTP_USER=resend SMTP_PASSWORD="$RESEND_API_KEY" MAIL_FROM=no-reply@travellingllama.fun BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun)
-```
-#### Start the API in file storage mode and real email is OFF
-```bash
-cd planner-api && FEATURE_ENABLE_DATABASE=false BOOTSTRAP_OWNER_EMAIL=you@example.com BOOTSTRAP_OWNER_PASSWORD=password123 ./gradlew bootRun
-```
+
 #### Build the stylesheets & serve the FE
 ```bash
 cd planner-web && npm install && npm run css && ./serve.sh
@@ -63,7 +56,7 @@ cd planner-web && npm install && npm run css && ./serve.sh
 open http://localhost:3000/login.html
 ```
 
-Sign in with the bootstrap email and password you set above. There is no
+Sign in with the bootstrap email and password in `.env.local`. There is no
 self-signup: every other account comes into being when somebody adds you to a
 trip.
 
