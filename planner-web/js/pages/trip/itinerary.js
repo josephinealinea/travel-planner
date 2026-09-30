@@ -334,8 +334,13 @@ export function itineraryTab() {
       this.entryOpen = true;
     },
 
-    /** What an entry follows while unset: its checklist item's resolved list. */
+    /**
+     * What an entry follows while unset: its checklist item's resolved list.
+     * A later day of a stay follows its plan's row instead, which the API has
+     * already resolved for that day.
+     */
     entryInherited() {
+      if (this.entryForm.planId) return (this.namedTravellers.itinerary || {})[this.entryForm.id] || [];
       return (this.namedTravellers.checklist || {})[this.entryForm.checklistItemId] || [];
     },
 

@@ -883,6 +883,11 @@ cd planner-api && (set -a; . ./.env.resend; set +a; printf '%s' "$RESEND_API_KEY
 
 Cloud Run reads `latest` when an instance starts, so redeploy afterwards.
 
+#### To see list of secrets
+```bash
+gcloud secrets list
+```
+
 ### 11.4 Switch the API over
 
 In `../../planner-api/.env.deploy`, change `MAIL_MODE` and add the rest:
