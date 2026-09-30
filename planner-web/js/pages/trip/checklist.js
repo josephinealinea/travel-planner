@@ -50,6 +50,8 @@ export function checklistTab() {
     // Untouched, Shared by shows the default (planSharersShown) rather than
     // this list, so it can follow the plan's travellers as they change.
     sharedTouched: false,
+    // Defaulted checked — see savePlan and the itinerary Entry form's markFinal.
+    markFinal: true,
   });
 
   return {
@@ -481,8 +483,16 @@ export function checklistTab() {
         // A cost that already has a budget row shows that row's sharers as
         // they are; only a cost still to be created follows the default.
         sharedTouched: !!this.budgetRowOfPlan(plan),
+        markFinal: plan.status !== 'PENDING',
       };
       this.planOpen = true;
+    },
+
+    /** Whether the Plan form shows the This itinerary plan is Final checkbox at all. */
+    planShowsFinalCheckbox() {
+      if (!this.planForm.id) return true;
+      const plan = this.itinerary.find((i) => i.id === this.planForm.id);
+      return !!plan && plan.createdByUserId === this.currentUserId;
     },
 
     async savePlan() {
@@ -525,6 +535,7 @@ export function checklistTab() {
             countryCodes: this.planForm.countryCodes,
             ...this.flightPayload(this.planForm, this.openItem?.category === 'TRANSPORTATION'),
             ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
+            ...(this.planShowsFinalCheckbox() ? { status: this.planForm.markFinal ? 'FINAL' : 'PENDING' } : {}),
           });
           toast.success(t('checklist.planUpdated'));
         } else {
@@ -547,6 +558,7 @@ export function checklistTab() {
             countryCodes: this.planForm.countryCodes,
             ...this.flightPayload(this.planForm, this.openItem?.category === 'TRANSPORTATION'),
             ...travellersPayload(this.planForm.travellers, this.planForm.travellersInitial),
+            ...(this.planShowsFinalCheckbox() ? { status: this.planForm.markFinal ? 'FINAL' : 'PENDING' } : {}),
           });
           toast.success(cost == null
             ? t('checklist.planAdded')

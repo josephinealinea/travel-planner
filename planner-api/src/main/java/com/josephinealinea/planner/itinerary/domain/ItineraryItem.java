@@ -85,6 +85,15 @@ public class ItineraryItem implements Audited {
      */
     private FlightSnapshot flight;
 
+    private ItineraryStatus status = ItineraryStatus.FINAL;
+
+    /**
+     * Who has clicked Approve, in click order — including the creator, if they
+     * clicked it too. Purely a tally: see ItineraryService.approve for what it
+     * does and does not trigger.
+     */
+    private List<String> approvedByUserIds = new ArrayList<>();
+
     public ItineraryItem() {}
 
     @JsonIgnore
@@ -185,6 +194,17 @@ public class ItineraryItem implements Audited {
 
     public FlightSnapshot getFlight() { return flight; }
     public void setFlight(FlightSnapshot flight) { this.flight = flight; }
+
+    public ItineraryStatus getStatus() { return status; }
+    /** A record whose YAML predates this field has no status; that is a settled plan. */
+    public void setStatus(ItineraryStatus status) {
+        this.status = status == null ? ItineraryStatus.FINAL : status;
+    }
+
+    public List<String> getApprovedByUserIds() { return approvedByUserIds; }
+    public void setApprovedByUserIds(List<String> approvedByUserIds) {
+        this.approvedByUserIds = approvedByUserIds == null ? new ArrayList<>() : new ArrayList<>(approvedByUserIds);
+    }
 
     public List<String> getTravellerIds() { return travellerIds; }
     public void setTravellerIds(List<String> travellerIds) {

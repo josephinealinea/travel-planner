@@ -10,6 +10,7 @@ import com.josephinealinea.planner.flights.FlightNumbers;
 import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.geocoding.CountryCatalog;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
+import com.josephinealinea.planner.itinerary.domain.ItineraryStatus;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.shared.ApiException;
 import com.josephinealinea.planner.shared.Audit;
@@ -68,7 +69,21 @@ public class ItineraryService {
                          * The flight, for a transport entry. Null leaves it alone; a
                          * number that is empty clears the whole document.
                          */
-                        FlightSnapshot flight) {
+                        FlightSnapshot flight,
+                        /** Null on create means FINAL; null on a patch means "leave it". */
+                        ItineraryStatus status) {
+
+        /** The shape from before status existed: says nothing about it. */
+        public Input(String checklistItemId, ChecklistCategory category, String description,
+                     LocalDateTime startAt, LocalDateTime endAt, Boolean allDay, BigDecimal cost,
+                     String currency, Boolean costCharged, List<String> costSharedByUserIds,
+                     String costPaidByUserId, List<String> countryCodes,
+                     List<String> travellerIds, Boolean inheritTravellers, String note,
+                     FlightSnapshot flight) {
+            this(checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
+                    costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
+                    travellerIds, inheritTravellers, note, flight, null);
+        }
 
         /** The shape from before flights existed: says nothing about them. */
         public Input(String checklistItemId, ChecklistCategory category, String description,
@@ -78,7 +93,7 @@ public class ItineraryService {
                      List<String> travellerIds, Boolean inheritTravellers, String note) {
             this(checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
-                    travellerIds, inheritTravellers, note, null);
+                    travellerIds, inheritTravellers, note, null, null);
         }
 
         /** The shape from before travellers existed: says nothing about them. */
@@ -216,6 +231,7 @@ public class ItineraryService {
         if (Boolean.TRUE.equals(input.allDay())) plan.setAllDay(true);
         plan.setCountryCodes(tripCountries.validate(trip, input.countryCodes()));
         plan.setTravellerIds(Travellers.change(trip, null, input.travellerIds(), input.inheritTravellers()));
+        plan.setStatus(input.status());
         applyCost(plan, input.cost(), input.currency(), trip);
         Audit.created(plan, userId);
         // Both checked before anything is saved, so a stale member list gets a
@@ -288,6 +304,9 @@ public class ItineraryService {
             night.setDescription(checkIn.getDescription());
             night.setNote(checkIn.getNote());
             night.setCountryCodes(new ArrayList<>(checkIn.getCountryCodes()));
+            // Status is a whole-stay property: every night starts Pending or
+            // Final together with the check-in row it was spread from.
+            night.setStatus(checkIn.getStatus());
             night.setStartAt(isCheckout ? checkoutAt : day.atStartOfDay());
             night.setAllDay(isCheckout ? null : Boolean.TRUE);
             Audit.created(night, userId);
@@ -319,6 +338,9 @@ public class ItineraryService {
             plan.setDescription(input.description().trim());
         }
         if (input.note() != null) plan.setNote(blankToNull(input.note()));
+        if (input.status() != null) {
+            applyStatusOnUpdate(trip, plan, input.status(), userId);
+        }
         if (input.category() != null) plan.setCategory(input.category());
         if (input.flight() != null) {
             // An empty number clears it; a value sets it. Absent leaves it alone.
@@ -488,6 +510,149 @@ public class ItineraryService {
     private ItineraryItem require(Trip trip, String itemId) {
         return itinerary.findById(trip.getSlug(), itemId)
                 .orElseThrow(() -> ApiException.notFound("error.itineraryItem.notFound"));
+    }
+
+    /**
+     * The status field on the ordinary create/update payload — the form's own
+     * "This itinerary plan is Final" checkbox, which the frontend only renders for the
+     * group's creator. Enforced here too, since hiding the checkbox is not
+     * itself a permission check: a request that names the field is held to
+     * the same creator-only rule setStatus enforces, and applies to the whole
+     * plan group, not just the row named in the request. Reopening a settled
+     * plan as Pending clears any prior approvals — they were votes on
+     * whatever was proposed before this edit, not on what it says now.
+     */
+    private void applyStatusOnUpdate(Trip trip, ItineraryItem plan, ItineraryStatus status, String userId) {
+        List<ItineraryItem> group = planGroupOf(trip, plan);
+        ItineraryItem owner = plan.ownsItsPlan() ? plan
+                : group.stream().filter(ItineraryItem::ownsItsPlan).findFirst().orElse(plan);
+        if (!userId.equals(owner.getCreatedByUserId())) {
+            throw ApiException.forbidden("error.itinerary.notTheCreator");
+        }
+
+        boolean reopening = status == ItineraryStatus.PENDING && plan.getStatus() != ItineraryStatus.PENDING;
+        plan.setStatus(status);
+        if (reopening) plan.getApprovedByUserIds().clear();
+
+        group.stream().filter(row -> !row.getId().equals(plan.getId())).forEach(row -> {
+            row.setStatus(status);
+            if (reopening) row.getApprovedByUserIds().clear();
+            Audit.touched(row, userId);
+            itinerary.save(trip.getSlug(), row);
+        });
+    }
+
+    /**
+     * The owning row plus every night it spans, however the row given belongs
+     * to the group. A single night with no stay is its own one-element group,
+     * so callers need no special case for "not a stay".
+     */
+    public List<ItineraryItem> planGroupOf(Trip trip, ItineraryItem item) {
+        String owningId = item.ownsItsPlan() ? item.getId() : item.getPlanId();
+        return itinerary.findAll(trip.getSlug()).stream()
+                .filter(row -> row.getId().equals(owningId) || owningId.equals(row.getPlanId()))
+                .toList();
+    }
+
+    /**
+     * The only route back to FINAL from the list's quick action. Creator-only,
+     * and one-directional: reversing to PENDING is only available by reopening
+     * the form and unchecking its box, which is also how the creator restates
+     * why. Applies to the whole plan group.
+     */
+    public ItineraryItem setStatus(String tripId, String userId, String itemId, ItineraryStatus status) {
+        if (status != ItineraryStatus.FINAL) {
+            throw ApiException.badRequest("error.itinerary.statusOneDirectional");
+        }
+        Trip trip = access.requireMember(tripId, userId);
+        ItineraryItem item = require(trip, itemId);
+        List<ItineraryItem> group = planGroupOf(trip, item);
+        ItineraryItem owner = group.stream().filter(ItineraryItem::ownsItsPlan).findFirst().orElse(item);
+        if (!userId.equals(owner.getCreatedByUserId())) {
+            throw ApiException.forbidden("error.itinerary.notTheCreator");
+        }
+
+        finalizeGroup(trip, group, userId);
+        return require(trip, itemId);
+    }
+
+    /**
+     * The actual write, shared by the creator's explicit setStatus and
+     * approve's own auto-finalize — the threshold check is what authorizes
+     * the second path, not the caller's identity, so it must not re-run the
+     * creator-only gate setStatus enforces.
+     */
+    private void finalizeGroup(Trip trip, List<ItineraryItem> group, String userId) {
+        group.forEach(row -> {
+            row.setStatus(ItineraryStatus.FINAL);
+            Audit.touched(row, userId);
+            itinerary.save(trip.getSlug(), row);
+        });
+    }
+
+    /** Adds the caller to the whole plan group's approvedByUserIds; a no-op if already there. */
+    public ItineraryItem approve(String tripId, String userId, String itemId) {
+        Trip trip = access.requireMember(tripId, userId);
+        ItineraryItem item = require(trip, itemId);
+        List<ItineraryItem> group = planGroupOf(trip, item);
+        ItineraryItem owner = group.stream().filter(ItineraryItem::ownsItsPlan).findFirst().orElse(item);
+
+        List<String> participants = resolvedParticipants(trip, owner);
+        if (!participants.contains(userId)) {
+            throw ApiException.forbidden("error.itinerary.notAParticipant");
+        }
+
+        // A second click by the same buddy is a no-op on the list itself — no
+        // stamp, no re-save — but the "has everyone approved" check still runs:
+        // a departed member can make a stale click newly decisive, and there is
+        // no other event to hang that recheck off.
+        boolean added = !owner.getApprovedByUserIds().contains(userId);
+        if (added) {
+            group.forEach(row -> {
+                row.getApprovedByUserIds().add(userId);
+                Audit.touched(row, userId);
+                itinerary.save(trip.getSlug(), row);
+            });
+        }
+
+        if (owner.getStatus() == ItineraryStatus.PENDING) {
+            List<String> requiredApprovers = participants.stream()
+                    .filter(id -> !id.equals(owner.getCreatedByUserId()))
+                    .toList();
+            boolean everyoneApproved = !requiredApprovers.isEmpty()
+                    && owner.getApprovedByUserIds().containsAll(requiredApprovers);
+            if (everyoneApproved) {
+                finalizeGroup(trip, group, userId);
+            }
+        }
+        return require(trip, itemId);
+    }
+
+    /** Removes the caller from the whole plan group's approvedByUserIds; never itself reopens a FINAL group. */
+    public ItineraryItem unapprove(String tripId, String userId, String itemId) {
+        Trip trip = access.requireMember(tripId, userId);
+        ItineraryItem item = require(trip, itemId);
+        List<ItineraryItem> group = planGroupOf(trip, item);
+
+        group.forEach(row -> {
+            if (row.getApprovedByUserIds().remove(userId)) {
+                Audit.touched(row, userId);
+                itinerary.save(trip.getSlug(), row);
+            }
+        });
+        return require(trip, itemId);
+    }
+
+    /**
+     * Who this entry resolves to, as explicit ids rather than the
+     * empty-means-everyone shorthand Travellers.includes uses — approve needs
+     * to iterate the actual set to check "has everyone approved".
+     */
+    private List<String> resolvedParticipants(Trip trip, ItineraryItem owner) {
+        Travellers travellers = Travellers.of(trip, destinations.findAll(trip.getSlug()),
+                checklistService.all(trip), itinerary.findAll(trip.getSlug()));
+        List<String> resolved = travellers.ofItineraryItem(owner);
+        return resolved.isEmpty() ? TripMembers.of(trip).userIds() : resolved;
     }
 
     private static void requireDescription(String description) {

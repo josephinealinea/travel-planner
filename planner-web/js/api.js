@@ -151,6 +151,10 @@ export const api = {
   deleteEntry: (id, itemId) => del(`${trip(id)}/itinerary/${itemId}`),
   // The plan and every day it covers.
   deletePlan: (id, itemId) => del(`${trip(id)}/itinerary/${itemId}/plan`),
+  // Creator-only, one-directional Pending → Final. See ItineraryService.setStatus.
+  setItineraryStatus: (id, itemId, status) => patch(`${trip(id)}/itinerary/${itemId}/status`, { status }),
+  approveItinerary: (id, itemId) => post(`${trip(id)}/itinerary/${itemId}/approve`, {}),
+  unapproveItinerary: (id, itemId) => del(`${trip(id)}/itinerary/${itemId}/approve`),
 
   // Where the trip is on each of its days, with that day's weather. Its own
   // request on purpose: it calls Open-Meteo, and the trip bundle must not wait

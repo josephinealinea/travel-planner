@@ -11,9 +11,12 @@
     "css:watch": "npm run css -- --watch",
     "build": "npm run css && rm -rf dist && mkdir dist && cp -R *.html _headers js assets vendor dist/",
     "dev": "npm run css && ./serve.sh",
+    "dev:hot": "concurrently -k -n sass,serve \"npm run css:watch\" \"browser-sync start --server --no-ui --files 'assets/css/**/*.css, js/**/*.js, *.html' --port 3000\"",
     "pages:dev": "npm run build && npx wrangler@4 pages dev"
   },
   "devDependencies": {
+    "browser-sync": "^3.0.4",
+    "concurrently": "^10.0.5",
     "sass": "^1.100.0"
   }
 }

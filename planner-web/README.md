@@ -25,6 +25,14 @@ npm run css:watch
 ```bash
 npm run dev
 ```
+#### Serve with hot reload while developing
+```bash
+npm run dev:hot
+```
+Recompiles SCSS on save and serves the result — CSS changes inject without a
+page reload, and editing JS or HTML triggers a full reload automatically. No
+more manually bumping the `?v=` on the stylesheet links to see a change take
+effect.
 
 ## Pointing it at the API
 

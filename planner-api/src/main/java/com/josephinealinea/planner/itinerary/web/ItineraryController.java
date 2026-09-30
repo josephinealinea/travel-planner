@@ -5,6 +5,7 @@ import com.josephinealinea.planner.config.CurrentUserContext;
 import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.itinerary.api.ItineraryService;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
+import com.josephinealinea.planner.itinerary.domain.ItineraryStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -51,13 +52,15 @@ public class ItineraryController {
             Boolean inheritTravellers,
             String note,
             /** The flight for a transport entry. Absent leaves it; an empty number clears it. */
-            FlightSnapshot flight) {
+            FlightSnapshot flight,
+            /** Null means FINAL by default. */
+            ItineraryStatus status) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     checklistItemId, category, description, startAt, endAt, allDay, cost, currency,
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
-                    travellerIds, inheritTravellers, note, flight);
+                    travellerIds, inheritTravellers, note, flight, status);
         }
     }
 
@@ -80,13 +83,15 @@ public class ItineraryController {
             Boolean inheritTravellers,
             String note,
             /** The flight for a transport entry. Absent leaves it; an empty number clears it. */
-            FlightSnapshot flight) {
+            FlightSnapshot flight,
+            /** Null leaves it alone. */
+            ItineraryStatus status) {
 
         ItineraryService.Input toInput() {
             return new ItineraryService.Input(
                     null, category, description, startAt, endAt, allDay, cost, currency,
                     costCharged, costSharedByUserIds, costPaidByUserId, countryCodes,
-                    travellerIds, inheritTravellers, note, flight);
+                    travellerIds, inheritTravellers, note, flight, status);
         }
     }
 
@@ -133,5 +138,36 @@ public class ItineraryController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@PathVariable String tripId, @PathVariable String itemId) {
         itinerary.delete(tripId, currentUser.userId(), itemId);
+    }
+
+    public record StatusRequest(ItineraryStatus status) {}
+
+    /**
+     * The list's quick "mark final" action — creator-only, one-directional.
+     * See ItineraryService.setStatus. Named setItineraryStatus, not setStatus,
+     * because ChecklistController already has a setStatus: springdoc derives
+     * an operationId from the method name, and two controllers sharing one
+     * would only be disambiguated by an appended _1 whose target depends on
+     * bean-registration order — not guaranteed stable across JVM runs.
+     */
+    @PatchMapping("/{itemId}/status")
+    ItineraryItem setItineraryStatus(@PathVariable String tripId,
+                           @PathVariable String itemId,
+                           @Valid @RequestBody StatusRequest request) {
+        return itinerary.setStatus(tripId, currentUser.userId(), itemId, request.status());
+    }
+
+    // Named approveItinerary/unapproveItinerary, not approve/unapprove:
+    // PublishController already has an "approve" (a publish request), and the
+    // same operationId-collision instability setItineraryStatus's own comment
+    // explains applies here too.
+    @PostMapping("/{itemId}/approve")
+    ItineraryItem approveItinerary(@PathVariable String tripId, @PathVariable String itemId) {
+        return itinerary.approve(tripId, currentUser.userId(), itemId);
+    }
+
+    @DeleteMapping("/{itemId}/approve")
+    ItineraryItem unapproveItinerary(@PathVariable String tripId, @PathVariable String itemId) {
+        return itinerary.unapprove(tripId, currentUser.userId(), itemId);
     }
 }

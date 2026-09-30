@@ -35,6 +35,8 @@ function entryView(item) {
     endAt: item.allDay ? null : item.endAt,
     cost: item.cost,
     currency: item.currency,
+    status: item.status,
+    approvedByUserIds: item.approvedByUserIds || [],
   };
 }
 
@@ -95,6 +97,8 @@ export function itineraryTab() {
     travellersInitial: newTravellers(),
     // Untouched, Shared by shows the default (entrySharersShown).
     sharedTouched: false,
+    // Defaulted checked, like the checklist Plan form — see savePlan/saveEntry.
+    markFinal: true,
   });
 
   return {
@@ -102,6 +106,15 @@ export function itineraryTab() {
 
     // ALL | WEATHER | ITINERARY. Mirrors checkStatusFilter on the checklist.
     itinShow: 'ALL',
+
+    // Final and Pending toggle independently, alongside itinShow's own
+    // ALL/WEATHER/ITINERARY selector — see filteredItinerary.
+    itinShowFinal: true,
+    itinShowPending: false,
+
+    // The item a finalize confirmation is pending for — mirrors completingItem
+    // on the checklist tab.
+    finalizingItem: null,
 
     // Filled by loadWeather(), which the tab triggers itself — weather is not
     // part of the trip bundle, so nothing else fetches it.
@@ -128,8 +141,18 @@ export function itineraryTab() {
       return this.scopedItinerary.filter((item) => {
         if (this.itinCategoryFilters.length
             && !this.itinCategoryFilters.includes(item.category)) return false;
-        return true;
+        if (item.status === 'PENDING') return this.itinShowPending;
+        return this.itinShowFinal;
       });
+    },
+
+    /** Weather Only silently resets Final/Pending to their defaults — no message. */
+    setItinShow(option) {
+      this.itinShow = option;
+      if (option === 'WEATHER') {
+        this.itinShowFinal = true;
+        this.itinShowPending = false;
+      }
     },
 
     /** The weather rows the Show filter is letting through. */
@@ -305,6 +328,7 @@ export function itineraryTab() {
         travellers: travellersFromRecord(item),
         travellersInitial: snapshotTravellers(travellersFromRecord(item)),
         sharedTouched: !!this.budgetRowOfPlan(item),
+        markFinal: item.status !== 'PENDING',
       };
       this.entryError = '';
       this.entryOpen = true;
@@ -334,6 +358,13 @@ export function itineraryTab() {
         this.entryForm.sharedTouched = true;
       }
       this.toggleSharer(this.entryForm.sharedByUserIds, userId);
+    },
+
+    /** Whether this form shows the This itinerary plan is Final checkbox at all. */
+    entryShowsFinalCheckbox() {
+      if (!this.entryForm.id) return true;
+      const item = this.itinerary.find((i) => i.id === this.entryForm.id);
+      return this.isCreatorOf(item || {});
     },
 
     async saveEntry() {
@@ -387,6 +418,7 @@ export function itineraryTab() {
           ...this.flightPayload(this.entryForm, this.entryForm.category === 'TRANSPORTATION'),
           // Never for a later day of a stay: the API refuses it there.
           ...(this.entryForm.planId ? {} : travellersPayload(this.entryForm.travellers, this.entryForm.travellersInitial)),
+          ...(this.entryShowsFinalCheckbox() ? { status: this.entryForm.markFinal ? 'FINAL' : 'PENDING' } : {}),
         };
         let savedId;
         let message;
@@ -493,6 +525,75 @@ export function itineraryTab() {
     entryTime: (item) => timeRange(item.startAt, item.endAt) || '—',
     entryCost: (item) => money(item.cost, item.currency),
     categoryOf: (value) => category(value),
+
+    // ── pending / approve ────────────────────────────
+
+    /** The plan group's owning row's creator, resolved from the item itself. */
+    isCreatorOf(item) {
+      return !!this.currentUserId && item.createdByUserId === this.currentUserId;
+    },
+
+    /** Resolved participant ids for an entry — the whole trip when unset. See Travellers. */
+    resolvedParticipantIds(item) {
+      const named = (this.namedTravellers.itinerary || {})[item.id];
+      return named && named.length ? named : this.members.map((m) => m.userId);
+    },
+
+    /** Only a resolved participant may approve — including the creator. */
+    canApprove(item) {
+      return item.status === 'PENDING' && this.resolvedParticipantIds(item).includes(this.currentUserId);
+    },
+
+    hasApproved(item) {
+      return (item.approvedByUserIds || []).includes(this.currentUserId);
+    },
+
+    /** Display names for the hover tooltip; a departed member is left out rather than crashing. */
+    approverNames(item) {
+      return (item.approvedByUserIds || [])
+        .map((id) => this.members.find((m) => m.userId === id)?.displayName)
+        .filter(Boolean)
+        .join(', ');
+    },
+
+    /** ", approved by N buddies" — empty string when nobody has yet. */
+    approvedByCount(item) {
+      const n = (item.approvedByUserIds || []).length;
+      return n ? t('itinerary.approvedByCount', { count: n }) : '';
+    },
+
+    suggestedByLine(item) {
+      const creator = this.members.find((m) => m.userId === item.createdByUserId)?.displayName
+        || t('budget.formerBuddy');
+      return t('itinerary.suggestedBy', { name: creator }) + this.approvedByCount(item);
+    },
+
+    async toggleApprove(item) {
+      try {
+        if (this.hasApproved(item)) await this.api.unapproveItinerary(this.trip.id, item.id);
+        else await this.api.approveItinerary(this.trip.id, item.id);
+        await this.reload();
+      } catch (error) {
+        toast.error(error.fullMessage);
+      }
+    },
+
+    askFinalize(item) {
+      this.finalizingItem = item;
+    },
+
+    async confirmFinalize() {
+      const item = this.finalizingItem;
+      this.finalizingItem = null;
+      if (!item) return;
+      try {
+        await this.api.setItineraryStatus(this.trip.id, item.id, 'FINAL');
+        toast.success(t('itinerary.entryUpdated'));
+        await this.reload();
+      } catch (error) {
+        toast.error(error.fullMessage);
+      }
+    },
 
     /** The checklist item a plan came from, if any — description and note both live. */
     sourceChecklist(item) {

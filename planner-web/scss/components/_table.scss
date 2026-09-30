@@ -157,6 +157,13 @@
     margin-top: t.$space-2;
     text-align: left;
   }
+
+  // The settle table's net amount is itself right-aligned, so its action
+  // row (View details / Record payment) follows it on the right rather than
+  // jumping to the left edge below a right-aligned figure.
+  .settle .table.table-cards.table-cards-plain .actions {
+    text-align: right;
+  }
 }
 
 // Pager under a paginated table. Wraps on a phone, status line first.

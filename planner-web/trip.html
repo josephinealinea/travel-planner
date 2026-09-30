@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title data-i18n="trip.tripTravellingLlama">Trip — Travelling Llama</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%99%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/minima.css?v=79"     id="minima-css">
-<link rel="stylesheet" href="assets/css/y2k.css?v=79"        id="y2k-css"        disabled>
-<link rel="stylesheet" href="assets/css/dark.css?v=79"       id="dark-css"       disabled>
+<link rel="stylesheet" href="assets/css/minima.css?v=80"     id="minima-css">
+<link rel="stylesheet" href="assets/css/y2k.css?v=80"        id="y2k-css"        disabled>
+<link rel="stylesheet" href="assets/css/dark.css?v=80"       id="dark-css"       disabled>
 <script>
   // Enable the remembered theme's stylesheet before first paint, so the page
   // never flashes the default theme first.
@@ -475,9 +475,16 @@
           <div class="chip-group" role="group" aria-labelledby="itin-show-label">
             <template x-for="option in ['ALL', 'WEATHER', 'ITINERARY']" :key="option">
               <button type="button" class="chip" :aria-pressed="itinShow === option"
-                      @click="itinShow = option"
+                      @click="setItinShow(option)"
                       x-text="option === 'ALL' ? $t('common.all') : (option === 'WEATHER' ? $t('trip.weatherOnly') : $t('trip.itineraryOnly'))"></button>
             </template>
+          </div>
+          <span class="toolbar-label" id="itin-show-label-itinerary" data-i18n="trip.show.itinerary"></span>
+          <div class="chip-group" role="group" aria-label="Final / Pending">
+            <button type="button" class="chip" :aria-pressed="itinShowFinal"
+                    @click="itinShowFinal = !itinShowFinal" data-i18n="trip.final"></button>
+            <button type="button" class="chip" :aria-pressed="itinShowPending"
+                    @click="itinShowPending = !itinShowPending" data-i18n="trip.itinerary.pending"></button>
           </div>
         </div>
 
@@ -560,14 +567,34 @@
             <div class="timeline-entries" x-show="day.entries.length">
               <template x-for="entry in day.entries" :key="entry.key">
                 <div class="timeline-entry">
-                  <label class="select-box select-box-tight">
-                    <input type="checkbox" :checked="isItinSelected(entry.item.id)"
-                           @change="toggleItinSelected(entry.item.id)"
-                           :aria-label="$t('common.selectNamedWhen', { name: entry.item.description, when: planWhen(entry.item) })">
-                  </label>
+                  <!-- The checkbox and the finalize button are grouped as one
+                       flex item so .timeline-entry's own gap (which rightly
+                       spaces checkbox/time/body/cost/actions apart) doesn't
+                       also land between these two, the way .check-row-wrap
+                       never has a gap to fight in the checklist. -->
+                  <span class="timeline-checks">
+                    <label class="select-box select-box-tight">
+                      <input type="checkbox" :checked="isItinSelected(entry.item.id)"
+                             @change="toggleItinSelected(entry.item.id)"
+                             :aria-label="$t('common.selectNamedWhen', { name: entry.item.description, when: planWhen(entry.item) })">
+                    </label>
+                    <button type="button" class="check-status check-status-tight"
+                            x-show="entry.item.status === 'PENDING' && isCreatorOf(entry.item)" @click.stop
+                            :aria-label="$t('itinerary.markThisAsFinal')"
+                            :title="$t('itinerary.markAsFinal')"
+                            @click="askFinalize(entry.item)"
+                            x-text="'▫️'"></button>
+                  </span>
+
                   <span class="timeline-time" x-text="entryTime(entry)"></span>
                   <div class="timeline-body">
-                    <div class="timeline-desc" x-text="entry.item.description"></div>
+                    <div class="timeline-desc">
+                      <span x-text="entry.item.description"></span>
+                      <span class="chip chip-pending" x-show="entry.item.status === 'PENDING'" data-i18n="itinerary.pending"></span>
+                      <span class="timeline-note tiny muted" x-show="entry.item.status === 'PENDING'" style="font-style:italic"
+                           :title="approverNames(entry.item)" x-text="suggestedByLine(entry.item)"></span>
+                    </div>
+
                     <div class="timeline-tags" x-show="entry.item.flight || travellerNameList('itinerary', entry.item.id).length" x-cloak>
                       <template x-for="pill in flightPills(entry.item.flight)" :key="pill"><span class="chip" x-text="pill"></span></template>
                       <template x-for="name in travellerNameList('itinerary', entry.item.id)" :key="name">
@@ -589,9 +616,13 @@
                     <div class="timeline-note" x-show="entry.item.note" x-text="entry.item.note"></div>
                   </div>
                   <span class="timeline-cost" x-show="entry.cost" x-text="entryCost(entry)"></span>
-                  <span class="timeline-actions btn-row">
+                  <span class="timeline-actions btn-row" :class="canApprove(entry.item) ? 'timeline-actions-pending' : ''">
                     <button type="button" class="btn btn-sm" @click="openEditEntry(entry.item)"
                             :aria-label="$t('common.editNamedWhen', { name: entry.item.description, when: planWhen(entry.item) })" data-i18n="trip.edit"></button>
+                    <button type="button" class="btn btn-sm btn-primary" x-show="canApprove(entry.item)"
+                            @click="toggleApprove(entry.item)"
+                            :aria-label="$t(hasApproved(entry.item) ? 'itinerary.undoApproveNamed' : 'itinerary.approveNamed', { name: entry.item.description })"
+                            x-text="hasApproved(entry.item) ? $t('trip.undo') : $t('itinerary.approve')"></button>
                   </span>
                 </div>
               </template>
@@ -1313,7 +1344,21 @@
                               data-i18n-placeholder="trip.placeholder.note"></textarea>
                   </div>
 
-                  <div class="row row-end" style="margin-top:12px">
+                  <div class="modal-footer modal-footer-split" style="margin-top:12px" x-show="planShowsFinalCheckbox()">
+                    <div>
+                      <label class="checkbox">
+                        <input type="checkbox" x-model="planForm.markFinal">
+                        <span data-i18n="checklist.markPlanAsFinal"></span>
+                      </label>
+                      <p class="field-hint" x-show="!planForm.markFinal" data-i18n="checklist.proposedNote"></p>
+                    </div>
+                    <span class="btn-row">
+                      <button type="button" class="btn" @click="planOpen = false" data-i18n="common.cancel"></button>
+                      <button type="button" class="btn btn-primary" :disabled="planBusy"
+                              @click="savePlan()" x-text="planBusy ? $t('common.saving') : $t('trip.savePlan')"></button>
+                    </span>
+                  </div>
+                  <div class="row row-end" style="margin-top:12px" x-show="!planShowsFinalCheckbox()">
                     <button type="button" class="btn" @click="planOpen = false" data-i18n="common.cancel"></button>
                     <button type="button" class="btn btn-primary" :disabled="planBusy"
                             @click="savePlan()" x-text="planBusy ? $t('common.saving') : $t('trip.savePlan')"></button>
@@ -1844,7 +1889,21 @@
                         data-i18n-placeholder="trip.placeholder.note"></textarea>
             </div>
 
-            <div class="modal-footer">
+            <div class="modal-footer modal-footer-split" x-show="entryShowsFinalCheckbox()">
+              <div>
+                <label class="checkbox">
+                  <input type="checkbox" x-model="entryForm.markFinal">
+                  <span data-i18n="checklist.markPlanAsFinal"></span>
+                </label>
+                <p class="field-hint" x-show="!entryForm.markFinal" data-i18n="itinerary.proposedNote"></p>
+              </div>
+              <span class="btn-row">
+                <button type="button" class="btn" @click="entryOpen = false" data-i18n="common.cancel"></button>
+                <button type="submit" class="btn btn-primary" :disabled="entryBusy"
+                        x-text="entryBusy ? $t('common.saving') : $t('common.save')"></button>
+              </span>
+            </div>
+            <div class="modal-footer" x-show="!entryShowsFinalCheckbox()">
               <button type="button" class="btn" @click="entryOpen = false" data-i18n="common.cancel"></button>
               <button type="submit" class="btn btn-primary" :disabled="entryBusy"
                       x-text="entryBusy ? $t('common.saving') : $t('common.save')"></button>
@@ -1894,6 +1953,26 @@
             <button type="button" class="btn" @click="completingItem = null" data-i18n="common.cancel"></button>
             <button type="button" class="btn btn-primary"
                     @click="confirmSetComplete()" data-i18n="trip.markComplete"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm finalizing a pending itinerary entry — the whole plan group moves together. -->
+      <div class="modal-backdrop" x-show="finalizingItem" x-cloak
+           @click.self="finalizingItem = null"
+           @keydown.escape.window="finalizingItem = null">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="finalize-itinerary-title"
+             x-dialog="finalizingItem">
+          <div class="modal-header">
+            <h2 class="modal-title" id="finalize-itinerary-title" data-i18n="itinerary.markThisAsFinal"></h2>
+            <button type="button" class="modal-close" @click="finalizingItem = null"
+                    data-i18n-aria-label="common.close">✕</button>
+          </div>
+          <p class="small" data-i18n="itinerary.markAsFinalBody"></p>
+          <div class="modal-footer">
+            <button type="button" class="btn" @click="finalizingItem = null" data-i18n="common.cancel"></button>
+            <button type="button" class="btn btn-primary"
+                    @click="confirmFinalize()" data-i18n="itinerary.markAsFinal"></button>
           </div>
         </div>
       </div>

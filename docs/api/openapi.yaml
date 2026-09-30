@@ -304,6 +304,51 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ItineraryItem"
+  /api/v1/trips/{tripId}/itinerary/{itemId}/approve:
+    post:
+      tags:
+      - itinerary-controller
+      operationId: approveItinerary
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ItineraryItem"
+    delete:
+      tags:
+      - itinerary-controller
+      operationId: unapproveItinerary
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ItineraryItem"
   /api/v1/trips/{tripId}/destinations:
     get:
       tags:
@@ -596,6 +641,35 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/PatchRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ItineraryItem"
+  /api/v1/trips/{tripId}/itinerary/{itemId}/status:
+    patch:
+      tags:
+      - itinerary-controller
+      operationId: setItineraryStatus
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
         required: true
       responses:
         "200":
@@ -1645,6 +1719,15 @@ components:
             type: string
         flight:
           $ref: "#/components/schemas/FlightSnapshot"
+        status:
+          type: string
+          enum:
+          - FINAL
+          - PENDING
+        approvedByUserIds:
+          type: array
+          items:
+            type: string
         destinationIds:
           type: array
           writeOnly: true
@@ -1969,6 +2052,11 @@ components:
           type: string
         flight:
           $ref: "#/components/schemas/FlightSnapshot"
+        status:
+          type: string
+          enum:
+          - FINAL
+          - PENDING
     DestinationRequest:
       required:
       - name
@@ -2159,6 +2247,19 @@ components:
           type: string
         flight:
           $ref: "#/components/schemas/FlightSnapshot"
+        status:
+          type: string
+          enum:
+          - FINAL
+          - PENDING
+    StatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - FINAL
+          - PENDING
     PatchDestinationRequest:
       type: object
       properties:
@@ -2195,16 +2296,6 @@ components:
             type: string
         inheritTravellers:
           type: boolean
-    StatusRequest:
-      required:
-      - status
-      type: object
-      properties:
-        status:
-          type: string
-          enum:
-          - TODO
-          - COMPLETED
     UpdatePublishedPageRequest:
       type: object
       properties:

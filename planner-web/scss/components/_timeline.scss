@@ -27,15 +27,54 @@
 
 .timeline-entry:last-child { border-bottom: 0; }
 
+// Groups the bulk-select checkbox and the (Pending-only) finalize button as
+// one flex item, so .timeline-entry's own gap — which rightly spaces
+// checkbox/time/body/cost/actions apart — doesn't also land between these
+// two. No gap of its own, matching .check-row-wrap, which never has one
+// either — the two controls' own box widths are what space them apart.
+.timeline-checks {
+  display: flex;
+  align-items: flex-start;
+  flex: none;
+}
+
 // The timeline row already supplies its own padding, so the checkbox cell
-// only needs to align with the first line of text.
+// only needs to align with the first line of text. min-width/min-height are
+// reset to 0 too: .select-box's own 28px minimum exists so a checkbox with no
+// padding of its own (this variant) still hugs its content — inheriting it
+// here would reserve trailing space *after* the checkbox that .select-box
+// itself never has (its own padding-left already pushes it past 28px), and
+// that stray space was exactly what widened the gap to this button.
 .select-box-tight {
   padding: 0;
+  min-width: 0;
+  min-height: 0;
   flex: none;
   display: flex;
   align-items: flex-start;
   cursor: pointer;
 }
+
+// .check-status, without the padding it bakes in for .check-row-wrap (which
+// supplies none of its own) — .timeline-entry already has its own padding, so
+// stacking both would double the gap and misalign the glyph against the
+// select box beside it.
+.check-status-tight {
+  padding: 0;
+  min-height: 0;
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
 .timeline-entry:hover { background: var(--tp-surface-alt); }
 
 .timeline-time {
@@ -64,19 +103,43 @@
 .timeline-cost { flex: none; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .timeline-actions { flex: none; }
 
+// A Pending row's Approve button stacks below Edit rather than beside it —
+// the two buttons answer different questions and a pill-row read as one
+// action. Non-pending rows are unaffected: flex-direction on a single child
+// changes nothing visible.
+.timeline-actions.timeline-actions-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: t.$space-2;
+}
+
 @include m.mobile {
   .timeline-entry { flex-wrap: wrap; }
   .timeline-time { width: auto; }
   // Checkbox, time and Edit share the first line; the description block then
   // gets a full-width line of its own instead of being squeezed between them,
   // and the cost sits right-aligned beneath it.
-  .select-box-tight { order: 0; }
+  .timeline-checks { order: 0; }
   .timeline-time { order: 1; }
   .timeline-actions { order: 2; margin-left: auto; }
   .timeline-body { order: 3; flex: 1 1 100%; }
   .timeline-cost { order: 4; margin-left: auto; }
   // Negative margin grows the hit area to 44px without moving the layout.
   .select-box-tight { padding: t.$space-3; margin: -#{t.$space-3}; }
+  .check-status-tight { width: 44px; padding: t.$space-3 0; margin: -#{t.$space-3} 0; }
+
+  // A two-button-tall Edit+Approve column sharing order 2 with the (single-
+  // line) checkbox/time stretches that whole flex line to its height, leaving
+  // a blank gap between the header and the body that starts on the next
+  // line. Dropping the pair to their own line below the body avoids that.
+  .timeline-actions.timeline-actions-pending {
+    order: 5;
+    flex: 1 1 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: t.$space-2;
+  }
 }
 
 // ── weather cards ─────────────────────────────────────────────

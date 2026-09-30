@@ -3,6 +3,7 @@ package com.josephinealinea.planner.itinerary.infra;
 import com.josephinealinea.planner.checklist.domain.ChecklistCategory;
 import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
+import com.josephinealinea.planner.itinerary.domain.ItineraryStatus;
 import com.josephinealinea.planner.storage.jdbc.JdbcValues;
 import com.josephinealinea.planner.storage.jdbc.TripScopedJdbcRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -53,7 +54,7 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
                         "start_at", "end_at", "all_day", "cost", "currency", "budget_item_id",
                         "country_codes", "sort_order",
                         "created_at", "created_by_user_id", "updated_at", "updated_by_user_id", "traveller_ids",
-                        "flight"),
+                        "flight", "status", "approved_by_user_ids"),
                 Set.of("flight"),
                 ItineraryItem::getId);
     }
@@ -81,6 +82,9 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
         values.put("updated_by_user_id", item.getUpdatedByUserId());
         values.put("traveller_ids", JdbcValues.nullableTextArray(item.getTravellerIds()));
         values.put("flight", JdbcValues.json(item.getFlight()));
+        values.put("status", JdbcValues.enumName(
+                item.getStatus() == null ? ItineraryStatus.FINAL : item.getStatus()));
+        values.put("approved_by_user_ids", JdbcValues.textArray(item.getApprovedByUserIds()));
         return values;
     }
 
@@ -109,6 +113,8 @@ public class JdbcItineraryRepository extends TripScopedJdbcRepository<ItineraryI
         // NULL and '{}' are different states: see Travellers.
         item.setTravellerIds(JdbcValues.nullableTextList(rs, "traveller_ids"));
         item.setFlight(JdbcValues.json(rs, "flight", FlightSnapshot.class));
+        item.setStatus(JdbcValues.enumValue(rs, "status", ItineraryStatus.class, ItineraryStatus.FINAL));
+        item.setApprovedByUserIds(JdbcValues.textList(rs, "approved_by_user_ids"));
         return item;
     }
 }

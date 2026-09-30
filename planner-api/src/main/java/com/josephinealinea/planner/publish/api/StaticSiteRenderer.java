@@ -14,6 +14,7 @@ import com.josephinealinea.planner.destinations.infra.DestinationRepository;
 import com.josephinealinea.planner.flights.domain.Airport;
 import com.josephinealinea.planner.flights.domain.FlightSnapshot;
 import com.josephinealinea.planner.itinerary.domain.ItineraryItem;
+import com.josephinealinea.planner.itinerary.domain.ItineraryStatus;
 import com.josephinealinea.planner.itinerary.infra.ItineraryRepository;
 import com.josephinealinea.planner.publish.infra.PageStore;
 import com.josephinealinea.planner.publish.infra.PageStore.Area;
@@ -314,7 +315,12 @@ public class StaticSiteRenderer {
         String slug = trip.getSlug();
         var tripDestinations = destinations.findAllOrdered(slug);
         var tripChecklist = checklist.findAllOrdered(slug);
-        var tripItinerary = itinerary.findAllOrdered(slug);
+        // A proposal never has a public shape: filtered once, here, so every
+        // reader downstream — trip page and every member's personal page —
+        // sees only settled plans.
+        var tripItinerary = itinerary.findAllOrdered(slug).stream()
+                .filter(item -> item.getStatus() == ItineraryStatus.FINAL)
+                .toList();
         // A personal page lists only its viewer's parts, and leaves the rest
         // out of the file rather than hiding it: see Travellers, and the
         // "not displayed means not shipped" rule this page already keeps.

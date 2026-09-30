@@ -48,7 +48,7 @@ cd planner-api && (set -a; . ./.env.resend; . ./.env.local; . ./.env.aerodatabox
 
 #### Build the stylesheets & serve the FE
 ```bash
-cd planner-web && npm install && npm run css && ./serve.sh
+cd planner-web && npm install && npm run dev:hot
 ```
 
 #### Open it
@@ -222,6 +222,9 @@ deployment](docs/deploy/deploy.md) uses. Locally, a Postgres 17 container
 cd planner-api && ./gradlew test
 ```
 #### Watch the stylesheets while working on the frontend
+Already covered if you're running `npm run dev:hot` (see above) — it watches
+and hot-reloads on its own. Running plain `./serve.sh` instead still needs
+this alongside it, and a manual browser reload to see each change:
 ```bash
 cd planner-web && npm run css:watch
 ```

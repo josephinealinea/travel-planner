@@ -223,6 +223,8 @@ public abstract class ItineraryRepositoryContract extends TripScopedRepositoryCo
                 new com.josephinealinea.planner.flights.domain.Airport("TLL", "EETN", "Tallinn Lennart Meri", "Tallinn", "EE", "Europe/Tallinn", 59.4133, 24.8328),
                 new com.josephinealinea.planner.flights.domain.Airport("AMS", "EHAM", "Amsterdam Schiphol", "Amsterdam", "NL", "Europe/Amsterdam", 52.3086, 4.7639),
                 "1", "2", "airBaltic"));
+        item.setStatus(com.josephinealinea.planner.itinerary.domain.ItineraryStatus.PENDING);
+        item.setApprovedByUserIds(List.of("user-ana"));
         return item;
     }
 }

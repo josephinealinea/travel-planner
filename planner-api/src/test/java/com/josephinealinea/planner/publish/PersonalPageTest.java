@@ -88,6 +88,7 @@ class PersonalPageTest {
     private UserRepository users;
     private Path publishDir;
     private YamlDestinationRepository destinationsRepo;
+    private YamlItineraryRepository itineraryRepo;
 
     @BeforeEach
     void setUp(@TempDir Path tempDir) {
@@ -111,7 +112,7 @@ class PersonalPageTest {
 
         var destinations = destinationsRepo = new YamlDestinationRepository(store, paths, locks);
         var checklist = new YamlChecklistRepository(store, paths, locks);
-        var itinerary = new YamlItineraryRepository(store, paths, locks);
+        var itinerary = itineraryRepo = new YamlItineraryRepository(store, paths, locks);
         var budget = new YamlBudgetRepository(store, paths, locks);
         var settlementPayments = new com.josephinealinea.planner.budget.infra.YamlSettlementPaymentRepository(
                 store, paths, locks);
@@ -233,6 +234,26 @@ class PersonalPageTest {
      * in window.TRIP is readable by anyone who opens the source, so the test
      * searches the whole file rather than the markup.
      */
+    @Test
+    void aPendingEntryIsNowhereInAnyPublishedFile() throws Exception {
+        com.josephinealinea.planner.itinerary.domain.ItineraryItem proposal =
+                new com.josephinealinea.planner.itinerary.domain.ItineraryItem();
+        proposal.setId("proposed-cusco-hike");
+        proposal.setTripId(TRIP_ID);
+        proposal.setDescription("Rainbow Mountain hike, unconfirmed");
+        // Dated, so it would otherwise appear in days() — only the status
+        // filter is what must keep it off the page.
+        proposal.setStartAt(java.time.LocalDateTime.of(2026, 10, 25, 9, 0));
+        proposal.setStatus(com.josephinealinea.planner.itinerary.domain.ItineraryStatus.PENDING);
+        itineraryRepo.save(SLUG, proposal);
+
+        publish.publish(TRIP_ID, ALEX, "minima");
+
+        assertThat(read(personal("alex"))).doesNotContain("Rainbow Mountain hike");
+        assertThat(read(personal("sam"))).doesNotContain("Rainbow Mountain hike");
+        assertThat(read(publishDir.resolve(SLUG).resolve("index.html"))).doesNotContain("Rainbow Mountain hike");
+    }
+
     @Test
     void anotherMembersSpendingIsNowhereInThePersonalPageFile() throws Exception {
         publish.publish(TRIP_ID, ALEX, "minima");
