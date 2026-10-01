@@ -262,3 +262,4 @@
 @include m.mobile {
   .weather-locations { grid-template-columns: minmax(0, 1fr); }
 }
+.timeline-note a.plain-text { color: inherit; text-decoration: none; cursor: auto; }

@@ -47,6 +47,27 @@
     return node;
   }
 
+  /** Like el(), but http(s) URLs in the text become links opening in a new tab. */
+  function linkedEl(tag, className, text) {
+    var node = el(tag, className);
+    var re = /https?:\/\/[^\s<>"]+/gi;
+    var last = 0, m;
+    text = String(text);
+    while ((m = re.exec(text))) {
+      var url = m[0].replace(/[.,;:!?)\]]+$/, '');
+      if (m.index > last) node.appendChild(document.createTextNode(text.slice(last, m.index)));
+      var a = el('a', null, url);
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      node.appendChild(a);
+      last = m.index + url.length;
+      re.lastIndex = last;
+    }
+    if (last < text.length) node.appendChild(document.createTextNode(text.slice(last)));
+    return node;
+  }
+
   /** Parses "2026-10-25" without letting the local timezone shift the day. */
   function parseDate(iso) {
     if (!iso) return null;
@@ -414,7 +435,7 @@
         if (entry.categoryLabel) meta.push(entry.categoryLabel);
         if (meta.length) body.appendChild(el('div', 'entry-meta', meta.join(' · ')));
         if (entry.flight) body.appendChild(flightBlock(entry.flight, day.date));
-        if (entry.note) body.appendChild(el('div', 'entry-note', entry.note));
+        if (entry.note) body.appendChild(linkedEl('div', 'entry-note', entry.note));
         row.appendChild(body);
 
         if (entry.cost) {

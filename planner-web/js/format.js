@@ -59,6 +59,25 @@ export function dateRange(startIso, endIso) {
   return `${shortDate(startIso)} – ${shortDate(endIso)}`;
 }
 
+/**
+ * Splits free text into plain and link parts: "see https://a.com/x, ok" ->
+ * [{text:'see '}, {text:'https://a.com/x', url:'https://a.com/x'}, {text:', ok'}].
+ * Only http(s) is linked, and trailing punctuation stays outside the link.
+ * Parts are rendered as text, never as HTML.
+ */
+export function linkParts(text) {
+  const parts = [];
+  let last = 0;
+  for (const m of String(text || '').matchAll(/https?:\/\/[^\s<>"]+/gi)) {
+    const url = m[0].replace(/[.,;:!?)\]]+$/, '');
+    if (m.index > last) parts.push({ text: text.slice(last, m.index) });
+    parts.push({ text: url, url });
+    last = m.index + url.length;
+  }
+  if (last < text.length) parts.push({ text: text.slice(last) });
+  return parts;
+}
+
 /** "2026-10-25T15:00:00" -> "15:00" */
 export function timeOf(isoDateTime) {
   if (!isoDateTime) return '';

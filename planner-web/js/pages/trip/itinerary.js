@@ -1,5 +1,5 @@
 import { toast } from '../../toast.js';
-import { category, timeRange, longDate, money, dateOf, timeOf } from '../../format.js';
+import { category, timeRange, longDate, money, dateOf, timeOf, linkParts } from '../../format.js';
 import { toggleId, selectedPresent, runBulkDelete } from '../../selection.js';
 import { toggleLocation, locationNames } from '../../location-picker.js';
 import {
@@ -492,6 +492,8 @@ export function itineraryTab() {
     },
 
     // ── weather display ─────────────────────────────
+    noteParts: (note) => linkParts(note),
+
     weatherIcon: (day) => condition(day).icon,
     weatherCondition: (day) => condition(day).label,
     weatherTemps: (day) => temperatureRange(day),

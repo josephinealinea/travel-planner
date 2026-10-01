@@ -613,7 +613,9 @@
                       </template>
                       <span x-show="sourceChecklistLabel(entry.item)" x-text="sourceChecklistLabel(entry.item)"></span>
                     </div>
-                    <div class="timeline-note" x-show="entry.item.note" x-text="entry.item.note"></div>
+                    <div class="timeline-note" x-show="entry.item.note">
+                      <template x-for="(part, i) in noteParts(entry.item.note)" :key="i"><a :href="part.url || null" :target="part.url ? '_blank' : null" :rel="part.url ? 'noopener noreferrer' : null" :class="part.url ? '' : 'plain-text'" x-text="part.text"></a></template>
+                    </div>
                   </div>
                   <span class="timeline-cost" x-show="entry.cost" x-text="entryCost(entry)"></span>
                   <span class="timeline-actions btn-row" :class="canApprove(entry.item) ? 'timeline-actions-pending' : ''">
