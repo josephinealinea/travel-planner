@@ -61,10 +61,19 @@ export function overviewTab() {
      * surface. Nothing here is stored: it is read off the entries as they are.
      */
     needsReview() {
+      // A stay spread over several nights is one plan and several rows; only
+      // the plan's own row (the one with no planId) is listed, so a four-night
+      // booking is one thing to review rather than five.
       return this.scopedItinerary
-        .filter((item) => item.status === 'PENDING')
+        .filter((item) => item.status === 'PENDING' && !item.planId)
         .sort((a, b) => (a.startAt || '9999').localeCompare(b.startAt || '9999'))
         .slice(0, 8);
+    },
+
+    /** When an entry is, with "4N" after it for a plan that spans nights. */
+    reviewWhen(item) {
+      const nights = this.planNights(item);
+      return nights ? `${this.planWhen(item)} · ${nights}` : this.planWhen(item);
     },
 
     categoryOf: (value) => category(value),
