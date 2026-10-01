@@ -95,7 +95,9 @@ export function scopeTab() {
 
     /**
      * Pills for a table cell: everyone when there are one or two, otherwise
-     * the first name and a "+N" for the rest, so the row stays narrow.
+     * the first name and a "👥 +N people" pill for the rest, so the row stays
+     * narrow. That pill carries every name (`names`): it is the tooltip, and
+     * what the popup lists when it is clicked.
      */
     travellerPills(kind, id) {
       // The signed-in member leads, so their own name is the one that stays visible.
@@ -109,7 +111,7 @@ export function scopeTab() {
       if (names.length <= 2) return names.map((name) => ({ text: '👥 ' + name, title: name }));
       return [
         { text: '👥 ' + names[0], title: names[0] },
-        { text: '+' + (names.length - 1), title: names.slice(1).join(', ') },
+        { text: t('scope.morePeople', { count: names.length - 1 }), title: names.join(', '), names },
       ];
     },
   };

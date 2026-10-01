@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { renderChrome } from './chrome.js';
 import { registerDialogFocus } from './dialog.js';
+import { registerTravellerMore } from './traveller-more.js';
 import { requireUser } from './session.js';
 import { initI18n, useAccountLanguage, registerAlpineMagics } from './i18n/index.js';
 
@@ -35,6 +36,7 @@ export async function bootPage({ active = '', component = {} } = {}) {
   // Directives, like components, have to exist before Alpine starts.
   registerDialogFocus();
   registerAlpineMagics();
+  registerTravellerMore();
 
   // Alpine's CDN build starts itself on load, including when the document has
   // already finished parsing.

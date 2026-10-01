@@ -110,3 +110,37 @@
 @include m.below(t.$page-max) {
   .budget-summary { grid-template-columns: 1fr; }
 }
+
+// Phones: the legend below already carries every figure, so the pie is a
+// small picture of it rather than a screenful, and the list is a scroll closer.
+@include m.mobile {
+  .budget-pie { max-width: 120px; }
+}
+
+// The card starts closed on one line; the whole line is the button.
+.budget-breakdown-card { padding: 0; }
+
+.budget-breakdown-toggle {
+  display: flex;
+  gap: t.$space-3;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: t.$space-2 t.$space-4;
+  font: inherit;
+  font-weight: 600;
+  color: var(--tp-text);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--tp-radius);
+  cursor: pointer;
+  &:hover { color: var(--tp-accent); }
+  &:focus-visible { @include m.focus-ring; outline-offset: -2px; }
+}
+
+.budget-breakdown-sign { flex: none; font-size: 1.3rem; line-height: 1; color: var(--tp-accent); }
+
+// The body keeps the padding the card used to have.
+#budget-breakdown-body { padding: 0 t.$space-4 t.$space-4; }

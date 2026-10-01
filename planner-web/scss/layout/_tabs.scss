@@ -52,4 +52,14 @@
   }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { min-height: 44px; }
+
+  // The header, title and actions take over a third of the screen, so the tabs
+  // stay put under the site header once they have scrolled to it. The fade
+  // mask only touches the right edge, so the solid background is kept.
+  .tabs {
+    position: sticky;
+    top: t.$header-height;
+    z-index: calc(#{t.$z-header} - 1);
+    background: var(--tp-bg);
+  }
 }

@@ -8,6 +8,7 @@ import {
   defaultCostSharers,
 } from '../../traveller-picker.js';
 import { t } from '../../i18n/index.js';
+import { activeCountries, touchesCountries, toggleCountry } from '../../country-filter.js';
 import { blankFlight, flightFromRecord } from './flight-lookup.js';
 
 /**
@@ -62,6 +63,8 @@ export function checklistTab() {
     // filters
     checkStatusFilter: 'ALL',
     checkCategoryFilters: [],
+    // Ticked countries; combines with the categories (see country-filter.js).
+    checkCountryFilters: [],
     checkGroupBy: 'country',
 
     /** The Group by pills, in order — mirrors budgetShowOptions on the Budget tab. */
@@ -105,8 +108,14 @@ export function checklistTab() {
     planBusy: false,
 
     // ── filtering and grouping ──────────────────────
+    get checkActiveCountries() {
+      return activeCountries(this.checkCountryFilters, this.tripCountries);
+    },
+
     get filteredChecklist() {
+      const countries = this.checkActiveCountries;
       return this.scopedChecklist.filter((item) => {
+        if (!touchesCountries(item.countryCodes, countries)) return false;
         if (this.checkStatusFilter === 'TODO' && item.status !== 'TODO') return false;
         if (this.checkStatusFilter === 'COMPLETED' && item.status !== 'COMPLETED') return false;
         if (this.checkCategoryFilters.length
@@ -136,7 +145,13 @@ export function checklistTab() {
           push(category(item.category).label, item);
           return;
         }
-        const names = this.countryLabels(item.countryCodes);
+        // With countries ticked, an item fans out under those only: showing it
+        // under a country that was filtered out would contradict the filter.
+        const active = this.checkActiveCountries;
+        const codes = active.length
+          ? (item.countryCodes || []).filter((code) => active.includes(code))
+          : item.countryCodes;
+        const names = this.countryLabels(codes);
         if (!names.length) push(t('checklist.noCountry'), item);
         else names.forEach((name) => push(name, item));
       });
@@ -145,6 +160,10 @@ export function checklistTab() {
       return [...groups.entries()]
         .sort(([a], [b]) => (a === 'No destination' ? 1 : b === 'No destination' ? -1 : 0))
         .map(([title, groupItems]) => ({ title, items: groupItems }));
+    },
+
+    toggleCheckCountry(code) {
+      toggleCountry(this.checkCountryFilters, code);
     },
 
     toggleCategoryFilter(value) {

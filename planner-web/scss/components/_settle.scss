@@ -230,3 +230,19 @@
 
 .settle-pay-outcome-settled { color: var(--tp-success, var(--tp-text)); font-weight: 600; }
 .settle-pay-outcome-over { color: var(--tp-danger, var(--tp-text)); font-weight: 600; }
+
+// Phones: a payment's Undo sits on the first line, beside the description, like
+// the actions on the other cards, and the amount drops to the line under it.
+// (In the markup the amount comes before the button, so the grid places them.)
+@include m.mobile {
+  .settle-payments .settle-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: t.$space-3;
+    row-gap: t.$space-1;
+    align-items: start;
+  }
+  .settle-payments .settle-line-main { grid-column: 1; grid-row: 1; }
+  .settle-payments .settle-line > .btn { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+  .settle-payments .settle-line-amount { grid-column: 1; grid-row: 2; }
+}

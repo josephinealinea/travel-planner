@@ -96,6 +96,16 @@
   .publish-url { flex-wrap: wrap; }
   .publish-url .grow { flex: 1 1 100%; min-width: 0; }
   .trip-head { flex-direction: column; }
+  // One row of actions; Delete trip is pushed to the far end so it is not the
+  // button beside "All trips".
+  .trip-head-actions { flex-wrap: nowrap; width: 100%; }
+  .trip-head-actions .btn-danger { margin-left: auto; }
+  // Coordinates are a map link, not code: sans-serif, and a fingertip tall.
+  td[data-label="Lat / Lon"] { font-family: inherit; font-size: 0.85rem; }
+  // The invite form stacks: a full-width address, then the button.
+  .invite-form .field { flex-basis: 100%; }
+  .invite-form .field.invite-submit { padding-top: 0; }
+  .invite-form .field.invite-submit { display: flex; justify-content: flex-end; }
   .coord-inputs { grid-template-columns: 1fr; }
 }
 
@@ -142,3 +152,70 @@
 
 // One pill per travel buddy on rows and in "Same as Cusco:" hints.
 .badge-traveller { margin: 0 t.$space-1 t.$space-1 0; }
+
+// Beside the address on a wide screen the button lines up with the input, not
+// the label above it.
+.invite-form .invite-submit { align-self: flex-start; padding-top: 22px; }
+
+// "👥 +3 people": a pill that opens a popup of everyone going. The full list of
+// pills and this compact one both exist on the checklist and the itinerary;
+// the compact one is what a phone shows, since a long list of names took more
+// room than the item itself.
+.traveller-full { display: contents; }
+.traveller-compact { display: none; }
+.traveller-slot, .traveller-more { display: inline; }
+
+// Looks exactly like the pills beside it: only the font family is taken from
+// the page (a button does not inherit it), and size and weight stay the
+// badge's own. The tap target is the hit area below, not the pill's size.
+button.badge-traveller-more {
+  position: relative;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  &:hover, &[aria-expanded="true"] { border-color: var(--tp-accent); }
+  &:focus-visible { @include m.focus-ring; }
+}
+
+// Fixed, not absolute: table and card rows clip what overflows them. Placed
+// from the button's own box by traveller-more.js.
+.traveller-popup {
+  position: fixed;
+  z-index: t.$z-dropdown;
+  margin: 0;
+  padding: t.$space-2 t.$space-3;
+  list-style: none;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--tp-text);
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  box-shadow: var(--tp-shadow);
+}
+.traveller-popup li { padding: 4px 0; overflow-wrap: anywhere; }
+
+@include m.mobile {
+  .traveller-full { display: none; }
+  .traveller-compact { display: contents; }
+  // A fingertip-sized hit area around a pill that stays pill-sized: the
+  // invisible box reaches 10px above and below it, which is 44px in all.
+  button.badge-traveller-more::after {
+    content: "";
+    position: absolute;
+    inset: -10px -4px;
+  }
+}
+
+// Needs planning and Needs review, stacked in the Overview's second column. On a
+// phone the grid is one column, so they simply follow Up next in that order.
+.overview-side {
+  display: flex;
+  flex-direction: column;
+  gap: t.$space-3;
+  min-width: 0;
+}
+
+// Each column is as tall as its own content: a short Up next is not stretched
+// to match the stacked cards beside it, and a long one is not clipped.
+.overview-grid { align-items: start; }

@@ -88,7 +88,7 @@
           </template>
         </div>
 
-        <div class="grid grid-2">
+        <div class="grid grid-2 overview-grid">
           <div class="card">
             <div class="card-header"><h2 class="card-title" data-i18n="trip.upNext"></h2></div>
             <p class="small muted" x-show="!upNext().length" data-i18n="trip.nothingScheduledYet"></p>
@@ -103,31 +103,57 @@
             </template>
           </div>
 
-          <div class="card">
-            <div class="card-header">
-              <h2 class="card-title" data-i18n="trip.needsPlanning"></h2>
-              <span class="badge" x-text="needsPlanning().length"></span>
-            </div>
-            <!-- With no destination there is nothing to plan yet, and nothing
-                 on this card to act on — so it offers the first step instead. -->
-            <div x-show="!destinations.length">
-              <p class="small muted" data-i18n="trip.nothingToPlanYet"></p>
-              <button type="button" class="btn btn-sm btn-primary"
-                      @click="addFirstDestination()" data-i18n="trip.addYourFirstDestination"></button>
-            </div>
-            <p class="small muted" x-show="destinations.length && !needsPlanning().length" data-i18n="trip.everythingOnTheChecklist"></p>
-            <template x-for="item in needsPlanning()" :key="item.id">
-              <div class="needs-planning-row">
-                <span x-text="categoryOf(item.category).icon"></span>
-                <div class="grow">
-                  <div class="small" x-text="item.description"></div>
-                  <div class="tiny muted" x-show="countryLabel(item.countryCodes)"
-                       x-text="countryLabel(item.countryCodes)"></div>
-                </div>
-                <button type="button" class="btn btn-sm" @click="planFromOverview(item)"
-                        :aria-label="$t('trip.planNamed', { name: item.description })" data-i18n="trip.plan"></button>
+          <!-- Needs planning and Needs review share one column, so a long
+               Up next can run down the other side. -->
+          <div class="overview-side">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title" data-i18n="trip.needsPlanning"></h2>
+                <span class="badge" x-text="needsPlanning().length"></span>
               </div>
-            </template>
+              <!-- With no destination there is nothing to plan yet, and nothing
+                   on this card to act on — so it offers the first step instead. -->
+              <div x-show="!destinations.length">
+                <p class="small muted" data-i18n="trip.nothingToPlanYet"></p>
+                <button type="button" class="btn btn-sm btn-primary"
+                        @click="addFirstDestination()" data-i18n="trip.addYourFirstDestination"></button>
+              </div>
+              <p class="small muted" x-show="destinations.length && !needsPlanning().length" data-i18n="trip.everythingOnTheChecklist"></p>
+              <template x-for="item in needsPlanning()" :key="item.id">
+                <div class="needs-planning-row">
+                  <span x-text="categoryOf(item.category).icon"></span>
+                  <div class="grow">
+                    <div class="small" x-text="item.description"></div>
+                    <div class="tiny muted" x-show="countryLabel(item.countryCodes)"
+                         x-text="countryLabel(item.countryCodes)"></div>
+                  </div>
+                  <button type="button" class="btn btn-sm" @click="planFromOverview(item)"
+                          :aria-label="$t('trip.planNamed', { name: item.description })" data-i18n="trip.plan"></button>
+                </div>
+              </template>
+            </div>
+
+            <!-- Entries a buddy suggested that are still waiting for approval.
+                 Left out entirely when there are none, so the Overview does not
+                 carry an empty card on every trip. -->
+            <div class="card" x-show="needsReview().length" x-cloak>
+              <div class="card-header">
+                <h2 class="card-title" data-i18n="trip.needsReview"></h2>
+                <span class="badge" x-text="needsReview().length"></span>
+              </div>
+              <template x-for="item in needsReview()" :key="item.id">
+                <div class="needs-planning-row">
+                  <span x-text="categoryOf(item.category).icon"></span>
+                  <div class="grow">
+                    <div class="small" x-text="item.description"></div>
+                    <div class="tiny muted" x-text="planWhen(item)"></div>
+                    <div class="tiny muted" x-text="suggestedByLine(item)"></div>
+                  </div>
+                  <button type="button" class="btn btn-sm" @click="reviewFromOverview()"
+                          :aria-label="$t('trip.reviewNamed', { name: item.description })" data-i18n="trip.review"></button>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </section>
@@ -141,14 +167,14 @@
 
         <div class="card" style="margin-bottom:16px">
           <div class="alert alert-error" x-show="memberError" x-text="memberError" x-cloak></div>
-          <form class="field-inline" @submit.prevent="addMember()">
+          <form class="field-inline invite-form" @submit.prevent="addMember()">
             <div class="field grow">
               <label for="member-email" data-i18n="trip.addATravelBuddy"></label>
               <input id="member-email" type="email" x-model="memberEmail"
                      data-i18n-placeholder="trip.placeholder.memberEmail" required>
               <p class="field-hint" data-i18n="trip.theyWillGetAn"></p>
             </div>
-            <div class="field flex-none" style="align-self:flex-start;padding-top:22px">
+            <div class="field flex-none invite-submit">
               <button type="submit" class="btn btn-primary" :disabled="addingMember"
                       x-text="addingMember ? $t('common.sending') : $t('trip.sendInvite')"></button>
             </div>
@@ -250,7 +276,20 @@
                   </td>
                   <td class="strong cell-title"><span x-text="destination.name"></span>
                     <template x-for="pill in travellerPills('destinations', destination.id)" :key="pill.text">
-                    <span class="badge badge-traveller" :title="pill.title" x-text="pill.text"></span>
+                    <span class="traveller-slot">
+                      <template x-if="pill.names">
+                        <span class="traveller-more" x-data="travellerMore(pill.names)" @click.outside="open = false"
+                              @keydown.escape="open = false" @focusout="focusMoved($event)">
+                          <button type="button" class="badge badge-traveller badge-traveller-more" :title="pill.title"
+                                  aria-haspopup="true" :aria-expanded="open" @click.stop="toggle($el)" x-text="pill.text"></button>
+                          <ul class="traveller-popup" x-show="open" x-cloak :style="popupStyle" @click.stop
+                              :aria-label="$t('scope.allTravellers')">
+                            <template x-for="name in names" :key="name"><li x-text="name"></li></template>
+                          </ul>
+                        </span>
+                      </template>
+                      <template x-if="!pill.names"><span class="badge badge-traveller" :title="pill.title" x-text="pill.text"></span></template>
+                    </span>
                   </template></td>
                   <td class="cell-chips">
                     <span class="chip" x-show="destination.countryCode">
@@ -336,14 +375,38 @@
         </p>-->
 
         <div class="toolbar">
-          <span class="toolbar-label" id="check-category-label" data-i18n="trip.category"></span>
-          <div class="chip-group" role="group" aria-labelledby="check-category-label">
+          <span class="toolbar-label" id="check-filter-label" data-i18n="trip.filter"></span>
+          <div class="chip-group filter-set" role="group" aria-labelledby="check-filter-label">
+            <!-- Any ticked category, narrowed to any ticked country. -->
+            <div class="chip-group" role="group" data-i18n-aria-label="trip.category">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
                       :aria-pressed="checkCategoryFilters.includes(cat.value)"
                       @click="toggleCategoryFilter(cat.value)">
                 <span x-text="cat.icon"></span><span x-text="cat.label"></span>
               </button>
+            </template>
+            </div>
+            <span class="chip-divider" aria-hidden="true" x-show="tripCountries.length > 1" x-cloak></span>
+            <div class="chip-group" role="group" data-i18n-aria-label="trip.country" x-show="tripCountries.length > 1" x-cloak>
+            <template x-for="country in (tripCountries.length > 1 ? tripCountries : [])" :key="country.code">
+              <button type="button" class="chip"
+                      :aria-pressed="checkActiveCountries.includes(country.code)"
+                      @click="toggleCheckCountry(country.code)" x-text="country.label"></button>
+            </template>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Status, then Group by, on one line. -->
+        <div class="toolbar">
+          <span class="toolbar-label" id="check-status-label" data-i18n="trip.status"></span>
+          <div class="chip-group" role="group" aria-labelledby="check-status-label">
+            <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
+              <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
+                      @click="checkStatusFilter = option"
+                      x-text="option === 'ALL' ? $t('common.all') : (option === 'TODO' ? $t('trip.toDo') : $t('trip.completed'))"></button>
             </template>
           </div>
 
@@ -354,17 +417,6 @@
                       :aria-pressed="checkGroupBy === option.value"
                       @click="checkGroupBy = option.value"
                       x-text="option.label"></button>
-            </template>
-          </div>
-        </div>
-
-        <div class="toolbar">
-          <span class="toolbar-label" id="check-status-label" data-i18n="trip.status"></span>
-          <div class="chip-group" role="group" aria-labelledby="check-status-label">
-            <template x-for="option in ['ALL', 'TODO', 'COMPLETED']" :key="option">
-              <button type="button" class="chip" :aria-pressed="checkStatusFilter === option"
-                      @click="checkStatusFilter = option"
-                      x-text="option === 'ALL' ? $t('common.all') : (option === 'TODO' ? $t('trip.toDo') : $t('trip.completed'))"></button>
             </template>
           </div>
         </div>
@@ -405,9 +457,31 @@
                         @click="openChecklistItem(item)">
                 <span class="check-main">
                   <span class="check-text" x-text="item.description"></span>
-                  <template x-for="name in travellerNameList('checklist', item.id)" :key="name">
-                    <span class="badge badge-traveller" x-text="'👥 ' + name"></span>
-                  </template>
+                  <span class="check-travellers">
+                    <span class="traveller-full">
+                      <template x-for="name in travellerNameList('checklist', item.id)" :key="name">
+                        <span class="badge badge-traveller" x-text="'👥 ' + name"></span>
+                      </template>
+                    </span>
+                    <span class="traveller-compact">
+                      <template x-for="pill in travellerPills('checklist', item.id)" :key="pill.text">
+                        <span class="traveller-slot">
+                      <template x-if="pill.names">
+                        <span class="traveller-more" x-data="travellerMore(pill.names)" @click.outside="open = false"
+                              @keydown.escape="open = false" @focusout="focusMoved($event)">
+                          <button type="button" class="badge badge-traveller badge-traveller-more" :title="pill.title"
+                                  aria-haspopup="true" :aria-expanded="open" @click.stop="toggle($el)" x-text="pill.text"></button>
+                          <ul class="traveller-popup" x-show="open" x-cloak :style="popupStyle" @click.stop
+                              :aria-label="$t('scope.allTravellers')">
+                            <template x-for="name in names" :key="name"><li x-text="name"></li></template>
+                          </ul>
+                        </span>
+                      </template>
+                      <template x-if="!pill.names"><span class="badge badge-traveller" :title="pill.title" x-text="pill.text"></span></template>
+                        </span>
+                      </template>
+                    </span>
+                  </span>
                   <span class="check-tags">
                     <span class="chip">
                       <span x-text="categoryOf(item.category).icon"></span>
@@ -458,9 +532,16 @@
           <button type="button" class="btn btn-ghost btn-sm" @click="setScope('trip')">Show whole trip</button>
         </p>-->
 
+        <!-- Categories and countries in one row, because to the reader they
+             are both "what am I looking for". They still combine the way two
+             kinds should: any of the ticked categories, narrowed to any of the
+             ticked countries (see filteredItinerary). The divider and the
+             icons-versus-flags are what tell the two kinds apart. -->
         <div class="toolbar">
-          <span class="toolbar-label" id="itin-category-label" data-i18n="trip.category"></span>
-          <div class="chip-group" role="group" aria-labelledby="itin-category-label">
+          <span class="toolbar-label" id="itin-filter-label" data-i18n="trip.filter"></span>
+          <div class="chip-group filter-set" role="group" aria-labelledby="itin-filter-label">
+            <!-- Any ticked category, narrowed to any ticked country. -->
+            <div class="chip-group" role="group" data-i18n-aria-label="trip.category">
             <template x-for="cat in categories" :key="cat.value">
               <button type="button" class="chip"
                       :aria-pressed="itinCategoryFilters.includes(cat.value)"
@@ -468,6 +549,15 @@
                 <span x-text="cat.icon"></span><span x-text="cat.label"></span>
               </button>
             </template>
+            </div>
+            <span class="chip-divider" aria-hidden="true" x-show="tripCountries.length > 1" x-cloak></span>
+            <div class="chip-group" role="group" data-i18n-aria-label="trip.country" x-show="tripCountries.length > 1" x-cloak>
+            <template x-for="country in (tripCountries.length > 1 ? tripCountries : [])" :key="country.code">
+              <button type="button" class="chip"
+                      :aria-pressed="itinActiveCountries.includes(country.code)"
+                      @click="toggleItinCountry(country.code)" x-text="country.label"></button>
+            </template>
+            </div>
           </div>
         </div>
         <div class="toolbar">
@@ -499,6 +589,9 @@
           <p class="empty-body" data-i18n="trip.openAChecklistItem"></p>
           <button type="button" class="btn btn-primary" @click="openAddEntry()" data-i18n="trip.addAnEntry"></button>
         </div>
+
+        <p class="small muted" data-i18n="trip.nothingMatchesThoseFilters"
+           x-show="(itinActiveCountries.length || itinCategoryFilters.length) && !itineraryDays.length && (scopedItinerary.length || weatherDays.length)" x-cloak></p>
 
         <div class="empty-state" x-show="itinShow === 'WEATHER' && !filteredWeather.length
                                          && !weatherLoading">
@@ -597,9 +690,29 @@
 
                     <div class="timeline-tags" x-show="entry.item.flight || travellerNameList('itinerary', entry.item.id).length" x-cloak>
                       <template x-for="pill in flightPills(entry.item.flight)" :key="pill"><span class="chip" x-text="pill"></span></template>
-                      <template x-for="name in travellerNameList('itinerary', entry.item.id)" :key="name">
-                        <span class="badge badge-traveller" x-text="'👥 ' + name"></span>
+                      <span class="traveller-full">
+                        <template x-for="name in travellerNameList('itinerary', entry.item.id)" :key="name">
+                          <span class="badge badge-traveller" x-text="'👥 ' + name"></span>
+                        </template>
+                      </span>
+                      <span class="traveller-compact">
+                        <template x-for="pill in travellerPills('itinerary', entry.item.id)" :key="pill.text">
+                          <span class="traveller-slot">
+                      <template x-if="pill.names">
+                        <span class="traveller-more" x-data="travellerMore(pill.names)" @click.outside="open = false"
+                              @keydown.escape="open = false" @focusout="focusMoved($event)">
+                          <button type="button" class="badge badge-traveller badge-traveller-more" :title="pill.title"
+                                  aria-haspopup="true" :aria-expanded="open" @click.stop="toggle($el)" x-text="pill.text"></button>
+                          <ul class="traveller-popup" x-show="open" x-cloak :style="popupStyle" @click.stop
+                              :aria-label="$t('scope.allTravellers')">
+                            <template x-for="name in names" :key="name"><li x-text="name"></li></template>
+                          </ul>
+                        </span>
                       </template>
+                      <template x-if="!pill.names"><span class="badge badge-traveller" :title="pill.title" x-text="pill.text"></span></template>
+                          </span>
+                        </template>
+                      </span>
                     </div>
                     <!-- The category reads as one icon-and-label chip here too,
                          the way the checklist and budget rows show it. -->
@@ -624,7 +737,7 @@
                     <button type="button" class="btn btn-sm btn-primary" x-show="canApprove(entry.item)"
                             @click="toggleApprove(entry.item)"
                             :aria-label="$t(hasApproved(entry.item) ? 'itinerary.undoApproveNamed' : 'itinerary.approveNamed', { name: entry.item.description })"
-                            x-text="hasApproved(entry.item) ? $t('trip.undo') : $t('itinerary.approve')"></button>
+                            x-text="hasApproved(entry.item) ? $t('itinerary.undoApprove') : $t('itinerary.approve')"></button>
                   </span>
                 </div>
               </template>
@@ -651,29 +764,27 @@
           </div>
         </div>
 
-        <div class="toolbar">
-          <span class="toolbar-label" id="budget-category-label" data-i18n="trip.category"></span>
-          <div class="chip-group" role="group" aria-labelledby="budget-category-label">
-            <template x-for="cat in categories" :key="cat.value">
-              <button type="button" class="chip"
-                      :aria-pressed="budgetCategoryFilters.includes(cat.value)"
-                      @click="toggleBudgetCategory(cat.value)">
-                <span x-text="cat.icon"></span><span x-text="cat.label"></span>
-              </button>
-            </template>
-          </div>
-          <!-- One at a time, and it narrows the table only: the figures above
-               it follow Group By, not this. -->
-          <span class="toolbar-label" id="budget-status-label" data-i18n="trip.status"></span>
-          <div class="chip-group" role="group" aria-labelledby="budget-status-label">
-            <template x-for="option in ['ALL', 'CHARGED', 'PENDING']" :key="option">
-              <button type="button" class="chip" :aria-pressed="budgetStatusFilter === option"
-                      @click="setBudgetStatusFilter(option)"
-                      x-text="option === 'ALL' ? $t('common.all') : (option === 'CHARGED' ? $t('trip.charged') : $t('trip.pending'))"></button>
-            </template>
-          </div>
+        <!-- Follows what the table lists rather than what the trip holds: a
+             member who shares none of its expenses has an empty budget, even
+             on a trip full of other people's. -->
+        <div class="empty-state" x-show="!myBudgetItems.length">
+          <div class="empty-icon">💳</div>
+          <h3 class="empty-title" x-text="budget.items.length ? $t('trip.noBillsForYou') : $t('trip.herdHasNotSpent')"></h3>
+          <p class="empty-body" x-show="!budget.items.length" data-i18n="trip.putACostOn"></p>
+          <p class="empty-body" x-show="budget.items.length" data-i18n="trip.thisTripHasExpenses"></p>
+          <button type="button" class="btn btn-primary" @click="openAddExpense()" data-i18n="trip.addAnExpense"></button>
         </div>
-        <div class="toolbar">
+
+        <div x-show="myBudgetItems.length">
+          <!-- A closed card with one line, until it is opened. -->
+          <div class="card budget-breakdown-card" style="margin-bottom:16px">
+            <button type="button" class="budget-breakdown-toggle" :aria-expanded="budgetBreakdownOpen"
+                    aria-controls="budget-breakdown-body" @click="budgetBreakdownOpen = !budgetBreakdownOpen">
+              <span x-text="budgetBreakdownOpen ? $t('trip.budgetBreakdown') : $t('trip.seeBudgetBreakdown')"></span>
+              <span class="budget-breakdown-sign" aria-hidden="true" x-text="budgetBreakdownOpen ? '−' : '+'"></span>
+            </button>
+            <div id="budget-breakdown-body" x-show="budgetBreakdownOpen" x-cloak>
+          <div class="toolbar">
           <!-- One at a time, unlike the Category filter beside it: these are
                four views of the same money, not four things to combine. The two
                Forecast ones count the expenses nobody has paid yet alongside
@@ -690,19 +801,6 @@
           </div>
         </div>
 
-        <!-- Follows what the table lists rather than what the trip holds: a
-             member who shares none of its expenses has an empty budget, even
-             on a trip full of other people's. -->
-        <div class="empty-state" x-show="!myBudgetItems.length">
-          <div class="empty-icon">💳</div>
-          <h3 class="empty-title" x-text="budget.items.length ? $t('trip.noBillsForYou') : $t('trip.herdHasNotSpent')"></h3>
-          <p class="empty-body" x-show="!budget.items.length" data-i18n="trip.putACostOn"></p>
-          <p class="empty-body" x-show="budget.items.length" data-i18n="trip.thisTripHasExpenses"></p>
-          <button type="button" class="btn btn-primary" @click="openAddExpense()" data-i18n="trip.addAnExpense"></button>
-        </div>
-
-        <div x-show="myBudgetItems.length">
-          <div class="card" style="margin-bottom:16px">
             <div class="budget-summary">
               <!-- Chart.js draws the pie; the library is vendored in
                    vendor/chart.umd.js, not fetched from a CDN. -->
@@ -752,6 +850,41 @@
                 </div>
               </div>
             </div>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <span class="toolbar-label" id="budget-filter-label" data-i18n="trip.filter"></span>
+          <div class="chip-group filter-set" role="group" aria-labelledby="budget-filter-label">
+            <!-- Any ticked category, narrowed to any ticked country. -->
+            <div class="chip-group" role="group" data-i18n-aria-label="trip.category">
+            <template x-for="cat in categories" :key="cat.value">
+              <button type="button" class="chip"
+                      :aria-pressed="budgetCategoryFilters.includes(cat.value)"
+                      @click="toggleBudgetCategory(cat.value)">
+                <span x-text="cat.icon"></span><span x-text="cat.label"></span>
+              </button>
+            </template>
+            </div>
+            <span class="chip-divider" aria-hidden="true" x-show="tripCountries.length > 1" x-cloak></span>
+            <div class="chip-group" role="group" data-i18n-aria-label="trip.country" x-show="tripCountries.length > 1" x-cloak>
+            <template x-for="country in (tripCountries.length > 1 ? tripCountries : [])" :key="country.code">
+              <button type="button" class="chip"
+                      :aria-pressed="budgetActiveCountries.includes(country.code)"
+                      @click="toggleBudgetCountry(country.code)" x-text="country.label"></button>
+            </template>
+            </div>
+          </div>
+          <!-- One at a time, and it narrows the table only: the figures above
+                 it follow Group By, not this. -->
+            <span class="toolbar-label" id="budget-status-label" data-i18n="trip.status"></span>
+            <div class="chip-group" role="group" aria-labelledby="budget-status-label">
+              <template x-for="option in ['ALL', 'CHARGED', 'PENDING']" :key="option">
+                <button type="button" class="chip" :aria-pressed="budgetStatusFilter === option"
+                        @click="setBudgetStatusFilter(option)"
+                        x-text="option === 'ALL' ? $t('common.all') : (option === 'CHARGED' ? $t('trip.charged') : $t('trip.pending'))"></button>
+              </template>
+            </div>
           </div>
 
           <p class="small muted" x-show="!filteredBudgetItems.length" data-i18n="trip.nothingMatchesThoseFilters"></p>
@@ -796,9 +929,13 @@
                          own currency, because they are rarely the same one:
                          the amount is what was spent, the share is converted. -->
                     <td class="num" data-label="Amount">
-                      <div x-text="fmt(item.amount, item.currency)"></div>
-                      <div class="cell-emphasis tiny" x-show="isSplit(item)"
-                           x-text="$t('trip.sharedAmount', { amount: convertedShareOf(item) == null ? '—' : fmt(convertedShareOf(item), budget.totalsCurrency) })"></div>
+                      <!-- One block, so on a phone the share drops under the
+                           amount instead of squeezing the label beside it. -->
+                      <span class="cell-stack">
+                        <div x-text="fmt(item.amount, item.currency)"></div>
+                        <div class="cell-emphasis tiny" x-show="isSplit(item)"
+                             x-text="$t('trip.sharedAmount', { amount: convertedShareOf(item) == null ? '—' : fmt(convertedShareOf(item), budget.totalsCurrency) })"></div>
+                      </span>
                     </td>
                     <!-- Who put the money down. Informational only: the share
                          beside it is decided by "Shared by" alone. -->
@@ -809,8 +946,10 @@
                       <span class="chip" :class="item.status === 'PENDING' ? 'chip-pending' : 'chip-charged'"
                             x-text="statusLabel(item)"></span>
                     </td>
-                    <td class="muted" data-label="Date" x-text="expenseDate(item)"></td>
-                    <td class="tiny muted" data-label="Source">
+                    <!-- On a phone a card leaves out a row that says nothing: no date, or
+                         a source of "Manual" (which is what every typed-in expense is). -->
+                    <td class="muted" data-label="Date" :class="item.date ? '' : 'cell-quiet'" x-text="expenseDate(item)"></td>
+                    <td class="tiny muted" data-label="Source" :class="item.itineraryItemId ? '' : 'cell-quiet'">
                       <span x-show="item.itineraryItemId"
                             :title="sourcePlan(item)" data-i18n="trip.fromPlan"></span>
                       <span x-show="!item.itineraryItemId" data-i18n="trip.manual"></span>
@@ -931,7 +1070,7 @@
                   <span class="settle-line-amount" x-text="fmt(payment.amount, payment.currency)"></span>
                   <button type="button" class="btn btn-sm" x-show="canManagePayment(payment)"
                           @click="askDeletePayment(payment)"
-                          :aria-label="$t('trip.deletePaymentNamed', { name: settlePaymentLine(payment), amount: fmt(payment.amount, payment.currency) })" data-i18n="trip.undo"></button>
+                          :aria-label="$t('trip.deletePaymentNamed', { name: settlePaymentLine(payment), amount: fmt(payment.amount, payment.currency) })" data-i18n="trip.undoRecordedPayment"></button>
                 </li>
               </template>
             </ul>
@@ -1019,8 +1158,10 @@
                 <input id="request-note" x-model="requestNote"
                        data-i18n-placeholder="trip.placeholder.publishRequestNote">
               </div>
-              <button type="submit" class="btn btn-primary" :disabled="publishBusy"
-                      x-text="publishBusy ? $t('common.sending') : $t('trip.requestToPublish')"></button>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" :disabled="publishBusy"
+                        x-text="publishBusy ? $t('common.sending') : $t('trip.requestToPublish')"></button>
+              </div>
             </form>
           </template>
         </div>
@@ -1371,6 +1512,9 @@
               <!-- completion and deletion
               <div class="drawer-footer"> -->
               <div class="modal-footer">
+                <!-- Same path as ✕, Escape and the backdrop: asks first when
+                     there are unsaved edits. -->
+                <button type="button" class="btn" @click="requestCloseDrawer()" data-i18n="common.cancel"></button>
                 <!-- Planning a completed item is not a thing: reopen it first. -->
                 <button type="button" class="btn"
                         x-show="!planOpen && openItem?.status !== 'COMPLETED'"

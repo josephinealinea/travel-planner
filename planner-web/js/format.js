@@ -65,10 +65,11 @@ export function dateRange(startIso, endIso) {
  * Only http(s) is linked, and trailing punctuation stays outside the link.
  * Parts are rendered as text, never as HTML.
  */
-export function linkParts(text) {
+export function linkParts(value) {
+  const text = String(value || '');
   const parts = [];
   let last = 0;
-  for (const m of String(text || '').matchAll(/https?:\/\/[^\s<>"]+/gi)) {
+  for (const m of text.matchAll(/https?:\/\/[^\s<>"]+/gi)) {
     const url = m[0].replace(/[.,;:!?)\]]+$/, '');
     if (m.index > last) parts.push({ text: text.slice(last, m.index) });
     parts.push({ text: url, url });

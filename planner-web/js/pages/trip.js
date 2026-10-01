@@ -396,6 +396,18 @@ export function tripPage() {
       this.openAddDestination();
     },
 
+    /**
+     * Jumps from "Needs review" to the Itinerary tab showing only what is
+     * pending, which is where Approve lives. Weather-only would hide the very
+     * entries being reviewed, so it is switched to the itinerary alone.
+     */
+    reviewFromOverview() {
+      this.selectTab('itinerary');
+      this.itinShowPending = true;
+      this.itinShowFinal = false;
+      if (this.itinShow === 'WEATHER') this.itinShow = 'ITINERARY';
+    },
+
     /** Jumps from the Overview shortcut straight into a checklist item's drawer. */
     planFromOverview(item) {
       this.selectTab('checklist');

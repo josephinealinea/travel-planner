@@ -526,7 +526,7 @@ a { color: var(--tp-accent); }
   padding: 1px 5px;
   border: 1px solid var(--tp-border);
   border-radius: 4px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -565,7 +565,7 @@ a { color: var(--tp-accent); }
 .theme-bar-label {
   margin-right: 2px;
   color: var(--tp-muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -597,6 +597,11 @@ a.dest-meta, .brand-footer a { display: inline-flex; align-items: center; min-he
 @media (max-width: 640px) {
   .theme-btn, .panel-btn { min-height: 44px; }
   a.dest-meta, .brand-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+  /* The pin link is a bare emoji: widen it, and make the place chips and the
+     flight reload a fingertip tall. The glyph and text stay the same size. */
+  a.dest-meta { min-width: 44px; justify-content: center; }
+  a.chip { display: inline-flex; align-items: center; min-height: 44px; }
+  .flight-refresh { min-height: 44px; min-width: 44px; padding: 0 8px; }
 }
 
 .flight-pills { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
@@ -604,7 +609,7 @@ a.dest-meta, .brand-footer a { display: inline-flex; align-items: center; min-he
 a.chip { text-decoration: none; }
 a.chip:hover, a.chip:focus-visible { text-decoration: underline; }
 .flight-refresh { background: none; border: 0; padding: 0 4px; font: inherit; color: inherit; cursor: pointer; }
-.flight-refresh-label { font-size: 0.85em; text-decoration: underline; }
+.flight-refresh-label { font-size: 0.9em; text-decoration: underline; }
 .flight-refresh:disabled { opacity: .5; cursor: default; }
 .flight-status:empty { display: none; }
 .flight-details { margin-top: 2px; }

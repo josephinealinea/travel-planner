@@ -11,6 +11,7 @@ import {
   detailChips, detailsTitle,
 } from '../../weather.js';
 import { t } from '../../i18n/index.js';
+import { activeCountries, touchesCountries, toggleCountry } from '../../country-filter.js';
 import { blankFlight, flightFromRecord } from './flight-lookup.js';
 
 /**
@@ -104,8 +105,17 @@ export function itineraryTab() {
   return {
     itinCategoryFilters: [],
 
+    // Countries ticked in the Country filter. Like the category chips it is a
+    // multi-select, and an entry shows when it touches any ticked country (one
+    // linked to several shows under each).
+    itinCountryFilters: [],
+
     // ALL | WEATHER | ITINERARY. Mirrors checkStatusFilter on the checklist.
-    itinShow: 'ALL',
+    // A phone opens on the itinerary alone: its day cards already carry each
+    // place's weather, and a screen of both is a long scroll. Wide screens open
+    // on All. Only the starting choice — resizing later does not change it, and
+    // the pills still switch freely. 768px is the layout's own phone breakpoint.
+    itinShow: window.matchMedia?.('(max-width: 767px)').matches ? 'ITINERARY' : 'ALL',
 
     // Final and Pending toggle independently, alongside itinShow's own
     // ALL/WEATHER/ITINERARY selector — see filteredItinerary.
@@ -133,6 +143,14 @@ export function itineraryTab() {
     itinBulkOpen: false,
     itinBulkBusy: false,
 
+    /**
+     * The ticked countries the trip still visits. A country dropped from the
+     * trip after being ticked must not keep filtering with a chip nobody can see.
+     */
+    get itinActiveCountries() {
+      return activeCountries(this.itinCountryFilters, this.tripCountries);
+    },
+
     get filteredItinerary() {
       // The category chips filter plans, so choosing "Weather only" leaves
       // nothing for them to act on — and a stale tick must not keep an entry
@@ -141,6 +159,8 @@ export function itineraryTab() {
       return this.scopedItinerary.filter((item) => {
         if (this.itinCategoryFilters.length
             && !this.itinCategoryFilters.includes(item.category)) return false;
+        const countries = this.itinActiveCountries;
+        if (!touchesCountries(item.countryCodes, countries)) return false;
         if (item.status === 'PENDING') return this.itinShowPending;
         return this.itinShowFinal;
       });
@@ -160,9 +180,14 @@ export function itineraryTab() {
       if (this.itinShow === 'ITINERARY') return [];
       // The lookup covers every destination whatever the view (one call per
       // trip); Mine only chooses which rows show.
-      if (!this.showingMine) return this.weatherDays;
       const mine = this.mine.destinationIds || [];
-      return this.weatherDays.filter((day) => !day.destinationId || mine.includes(day.destinationId));
+      const countries = this.itinActiveCountries;
+      return this.weatherDays.filter((day) => {
+        if (this.showingMine && day.destinationId && !mine.includes(day.destinationId)) return false;
+        // The weather is for a place, so it follows the Country filter too —
+        // Cusco's forecast under a Brazil-only view would be noise.
+        return !countries.length || countries.includes(day.countryCode);
+      });
     },
 
     /**
@@ -286,6 +311,10 @@ export function itineraryTab() {
       const index = this.itinCategoryFilters.indexOf(value);
       if (index >= 0) this.itinCategoryFilters.splice(index, 1);
       else this.itinCategoryFilters.push(value);
+    },
+
+    toggleItinCountry(code) {
+      toggleCountry(this.itinCountryFilters, code);
     },
 
     openAddEntry() {

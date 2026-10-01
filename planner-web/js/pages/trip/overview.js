@@ -30,12 +30,16 @@ export function overviewTab() {
       return days >= 0 ? countdownLabel(this.trip.startDate) : t('overview.past');
     },
 
-    /** The next few dated plans, so the tab opens on something useful. */
+    /**
+     * The next dated plans, so the tab opens on something useful. Ten rather
+     * than five: Needs planning and Needs review stack in the other column, so
+     * this one has the room to run down beside them.
+     */
     upNext() {
       const today = new Date().toISOString().slice(0, 10);
       return this.scopedItinerary
         .filter((item) => item.startAt && item.startAt.slice(0, 10) >= today)
-        .slice(0, 5);
+        .slice(0, 10);
     },
 
     /**
@@ -48,6 +52,18 @@ export function overviewTab() {
         this.scopedItinerary.map((item) => item.checklistItemId).filter(Boolean));
       return this.scopedChecklist
         .filter((item) => item.status === 'TODO' && !planned.has(item.id))
+        .slice(0, 8);
+    },
+
+    /**
+     * Itinerary entries still waiting for approval (status PENDING), soonest
+     * first and undated last — the other half of what the Overview exists to
+     * surface. Nothing here is stored: it is read off the entries as they are.
+     */
+    needsReview() {
+      return this.scopedItinerary
+        .filter((item) => item.status === 'PENDING')
+        .sort((a, b) => (a.startAt || '9999').localeCompare(b.startAt || '9999'))
         .slice(0, 8);
     },
 

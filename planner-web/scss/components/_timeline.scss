@@ -1,5 +1,6 @@
 @use "../abstracts/tokens" as t;
 @use "../abstracts/mixins" as m;
+@use "../abstracts/breakpoints" as bp;
 
 .timeline-day { margin-bottom: t.$space-5; }
 
@@ -36,6 +37,15 @@
   display: flex;
   align-items: flex-start;
   flex: none;
+}
+
+// A Pending entry carries a finalize button after its checkbox and a Final one
+// does not, so on a wide screen the time and description of a Pending row sat
+// 32px to the right of a Final row's whenever both were listed together. Every
+// entry reserves the wider cell (checkbox 20px + finalize button 32px) so the
+// columns line up. Phones stack the line differently and do not need it.
+@include m.from(bp.$bp-md) {
+  .timeline-checks { min-width: 52px; }
 }
 
 // The timeline row already supplies its own padding, so the checkbox cell
@@ -115,7 +125,9 @@
 }
 
 @include m.mobile {
-  .timeline-entry { flex-wrap: wrap; }
+  // The wrapped lines of one entry sit 4px apart; the 12px of a desktop row
+  // is between its columns, and on a phone it only opened gaps between lines.
+  .timeline-entry { flex-wrap: wrap; row-gap: t.$space-1; }
   .timeline-time { width: auto; }
   // Checkbox, time and Edit share the first line; the description block then
   // gets a full-width line of its own instead of being squeezed between them,
@@ -126,19 +138,18 @@
   .timeline-body { order: 3; flex: 1 1 100%; }
   .timeline-cost { order: 4; margin-left: auto; }
   // Negative margin grows the hit area to 44px without moving the layout.
-  .select-box-tight { padding: t.$space-3; margin: -#{t.$space-3}; }
+  .select-box-tight { padding: t.$space-3; margin: -#{t.$space-3}; min-width: 44px; min-height: 44px; box-sizing: border-box; }
   .check-status-tight { width: 44px; padding: t.$space-3 0; margin: -#{t.$space-3} 0; }
 
-  // A two-button-tall Edit+Approve column sharing order 2 with the (single-
-  // line) checkbox/time stretches that whole flex line to its height, leaving
-  // a blank gap between the header and the body that starts on the next
-  // line. Dropping the pair to their own line below the body avoids that.
+  // A Pending entry's Edit and Approve sit side by side on the first line,
+  // beside the checkbox and time, like a Final entry's Edit. They used to stack
+  // as a column, which made that line two buttons tall and left a gap beneath
+  // it, so they were dropped to a line of their own at the bottom. Side by side
+  // they are one button tall again and no longer need to be.
   .timeline-actions.timeline-actions-pending {
-    order: 5;
-    flex: 1 1 100%;
     flex-direction: row;
-    justify-content: flex-end;
-    margin-top: t.$space-2;
+    align-items: center;
+    gap: t.$space-1;
   }
 }
 

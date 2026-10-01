@@ -76,3 +76,8 @@
   }
   .modal-close { min-width: 44px; min-height: 44px; }
 }
+
+// A split footer (a checkbox on the left, Cancel and Save on the right) wraps
+// on a phone and drops the buttons to their own line, where they sat at the
+// left. `margin-left: auto` keeps them on the right whether or not it wraps.
+.modal-footer-split > .btn-row { margin-left: auto; justify-content: flex-end; }

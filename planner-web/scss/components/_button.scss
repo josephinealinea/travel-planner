@@ -77,10 +77,25 @@
 .btn-link:hover { text-decoration: underline; }
 .btn-link:focus-visible { @include m.focus-ring; }
 
-// Phones: 44px for every button, small per-row ones included.
+// Phones: 44px for every button; small per-row ones are hit at 44px.
 @include m.mobile {
   // A long label ("Deactivate and remove my data") wraps at large text rather
   // than running off the screen.
   .btn { min-height: 44px; max-width: 100%; white-space: normal; }
-  .btn-sm { min-height: 44px; }
+  // A small per-row button looks small (32px) and is still hit at 44px, by an
+  // invisible box above and below it, so a card is not stretched by its Edit.
+  .btn-sm {
+    position: relative;
+    min-height: 32px;
+    &::after { content: ""; position: absolute; inset: -7px 0; }
+  }
+}
+
+// The buttons that finish a form sit on the right, like the Cancel / Save pair
+// in every dialog. Phones only: on a wide screen a form's button stays under
+// its fields, where it has always been.
+@include m.mobile {
+  .form-actions { display: flex; justify-content: flex-end; gap: t.$space-2; flex-wrap: wrap; }
+  // A button that wrapped onto its own line beneath its field (Add currency).
+  .field-inline > .field.flex-none { margin-left: auto; }
 }

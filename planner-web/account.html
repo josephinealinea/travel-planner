@@ -52,18 +52,18 @@
           <ul class="autocomplete-list" id="homeCountryList" role="listbox" hidden></ul>
           <p class="field-hint" data-i18n="account.shownBesideYourName"></p>
         </div>
-        <div class="btn-row">
+        <div class="btn-row form-actions">
           <button type="submit" class="btn btn-primary" id="save-profile" data-i18n="account.saveProfile"></button>
         </div>
         <!-- Its own row, apart from Save: a destructive action should not sit
              beside the primary one where a fingertip can hit either. -->
-        <div class="danger-zone">
+        <div class="danger-zone form-actions">
           <button type="button" class="btn btn-danger" id="remove-email" data-i18n="account.deactivateAndRemoveMy"></button>
         </div>
       </form>
       <div id="remove-email-confirm" class="alert alert-warning" role="alert" hidden>
         <p class="small" data-i18n="account.thisRemovesYourEmail"></p>
-        <div class="btn-row">
+        <div class="btn-row form-actions">
           <button type="button" class="btn btn-danger" id="confirm-remove-email" data-i18n="account.yesRemoveMyData"></button>
           <button type="button" class="btn" id="cancel-remove-email" data-i18n="common.cancel"></button>
         </div>
@@ -98,7 +98,9 @@
           </div>
           <p class="field-error" id="mismatch" hidden data-i18n="account.passwordsDoNotMatch"></p>
         </div>
-        <button type="submit" class="btn btn-primary" id="save-password" data-i18n="account.changePassword"></button>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="save-password" data-i18n="account.changePassword"></button>
+        </div>
       </form>
     </section>
 
@@ -166,7 +168,9 @@
         <p class="field-hint" data-i18n="account.theAmountPresentedIs"></p>
       </div>
 
-      <button type="button" class="btn btn-primary" id="save-currencies" data-i18n="account.saveCurrencies"></button>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="save-currencies" data-i18n="account.saveCurrencies"></button>
+      </div>
     </section>
   </div>
 </main>

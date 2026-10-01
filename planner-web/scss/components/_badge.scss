@@ -26,8 +26,8 @@
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding: 2px 9px;
-  font-size: 0.8125rem;
+  padding: 1px 8px;
+  font-size: 0.8rem;
   color: var(--tp-muted);
   background: var(--tp-surface-alt);
   border: 1px solid var(--tp-border);
@@ -106,9 +106,38 @@ button.chip:disabled {
   flex: none;
 }
 
-// Phones: filter chips are tapped, not clicked. 44px is the touch minimum; a
-// row of chips may wrap onto more lines, which beats a mis-tap.
+// Phones: every pill is 28px to look at and 44px to hit — the size of the badges
+// and chips around it, not a finger-sized lozenge. The extra 8px above and below
+// is an invisible box (-9px from the padding box, inside the 1px border). With an
+// 8px row gap, the box of one row meets the next row's pill without overlapping
+// it, so a tap on a pill always lands on that pill.
 @include m.mobile {
-  button.chip { min-height: 44px; padding: 6px 14px; }
   .chip-group { gap: t.$space-2; }
+  button.chip {
+    position: relative;
+    min-height: 28px;
+    padding: 3px 11px;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    &::after { content: ""; position: absolute; inset: -9px 0; }
+  }
+}
+
+// A filter row that holds two kinds of pill (categories, then countries): two
+// groups side by side with a thin rule between them. On a phone the rule goes
+// and each group takes its own full line, so the gap between them is the same 8px
+// as between any two rows of pills.
+.filter-set { gap: t.$space-1 t.$space-2; align-items: center; }
+
+.chip-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 t.$space-1;
+  background: var(--tp-border);
+}
+
+@include m.mobile {
+  .filter-set { align-items: flex-start; row-gap: t.$space-2; }
+  .filter-set > .chip-group { flex: 1 1 100%; }
+  .chip-divider { display: none; }
 }

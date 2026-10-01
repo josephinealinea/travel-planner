@@ -6,6 +6,7 @@ import { countryName, countryFlag } from '../../countries.js';
 import { toggleSharer, shareWithEveryone, sharedWithEveryone, choosePayer, chargedToggled, sharersOfTrip } from '../../member-picker.js';
 import { savedBudgetPageSize } from '../../page-size.js';
 import { t } from '../../i18n/index.js';
+import { activeCountries, touchesCountries, toggleCountry } from '../../country-filter.js';
 
 /**
  * Colours for the country pie/bars, cycled by rank. Countries are not a fixed
@@ -72,6 +73,9 @@ export function budgetTab() {
 
     // filtering
     budgetCategoryFilters: [],
+    // Ticked countries. Narrows the table only, like the other filters: the
+    // breakdown above has its own Group by Country for per-country totals.
+    budgetCountryFilters: [],
     budgetStatusFilter: 'ALL',
 
     // paging — the size is read once, when the trip page loads
@@ -92,6 +96,9 @@ export function budgetTab() {
      * the legend as much as the pie, and a name claiming otherwise is how the
      * four come apart again.
      */
+    // The pie and Group by sit in a card that starts closed: the list is what
+    // most visits are for, and the total's breakdown is one tap away.
+    budgetBreakdownOpen: false,
     budgetShow: 'category',
 
     /**
@@ -146,10 +153,20 @@ export function budgetTab() {
       return (this.budget.items || []).filter((item) => shares[item.id] != null);
     },
 
+    get budgetActiveCountries() {
+      return activeCountries(this.budgetCountryFilters, this.tripCountries);
+    },
+
+    toggleBudgetCountry(code) {
+      toggleCountry(this.budgetCountryFilters, code);
+    },
+
     get filteredBudgetItems() {
       // Pending is the only status that is not a charge; a row with none reads
       // as charged, like everywhere else.
+      const countries = this.budgetActiveCountries;
       return this.myBudgetItems.filter((item) => {
+        if (!touchesCountries(item.countryCodes, countries)) return false;
         if (this.budgetCategoryFilters.length
             && !this.budgetCategoryFilters.includes(item.category)) return false;
         if (this.budgetStatusFilter === 'CHARGED' && item.status === 'PENDING') return false;
@@ -292,12 +309,15 @@ export function budgetTab() {
       }));
       const currency = this.budget.totalsCurrency;
       const onBudgetTab = this.tab === 'budget';
+      // Read here so opening the card re-runs this effect: a chart built while
+      // its canvas was hidden would have no size to draw into.
+      const open = this.budgetBreakdownOpen;
 
       requestAnimationFrame(() => {
         if (pie) { pie.destroy(); pie = null; }
 
         const canvas = this.$refs.budgetPie;
-        if (!onBudgetTab || !slices.length || !canvas || typeof Chart === 'undefined') return;
+        if (!open || !onBudgetTab || !slices.length || !canvas || typeof Chart === 'undefined') return;
 
         pie = new Chart(canvas, {
           type: 'pie',

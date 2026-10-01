@@ -116,7 +116,9 @@
 
   .table.table-cards .select-cell input { width: 20px; height: 20px; }
   .table.table-cards .select-hit { min-width: 44px; min-height: 44px; }
-  .table.table-cards td a { display: inline-flex; align-items: center; min-height: 44px; }
+  // A link in a card is a line of text to look at, and 44px to hit.
+  .table.table-cards td a { position: relative; display: inline-block; }
+  .table.table-cards td a::after { content: ""; position: absolute; inset: -12px 0; }
 
   .table.table-cards .cell-title { grid-row: 1; font-weight: 600; }
   .table.table-cards .cell-chips { margin: t.$space-1 0; }
@@ -138,7 +140,18 @@
   .table.table-cards td[data-label]::before {
     content: attr(data-label);
     color: var(--tp-muted);
+    // A label is never the thing that gives way: "Amoun / t" is what a long
+    // value beside it used to cause.
+    flex: none;
   }
+
+  // Several lines of value (an amount and its share) stay one block on the
+  // right, one line under the other.
+  .table.table-cards .cell-stack { display: block; min-width: 0; text-align: right; }
+
+  // A row that says nothing is left out of the card (an expense with no date,
+  // or "Source: Manual"). Phones only: the desktop table keeps its columns.
+  .table.table-cards td.cell-quiet { display: none; }
 
   .table.table-cards .cell-emphasis { font-weight: 600; color: var(--tp-text); }
 
@@ -163,6 +176,20 @@
   // jumping to the left edge below a right-aligned figure.
   .settle .table.table-cards.table-cards-plain .actions {
     text-align: right;
+  }
+
+  // …and it sits on the first line, beside the name, the way Edit does on the
+  // other cards, instead of at the foot of the card below the figures.
+  .settle .table.table-cards.table-cards-plain tbody tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .settle .table.table-cards.table-cards-plain td { grid-column: 1 / -1; }
+  .settle .table.table-cards.table-cards-plain .cell-title { grid-column: 1; grid-row: 1; }
+  .settle .table.table-cards.table-cards-plain .actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin-top: 0;
+    align-self: start;
   }
 }
 
