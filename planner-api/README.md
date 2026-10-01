@@ -190,16 +190,19 @@ is expanded at the moment `.env.local` is read. A file that does not exist only
 prints an error and the run carries on without it. More run variants (database
 mode, no email) are in the [root README](../README.md).
 
-#### Store a key in Secret Manager for Cloud Run (example: AeroDataBox)
+#### Preview the Cloud Run secrets bundle (reads Google, writes nothing)
 ```bash
-cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATABOX_KEY" | gcloud secrets create aerodatabox-key --data-file=- --replication-policy=automatic --project=travellingllama)
+cd planner-api && ./secrets-bundle.sh
+```
+#### Write the bundle: every key from the `.env.*` files into one Secret Manager secret
+```bash
+cd planner-api && ./secrets-bundle.sh --apply
 ```
 
-The same pattern stores the others (`aviationstack-key`, `db-password`,
-`r2-secret-access-key`, `smtp-password`) and rotating a key is a
-`gcloud secrets versions add ...` from the same file. `./deploy.sh` attaches the
-secrets that exist. The full list and the rotation commands are in
-[deploy.md](../docs/deploy/deploy.md).
+All Cloud Run secrets live in one secret, `travel-planner-secrets`, which the
+deploy mounts as a file. Rotating a key is: edit its `.env.*` file, run `--apply`,
+then redeploy. The full explanation and the migration steps are in
+[deploy.md](../docs/deploy/deploy.md) Part 5.
 
 ## Auth
 

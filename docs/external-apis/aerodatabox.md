@@ -13,7 +13,7 @@ terminal, status and aircraft.
 - **Base URL:** `https://aerodatabox.p.rapidapi.com` (`app.flights.aerodatabox.base-url`).
 - **Auth:** RapidAPI headers `X-RapidAPI-Key` (the key, the environment variable
   `AERODATABOX_KEY`: locally from `planner-api/.env.aerodatabox`, on Cloud Run from
-  the Secret Manager secret `aerodatabox-key`) and `X-RapidAPI-Host` (the base URL's
+  the `AERODATABOX_KEY` line of the `travel-planner-secrets` bundle) and `X-RapidAPI-Host` (the base URL's
   own host). No key means the service is off, not that the app fails. The key is
   the only environment setting; every other value below is a plain property in
   `application.yml` under `app.flights`, changed by editing the file and redeploying.

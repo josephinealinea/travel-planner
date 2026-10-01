@@ -6,7 +6,9 @@ runbook for rebuilding it from scratch and for everyday redeploys.
 
 It was first set up on **19 September 2026**. The reasoning behind each design
 decision is in `../../.claude/plans/2026-09-18-postgres-and-cloud-run.md`, and
-[free-tier-usage.md](external-apis/free-tier-usage.md) covers keeping it free.
+[free-tier-usage.md](../external-apis/free-tier-usage.md) covers keeping it free.
+Starting a second app on the same accounts and domain? Read
+[new-app-blueprint.md](new-app-blueprint.md) first.
 
 ---
 
@@ -122,7 +124,7 @@ service's key; `.env.deploy` alone holds settings, none of them secret:
 | `.env.neon` | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Part 2 |
 | `.env.r2` | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Part 4 |
 | `.env.deploy` | Project, region, domain, image tag, app settings (no secrets) | Part 7 |
-| `.env.resend` | `RESEND_API_KEY`, only needed once, to store it in Secret Manager | Part 11 |
+| `.env.resend` | `RESEND_API_KEY`, copied into the secrets bundle as `SMTP_PASSWORD` | Part 11 |
 | `.env.aerodatabox` | `AERODATABOX_KEY` (the RapidAPI key), optional: switches on flight lookup | Part 5 |
 | `.env.aviationstack` | `AVIATIONSTACK_KEY`, optional: codeshares and live gate/delay | Part 5 |
 | `.env.newsdata` | `NEWSDATA_KEY`, optional: switches on Llama Lookout's NewsData.io provider | Part 5 |
@@ -261,164 +263,161 @@ URL, `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
 
 ## Part 5: Secrets (Google Secret Manager)
 
-The API needs four secrets. Cloud Run reads them from Secret Manager at start,
-so they never sit in the service's settings, in git or in the image.
+Every secret lives in **one** Secret Manager secret, `travel-planner-secrets`,
+a Java properties file:
 
-| Secret | What it is | Where it comes from |
-|---|---|---|
-| `jwt-secret` | Signs login sessions | Generated at random |
-| `proxy-secret` | The header only the Cloudflare proxy knows | Generated at random |
-| `db-password` | Neon password | `.env.neon` |
-| `r2-secret-access-key` | R2 key | `.env.r2` |
+```
+JWT_SECRET=...
+PROXY_SECRET=...
+DB_PASSWORD=...
+R2_SECRET_ACCESS_KEY=...
+SMTP_PASSWORD=...          # only with MAIL_MODE=smtp
+AERODATABOX_KEY=...        # optional keys: a missing one leaves that service off
+AVIATIONSTACK_KEY=...
+NEWSDATA_KEY=...
+NEWSCURRENTS_KEY=...
+```
 
-A fifth, `smtp-password`, is added in Part 11 when real email is switched on.
+Cloud Run **mounts** it as the file `/secrets/app.properties`, and `deploy.sh`
+sets `SPRING_CONFIG_IMPORT=file:/secrets/app.properties`, so Spring reads it. The
+`${JWT_SECRET:}`-style placeholders in `application.yml` resolve from it the way
+they did from environment variables, and no Java changed
+(`SecretsBundleStartupTest` pins it). Nothing sits in the service's settings, in
+git or in the image.
 
-Two optional ones, `aerodatabox-key` and `aviationstack-key`, switch on flight
-lookup. Without them the deploy still works and lookups answer "unavailable"; the
-script attaches each only if it exists. The creation commands are below, after
-Secret Manager is switched on. See [aerodatabox.md](../external-apis/aerodatabox.md)
-and [aviationstack.md](../external-apis/aviationstack.md).
+**Why one secret.** Secret Manager charges per *active version* once past six
+free ones. Nine one-version secrets cost a few cents a month and a second app
+would add more; one bundle per app is one version. Every older version is
+**disabled** after a write, not deleted, so one version is billed and a bad one
+can be rolled back by re-enabling its predecessor.
 
-Two more, `newsdata-key` and `newscurrents-key`, switch on Llama Lookout's two
-news providers the same way — without one, that provider is simply off and
-contributes no articles; the script attaches each only if it exists. See
-[newsdata.md](../external-apis/newsdata.md) and
-[currents.md](../external-apis/currents.md).
+**Where each value comes from.** `planner-api/secrets-bundle.sh` assembles it:
 
-**How flight lookup reaches Cloud Run.** The keys are the only part of it that is
-an environment setting: each lives in Secret Manager, and `deploy.sh` attaches
-it to the service as the environment variable `AERODATABOX_KEY` or
-`AVIATIONSTACK_KEY`. Nothing else about flights goes in `.env.deploy`. The
-tunables (monthly limits, cap percentages, TTLs, the prewarm schedule, the public
-refresh window and the circuit breaker under `app.circuit-breaker`) are plain
-values in `planner-api/src/main/resources/application.yml` and ship with the
-image. To change one, edit the yml, bump `IMAGE_TAG` in `.env.deploy` and run
-`./deploy.sh`. That is the standard route. Spring's relaxed binding would also
-read an environment variable such as `APP_CIRCUIT_BREAKER_FAILURE_THRESHOLD` set
-by hand on the service (`gcloud run services update --update-env-vars`), but such
-an override lasts only until the next `./deploy.sh`: the script writes a fixed
-list of variables and `--env-vars-file` replaces all of them on every deploy.
+| Key | Source |
+|---|---|
+| `JWT_SECRET`, `PROXY_SECRET` | Generated at random the first time, then kept from the bundle |
+| `DB_PASSWORD` | `.env.neon` |
+| `R2_SECRET_ACCESS_KEY` | `.env.r2` |
+| `SMTP_PASSWORD` | `RESEND_API_KEY` in `.env.resend` (Part 11) |
+| `AERODATABOX_KEY`, `AVIATIONSTACK_KEY` | `.env.aerodatabox`, `.env.aviationstack` (optional) |
+| `NEWSDATA_KEY`, `NEWSCURRENTS_KEY` | `.env.newsdata`, `.env.newscurrents` (optional) |
+
+Each optional file is one line, for example `AERODATABOX_KEY='<your RapidAPI key>'`,
+created private from the start:
+
+#### Create a key file, private from the start (example: AeroDataBox)
+```bash
+cd planner-api && touch .env.aerodatabox && chmod 600 .env.aerodatabox && open -e .env.aerodatabox
+```
+
+Values already in the bundle are kept, so changing one file never drops the
+others. The script prints only key names, where each came from and its length.
+It refuses a value with a line break or `${` in it.
 
 #### Turn on Secret Manager
 ```bash
 gcloud services enable secretmanager.googleapis.com --project=travellingllama
 ```
-#### Create the login-signing secret
+#### Preview the bundle (reads Google, writes nothing)
 ```bash
-openssl rand -base64 48 | tr -d '\n' | gcloud secrets create jwt-secret --data-file=- --replication-policy=automatic --project=travellingllama
+cd planner-api && ./secrets-bundle.sh
 ```
-#### Create the proxy secret
+#### Write the bundle (creates it, or adds a version and disables the older ones)
 ```bash
-openssl rand -base64 32 | tr -d '\n' | gcloud secrets create proxy-secret --data-file=- --replication-policy=automatic --project=travellingllama
-```
-#### Store the Neon password, read from .env.neon
-```bash
-cd planner-api && (set -a; . ./.env.neon; set +a; printf '%s' "$DB_PASSWORD" | gcloud secrets create db-password --data-file=- --replication-policy=automatic --project=travellingllama)
-```
-#### Store the R2 key, read from .env.r2
-```bash
-cd planner-api && (set -a; . ./.env.r2; set +a; printf '%s' "$R2_SECRET_ACCESS_KEY" | gcloud secrets create r2-secret-access-key --data-file=- --replication-policy=automatic --project=travellingllama)
+cd planner-api && ./secrets-bundle.sh --apply
 ```
 
-The two flight keys are optional. Each goes in its own private file first, one
-line: `AERODATABOX_KEY='<your RapidAPI key>'` in `.env.aerodatabox`, and
-`AVIATIONSTACK_KEY='<your key>'` in `.env.aviationstack`.
+**Migrating from the old per-key secrets.** When no bundle exists yet, the
+script reads the old secrets (`jwt-secret`, `proxy-secret`, `db-password`,
+`r2-secret-access-key`, `smtp-password`, `aerodatabox-key`, `aviationstack-key`,
+`newsdata-key`, `newscurrents-key`) so the generated values carry over and
+nobody is logged out. Then, in this order:
 
-#### Create the AeroDataBox key file, private from the start
+1. `./secrets-bundle.sh --apply`
+2. `cd planner-api && ./deploy.sh` (it checks the bundle holds every required key)
+3. Open the site, sign in, and check the API logs for errors
+4. Only then retire the old secrets. **Old Cloud Run revisions still point at
+   them**, so deleting them first would break a rollback to the previous
+   revision. Disable first, delete later:
+
+#### Disable an old secret's versions once the new revision is trusted (repeat per secret)
 ```bash
-cd planner-api && touch .env.aerodatabox && chmod 600 .env.aerodatabox && open -e .env.aerodatabox
-```
-#### Create the AviationStack key file, private from the start
-```bash
-cd planner-api && touch .env.aviationstack && chmod 600 .env.aviationstack && open -e .env.aviationstack
-```
-#### Store the AeroDataBox key, read from .env.aerodatabox
-```bash
-cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATABOX_KEY" | gcloud secrets create aerodatabox-key --data-file=- --replication-policy=automatic --project=travellingllama)
-```
-#### Store the AviationStack key, read from .env.aviationstack
-```bash
-cd planner-api && (set -a; . ./.env.aviationstack; set +a; printf '%s' "$AVIATIONSTACK_KEY" | gcloud secrets create aviationstack-key --data-file=- --replication-policy=automatic --project=travellingllama)
+gcloud secrets versions disable latest --secret=jwt-secret --project=travellingllama
 ```
 
-The two news keys are optional the same way. Each goes in its own private file
-first, one line: `NEWSDATA_KEY='<your NewsData.io key>'` in `.env.newsdata`, and
-`NEWSCURRENTS_KEY='<your Currents key>'` in `.env.newscurrents`.
+**Status.** This migration was done on 1 October 2026: the bundle was written,
+the API redeployed and checked, and the nine old secrets were then deleted, so
+`travel-planner-secrets` is the only secret in the project. The `legacy` table
+in `secrets-bundle.sh` is now dead code, kept only for rebuilding from an old
+install.
 
-#### Create the NewsData.io key file, private from the start
+**Rotating a value.** Edit its `.env.*` file and run `--apply` again, then
+redeploy so a new instance starts (a mounted `latest` is read when an instance
+starts):
+
+#### Rotate a key from its file, then redeploy with the same image
 ```bash
-cd planner-api && touch .env.newsdata && chmod 600 .env.newsdata && open -e .env.newsdata
-```
-#### Create the Currents key file, private from the start
-```bash
-cd planner-api && touch .env.newscurrents && chmod 600 .env.newscurrents && open -e .env.newscurrents
-```
-#### Store the NewsData.io key, read from .env.newsdata
-```bash
-cd planner-api && (set -a; . ./.env.newsdata; set +a; printf '%s' "$NEWSDATA_KEY" | gcloud secrets create newsdata-key --data-file=- --replication-policy=automatic --project=travellingllama)
-```
-#### Store the Currents key, read from .env.newscurrents
-```bash
-cd planner-api && (set -a; . ./.env.newscurrents; set +a; printf '%s' "$NEWSCURRENTS_KEY" | gcloud secrets create newscurrents-key --data-file=- --replication-policy=automatic --project=travellingllama)
+cd planner-api && ./secrets-bundle.sh --apply && ./deploy.sh --no-build
 ```
 
-To **rotate** a flight or news key, put the new value in the same file and add a
-new version of the secret rather than creating it again. `deploy.sh` attaches
-`:latest`, and Cloud Run reads it when an instance starts, so redeploy afterwards.
+To replace a generated value, name it:
 
-#### Rotate the AeroDataBox key, read from .env.aerodatabox
+#### Replace the login-signing secret (signs everybody out)
 ```bash
-cd planner-api && (set -a; . ./.env.aerodatabox; set +a; printf '%s' "$AERODATABOX_KEY" | gcloud secrets versions add aerodatabox-key --data-file=- --project=travellingllama)
-```
-#### Rotate the AviationStack key, read from .env.aviationstack
-```bash
-cd planner-api && (set -a; . ./.env.aviationstack; set +a; printf '%s' "$AVIATIONSTACK_KEY" | gcloud secrets versions add aviationstack-key --data-file=- --project=travellingllama)
-```
-#### Rotate the NewsData.io key, read from .env.newsdata
-```bash
-cd planner-api && (set -a; . ./.env.newsdata; set +a; printf '%s' "$NEWSDATA_KEY" | gcloud secrets versions add newsdata-key --data-file=- --project=travellingllama)
-```
-#### Rotate the Currents key, read from .env.newscurrents
-```bash
-cd planner-api && (set -a; . ./.env.newscurrents; set +a; printf '%s' "$NEWSCURRENTS_KEY" | gcloud secrets versions add newscurrents-key --data-file=- --project=travellingllama)
+cd planner-api && ./secrets-bundle.sh --apply --rotate JWT_SECRET
 ```
 
-`deploy.sh` attaches each flight key only if `gcloud secrets describe` finds it. That
-check also passes for a secret that exists but has **no version**, and the `:latest`
-reference would then fail the deploy, so create at least one version (the commands
-above do). Access needs no extra step: the deploy already grants the compute service
-account `roles/secretmanager.secretAccessor` on the whole project, which covers
-these two secrets.
+Rotating `PROXY_SECRET` must reach Cloudflare too (8.4): put it into Pages
+first, then `--apply --rotate PROXY_SECRET`, then redeploy. Requests fail with
+403 `proxy_required` in the gap between the two.
 
-**Attaching an already-created secret to the running service without a full
-deploy.** Once a secret exists (created above), the standard route is to just
-run `./deploy.sh` — it re-attaches every secret on every deploy. To attach one
-sooner, without rebuilding or pushing an image, two ways:
+**Reading one value without printing the rest** (for example to give Pages the
+proxy secret) uses `--get`, which prints that value alone:
 
-*Console:* Cloud Run → `planner-api` → **Edit & Deploy New Revision** → **Variables
-& Secrets** tab → **Reference a secret** → pick the secret, set the environment
-variable name (`AERODATABOX_KEY` or `AVIATIONSTACK_KEY`), version `latest` →
-**Done** → **Deploy**.
-
-#### Attach both flight keys to the running service, no rebuild
+#### Print one raw value, to pipe elsewhere
 ```bash
-gcloud run services update planner-api --project=travellingllama --region=europe-west3 --set-secrets=AERODATABOX_KEY=aerodatabox-key:latest,AVIATIONSTACK_KEY=aviationstack-key:latest
+cd planner-api && ./secrets-bundle.sh --get PROXY_SECRET
 ```
 
-Both are a **temporary override**: `deploy.sh` rewrites the whole `--set-secrets`
-list from `.env.deploy` and Secret Manager on every run, so the next `./deploy.sh`
-reproduces the same result anyway (or drops the key if the secret has since been
-deleted). Use these two only to skip waiting for a rebuild; `./deploy.sh
---no-build` is the equivalent one-command route that also goes through the
-documented script.
-
-Each value is **piped** (`|`) straight into `gcloud`, so it's never printed.
-To check a secret without revealing it, count its characters:
-
-#### Show a secret's length only
+#### Show a bundle key's length only
 ```bash
-gcloud secrets versions access latest --secret=db-password --project=travellingllama | wc -c
+cd planner-api && ./secrets-bundle.sh --get DB_PASSWORD | wc -c
 ```
+
+**Adding a new secret value.** Put the placeholder in `application.yml`
+(`key: ${NEWTHING_KEY:}`), then choose one:
+
+- **From a file** (the key also exists on the laptop, like the others): create
+  `planner-api/.env.newthing` holding `NEWTHING_KEY='...'` (`chmod 600`), add one
+  row to the `sources` table at the top of `secrets-bundle.sh`
+  (`".env.newthing|NEWTHING_KEY|NEWTHING_KEY"`: file, variable, bundle key), and
+  run `--apply`.
+- **From the clipboard or a pipe** (no script edit, no file; the value then lives
+  only in Google):
+
+#### Add or replace one key in the bundle (value read from stdin)
+```bash
+cd planner-api && pbpaste | tr -d '\n' | ./secrets-bundle.sh --apply --set NEWTHING_KEY
+```
+#### Remove one key from the bundle
+```bash
+cd planner-api && ./secrets-bundle.sh --apply --unset NEWTHING_KEY
+```
+
+Either way, redeploy afterwards so a new instance reads it. If the app cannot run
+without the key, add its name to the `need=` list in `deploy.sh` so a deploy
+refuses when it is missing; an optional one can go in the `AERODATABOX_KEY …`
+note loop beside the flight and news keys. A value that is **not secret** (a
+mode, a limit) does not belong here: tunables are plain values in
+`application.yml`, and per-deployment settings go in `.env.deploy` with a
+`yaml NAME "$NAME"` line in `deploy.sh`.
+
+**Access** needs no extra step: the deploy grants the compute service account
+`roles/secretmanager.secretAccessor` on the project, which covers the bundle.
+
+**Tunables are not secrets.** Flight limits, TTLs, the circuit breaker and the
+rest are plain values in `application.yml` and ship with the image; see the root
+`CLAUDE.md`. Only the keys above are secret.
 
 ---
 
@@ -504,8 +503,8 @@ missing. Then it:
 
 1. builds the image and pushes it to Artifact Registry;
 2. lets Cloud Run's service account read the secrets (safe to repeat);
-3. deploys, passing the settings as a temporary file and the four secrets by
-   name from Secret Manager;
+3. checks the secrets bundle holds every required key, then deploys, passing the
+   settings as a temporary file and the bundle as a mounted file (Part 5);
 4. checks that health answers and that direct access without the proxy secret
    is refused.
 
@@ -619,7 +618,7 @@ Copied straight from Google to Cloudflare, so it never appears on screen:
 
 #### Pipe the proxy secret from Secret Manager into Pages
 ```bash
-cd planner-web && gcloud secrets versions access latest --secret=proxy-secret --project=travellingllama | npx wrangler@4 pages secret put PROXY_SECRET --project-name=travel-planner
+cd planner-api && ./secrets-bundle.sh --get PROXY_SECRET | (cd ../planner-web && npx wrangler@4 pages secret put PROXY_SECRET --project-name=travel-planner)
 ```
 
 It's stored encrypted, for the **production** environment only, so preview
@@ -864,24 +863,18 @@ RESEND_API_KEY='re_...'
 
 ### 11.3 Store the key in Secret Manager
 
-#### Store the Resend key, read from .env.resend
-```bash
-cd planner-api && (set -a; . ./.env.resend; set +a; printf '%s' "$RESEND_API_KEY" | gcloud secrets create smtp-password --data-file=- --replication-policy=automatic --project=travellingllama)
-```
-#### Check it arrived (prints the length only)
-```bash
-gcloud secrets versions access latest --secret=smtp-password --project=travellingllama | wc -c
-```
+The key goes into the secrets bundle (Part 5) as `SMTP_PASSWORD`, read from
+`RESEND_API_KEY` in `.env.resend`.
 
-If you ever replace the key, add a new version rather than creating the
-secret again:
-
-#### Add a new version of the secret
+#### Add the Resend key to the bundle
 ```bash
-cd planner-api && (set -a; . ./.env.resend; set +a; printf '%s' "$RESEND_API_KEY" | gcloud secrets versions add smtp-password --data-file=- --project=travellingllama)
+cd planner-api && ./secrets-bundle.sh --apply
 ```
 
-Cloud Run reads `latest` when an instance starts, so redeploy afterwards.
+The script lists each key with its length and never prints a value, so a quick
+look at its output confirms `SMTP_PASSWORD` arrived. To replace the key later,
+edit `.env.resend`, run the same command, and redeploy: Cloud Run reads `latest`
+when an instance starts.
 
 #### To see list of secrets
 ```bash
@@ -902,8 +895,7 @@ MAIL_FROM='no-reply@travellingllama.fun'
 ```
 
 `deploy.sh` passes these on only when `MAIL_MODE` is `smtp`, refuses to start if
-any is missing, and hands the API `smtp-password` from Secret Manager as
-`SMTP_PASSWORD`.
+any is missing, and reads `SMTP_PASSWORD` from the secrets bundle.
 
 **This first time it needs a new image, not just new settings.** The TLS
 settings Resend requires (`SMTP_SSL`, `SMTP_STARTTLS`, timeouts) were added to

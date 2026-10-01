@@ -6,8 +6,8 @@ times or airports.
 
 - **Base URL:** `http://api.aviationstack.com/v1` (`app.flights.aviationstack.base-url`).
 - **Auth:** query parameter `access_key` (the environment variable `AVIATIONSTACK_KEY`:
-  locally from `planner-api/.env.aviationstack`, on Cloud Run from the Secret Manager
-  secret `aviationstack-key`; the only environment setting, every other value here
+  locally from `planner-api/.env.aviationstack`, on Cloud Run from the `AVIATIONSTACK_KEY` line of the
+  `travel-planner-secrets` bundle; the only environment setting, every other value here
   is a plain property under `app.flights` in `application.yml`). **The free plan is HTTP
   only, so the key travels in plain text.** Rotate it and switch the base URL to HTTPS
   if the plan is upgraded. Because the key is in the URL, the client redacts it from

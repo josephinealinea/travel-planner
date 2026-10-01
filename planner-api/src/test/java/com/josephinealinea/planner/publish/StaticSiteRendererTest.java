@@ -315,7 +315,7 @@ class StaticSiteRendererTest {
 
         // This is what a format string would have destroyed: the data URI's
         // percent escapes must survive assembly untouched.
-        assertThat(html).contains("%3Csvg").contains("%F0%9F%A6%99");
+        assertThat(html).contains("%3Csvg").contains("%23957155");
     }
 
     /**

@@ -13,7 +13,9 @@
 # The service's environment is REPLACED on every run with exactly what this
 # script sends, so these files are the one record of what is deployed. Change a
 # setting here and rerun; a change made only in the Cloud Run console is undone
-# by the next deploy. Secrets are referenced from Secret Manager by name.
+# by the next deploy. Every secret comes from ONE Secret Manager secret
+# (SECRETS_BUNDLE in .env.deploy, default travel-planner-secrets), built by
+# ./secrets-bundle.sh and mounted as a file Spring imports.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -65,6 +67,7 @@ yaml() { printf "%s: '%s'\n" "$1" "${2//\'/\'\'}"; }
   yaml DB_URL "$DB_URL"
   yaml DB_USER "$DB_USER"
   yaml COOKIE_SECURE true
+  yaml SPRING_CONFIG_IMPORT file:/secrets/app.properties
   yaml PUBLIC_BASE_URL "https://$DOMAIN/p"
   yaml CORS_ORIGINS "https://$DOMAIN"
   yaml PUBLISH_STORE "$PUBLISH_STORE"
@@ -97,19 +100,24 @@ yaml() { printf "%s: '%s'\n" "$1" "${2//\'/\'\'}"; }
   fi
 } >"$envfile"
 
-secrets=JWT_SECRET=jwt-secret:latest,DB_PASSWORD=db-password:latest,R2_SECRET_ACCESS_KEY=r2-secret-access-key:latest,PROXY_SECRET=proxy-secret:latest
-[[ $MAIL_MODE == smtp ]] && secrets+=,SMTP_PASSWORD=smtp-password:latest
-# Flight-lookup and news keys: attached only if the secret exists, so a missing
-# key leaves that service off (flights fall back to "unavailable", news is
-# simply absent from that provider) instead of failing the deploy.
-for pair in AERODATABOX_KEY=aerodatabox-key AVIATIONSTACK_KEY=aviationstack-key \
-            NEWSDATA_KEY=newsdata-key NEWSCURRENTS_KEY=newscurrents-key; do
-  if gcloud secrets describe "${pair#*=}" --project="$PROJECT_ID" >/dev/null 2>&1; then
-    secrets+=",${pair%%=*}=${pair#*=}:latest"
-  else
-    echo "note: secret ${pair#*=} not found, ${pair%%=*} left unset (that service stays off)"
-  fi
+# Every secret travels in ONE Secret Manager secret, mounted as a properties
+# file that Spring imports (SPRING_CONFIG_IMPORT above). One secret is one billed
+# version instead of nine. The required keys are checked here so a missing one
+# stops the deploy; an optional key left out keeps that feature off, as an
+# unattached secret used to (flights say "unavailable", news is simply absent).
+bundle="${SECRETS_BUNDLE:-travel-planner-secrets}"
+gcloud secrets describe "$bundle" --project="$PROJECT_ID" >/dev/null 2>&1 \
+  || { echo "secret $bundle not found: run ./secrets-bundle.sh --apply first" >&2; exit 1; }
+keys=$(gcloud secrets versions access latest --secret="$bundle" --project="$PROJECT_ID" | sed -n 's/^\([A-Z0-9_]*\)=.*/\1/p')
+need="JWT_SECRET PROXY_SECRET DB_PASSWORD R2_SECRET_ACCESS_KEY"
+[[ $MAIL_MODE == smtp ]] && need+=" SMTP_PASSWORD"
+for k in $need; do
+  grep -qx "$k" <<<"$keys" || { echo "$bundle has no $k: run ./secrets-bundle.sh --apply" >&2; exit 1; }
 done
+for k in AERODATABOX_KEY AVIATIONSTACK_KEY NEWSDATA_KEY NEWSCURRENTS_KEY; do
+  grep -qx "$k" <<<"$keys" || echo "note: $k is not in $bundle, that service stays off"
+done
+secrets="/secrets/app.properties=$bundle:latest"
 
 echo "==> Deploying $SERVICE ($image)"
 gcloud run deploy "$SERVICE" \

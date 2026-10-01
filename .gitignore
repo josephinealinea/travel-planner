@@ -2,5 +2,11 @@
 .idea/
 .claude/settings.local.json
 
+# Project memory is personal to this machine; briefs, plans, specs and prompts are committed.
+/.claude/memory/
+
 # Visual brainstorming companion scratch files
 .superpowers/
+/.playwright-mcp/
+/planner-api/src/test/resources/secrets-bundle-sample.properties
+/planner-api/secrets-bundle.sh

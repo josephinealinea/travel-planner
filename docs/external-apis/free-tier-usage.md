@@ -9,6 +9,11 @@ one table from the terminal, run the `free-tier-usage` skill, or run
 About two minutes once a month is enough. The €1 Google budget alert covers
 the rest of the time.
 
+> Written for one app. Cloud Run and Neon are per service/project, while
+> Artifact Registry, Pages Functions and R2 are shared account-wide; when a
+> second app is added see
+> [new-app-blueprint.md](../deploy/new-app-blueprint.md#6-free-tier-tracking-is-still-travel-planner-only).
+
 ## The limits at a glance
 
 | Service | Free allowance | Resets | Over the limit |

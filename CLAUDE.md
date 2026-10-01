@@ -19,7 +19,7 @@ user works elsewhere, so do not carry it into another repository or into
 `~/.claude/`.
 
 ```
-.claude/memory/     project memory  ->  MEMORY.md is the index
+.claude/memory/     project memory  ->  MEMORY.md is the index (git-ignored, per machine)
 .claude/briefs/     mission-control briefs (job / why / guardrails / done means)
 .claude/specs/      design specs (what and why; approved before a plan is written)
 .claude/plans/      implementation plans (order and steps, written from a spec)
@@ -926,6 +926,17 @@ trip (`GET /trips/{id}`); every tab reads from that and calls the shared
 `reload()` after mutating. Each tab is a factory in `js/pages/trip/` returning
 its own state and methods, merged into one Alpine component by `trip.js`.
 
+**The icon is Google's Noto Emoji llama (U+1F999, Apache 2.0), in three files
+at the site root:** `favicon.svg` (the source, with its licence line as a comment),
+`favicon.ico` (16/32/48 px PNGs) and `apple-touch-icon.png` (180 px). It was chosen
+over Twemoji and a hand-drawn one because it is the closest to the platform
+emoji and its outline stays visible on a light tab bar. Every page links all
+three, and `npm run build` copies them into `dist/`. The ico and png are
+rasterised from the svg, so after changing the svg regenerate both (macOS
+`sips -s format png -Z <n> favicon.svg`). A published page has no files to link,
+so `StaticSiteRenderer` inlines the same svg as a data URI
+(`StaticSiteRendererTest.keepsThePercentEncodedFaviconIntact`); change it there too.
+
 **Stylesheets are token-based.** Nothing in `scss/_core.scss` names a colour or a
 font — it all reads CSS custom properties, and a theme file defines those under
 `body.theme-<name>`. A theme is ~40 lines. Adding one takes four edits: a token
@@ -1627,8 +1638,10 @@ verified against the live service when this was written.
   route, and on Cloud Run a hand-set variable is wiped by the next `./deploy.sh`,
   whose `--env-vars-file` replaces them all.) The keys live in one git-ignored file per service,
   `planner-api/.env.aerodatabox` and `.env.aviationstack` — sourced for a local
-  run, and the file each Secret Manager secret is created from, like `.env.r2`
-  and `.env.resend`. `deploy.sh` attaches the secrets only if they exist.
+  run, and one of the files `planner-api/secrets-bundle.sh` reads, like `.env.r2`
+  and `.env.resend`, to build the single Secret Manager secret
+  (`travel-planner-secrets`, a properties file Cloud Run mounts and Spring
+  imports) that holds every secret. A key absent from it leaves that service off.
   `FlightProperties` has a second, six-argument constructor for the tests, so its
   canonical one carries `@ConstructorBinding` (two constructors on a bound record
   otherwise fail with "No default constructor found").
