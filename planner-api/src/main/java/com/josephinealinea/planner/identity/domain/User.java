@@ -50,6 +50,9 @@ public class User {
      */
     private PublishedPageSettings publishedPage = new PublishedPageSettings();
 
+    /** How the planner's trip pages look to this member; never null, all off by default. */
+    private TripPageSettings tripPages = new TripPageSettings();
+
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -91,6 +94,11 @@ public class User {
     public PublishedPageSettings getPublishedPage() { return publishedPage; }
     public void setPublishedPage(PublishedPageSettings publishedPage) {
         this.publishedPage = publishedPage == null ? new PublishedPageSettings() : publishedPage;
+    }
+
+    public TripPageSettings getTripPages() { return tripPages; }
+    public void setTripPages(TripPageSettings tripPages) {
+        this.tripPages = tripPages == null ? new TripPageSettings() : tripPages;
     }
 
     /**

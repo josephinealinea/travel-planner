@@ -107,6 +107,7 @@ export const api = {
   updateDisplayCurrency: (data) => patch('/api/v1/account/display-currency', data),
   changePassword: (data) => post('/api/v1/account/password', data),
   // Only the flags being changed need sending; the rest are left as they are.
+  updateTripPages: (settings) => patch('/api/v1/account/trip-pages', settings),
   updatePublishedPage: (settings) => patch('/api/v1/account/published-page', settings),
 
   // ── trips ──────────────────────────────────────────

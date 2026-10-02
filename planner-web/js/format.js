@@ -132,10 +132,20 @@ export function daysBetween(startIso, endIso) {
   return days > 0 ? days : null;
 }
 
+// Whether amounts are hidden right now. Module state read by money(), the one
+// place every amount on the trip pages is formatted, so a single flag masks
+// them all. The trip page sets it from the account's "Show amount masking"
+// setting plus the member's own toggle on the Overview.
+let amountsMasked = false;
+const MASK = '*****';
+
+export function setAmountsMasked(value) { amountsMasked = !!value; }
+
 export function money(amount, currency) {
   if (amount == null || amount === '') return '';
   const value = Number(amount);
   if (Number.isNaN(value)) return String(amount);
+  if (amountsMasked) return currency ? `${MASK} ${currency}` : MASK;
   const formatted = value.toLocaleString(undefined,
     { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return currency ? `${formatted} ${currency}` : formatted;

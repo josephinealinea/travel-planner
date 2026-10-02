@@ -852,6 +852,24 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/BudgetItem"
+  /api/v1/account/trip-pages:
+    patch:
+      tags:
+      - account-controller
+      operationId: updateTripPages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTripPagesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MeResponse"
   /api/v1/account/published-page:
     patch:
       tags:
@@ -1571,14 +1589,14 @@ components:
           type: array
           items:
             type: string
+        destinationId:
+          type: string
+          writeOnly: true
         destinationIds:
           type: array
           writeOnly: true
           items:
             type: string
-        destinationId:
-          type: string
-          writeOnly: true
     CountryAmount:
       type: object
       properties:
@@ -2154,6 +2172,8 @@ components:
           type: string
         publishedPage:
           $ref: "#/components/schemas/PublishedPage"
+        tripPages:
+          $ref: "#/components/schemas/TripPages"
     PublishedPage:
       type: object
       properties:
@@ -2166,6 +2186,13 @@ components:
         displayHomeCountry:
           type: boolean
         displayBudget:
+          type: boolean
+    TripPages:
+      type: object
+      properties:
+        showWholeTrip:
+          type: boolean
+        maskAmounts:
           type: boolean
     ChangePasswordRequest:
       required:
@@ -2295,6 +2322,13 @@ components:
           items:
             type: string
         inheritTravellers:
+          type: boolean
+    UpdateTripPagesRequest:
+      type: object
+      properties:
+        showWholeTrip:
+          type: boolean
+        maskAmounts:
           type: boolean
     UpdatePublishedPageRequest:
       type: object

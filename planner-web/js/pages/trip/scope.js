@@ -16,7 +16,8 @@ const MORE = {
  * could disagree. Link pickers keep reading the whole lists; only what is
  * shown reads the scoped ones.
  *
- * Only the owner gets the switch; every other travel buddy always sees Mine.
+ * The switch is an account setting (Account → Trip Pages → Show whole trip),
+ * available to Rockstar accounts only; everyone else always sees Mine.
  * Still a view, not privacy: the whole trip is in the bundle either way.
  */
 export function scopeTab() {
@@ -30,8 +31,11 @@ export function scopeTab() {
       saveScope(scope);
     },
 
-    /** The switch is the owner's alone; everyone else is always on Mine. */
-    get canSeeWholeTrip() { return !!this.isOwner; },
+    /** From the account (`tripPages.showWholeTrip`, Rockstar-only on the API). */
+    wholeTripEnabled: false,
+
+    /** Everyone without the setting is always on Mine. */
+    get canSeeWholeTrip() { return this.wholeTripEnabled; },
 
     get showingMine() { return !this.canSeeWholeTrip || this.scope === 'mine'; },
 

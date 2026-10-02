@@ -1,6 +1,7 @@
 package com.josephinealinea.planner.identity.infra;
 
 import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
+import com.josephinealinea.planner.identity.domain.TripPageSettings;
 import com.josephinealinea.planner.identity.domain.TierLevel;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.storage.jdbc.JdbcValues;
@@ -65,10 +66,10 @@ public class JdbcUserRepository implements UserRepository {
 
     private static final String UPSERT = """
             INSERT INTO users (id, email, screen_name, home_country_code, language_code, tier_level, password_hash, must_change_password,
-                               currencies, display_currency, published_page,
+                               currencies, display_currency, published_page, trip_pages,
                                created_at, updated_at)
             VALUES (:id, :email, :screenName, :homeCountryCode, :languageCode, :tierLevel, :passwordHash, :mustChangePassword,
-                    :currencies, :displayCurrency, :publishedPage::jsonb,
+                    :currencies, :displayCurrency, :publishedPage::jsonb, :tripPages::jsonb,
                     :createdAt, :updatedAt)
             ON CONFLICT (id) DO UPDATE SET
                 email                = EXCLUDED.email,
@@ -81,6 +82,7 @@ public class JdbcUserRepository implements UserRepository {
                 currencies           = EXCLUDED.currencies,
                 display_currency     = EXCLUDED.display_currency,
                 published_page       = EXCLUDED.published_page,
+                trip_pages           = EXCLUDED.trip_pages,
                 created_at           = EXCLUDED.created_at,
                 updated_at           = EXCLUDED.updated_at
             """;
@@ -148,6 +150,7 @@ public class JdbcUserRepository implements UserRepository {
                 .param("currencies", JdbcValues.textArray(user.getCurrencies()))
                 .param("displayCurrency", user.getDisplayCurrency())
                 .param("publishedPage", JdbcValues.json(user.getPublishedPage()))
+                .param("tripPages", JdbcValues.json(user.getTripPages()))
                 .param("createdAt", JdbcValues.timestamptz(user.getCreatedAt()))
                 .param("updatedAt", JdbcValues.timestamptz(user.getUpdatedAt()))
                 .update());
@@ -173,6 +176,7 @@ public class JdbcUserRepository implements UserRepository {
         user.setCurrencies(JdbcValues.textList(rs, "currencies"));
         user.setDisplayCurrency(rs.getString("display_currency"));
         user.setPublishedPage(JdbcValues.json(rs, "published_page", PublishedPageSettings.class));
+        user.setTripPages(JdbcValues.json(rs, "trip_pages", TripPageSettings.class));
         user.setCreatedAt(JdbcValues.instant(rs, "created_at"));
         user.setUpdatedAt(JdbcValues.instant(rs, "updated_at"));
         return user;

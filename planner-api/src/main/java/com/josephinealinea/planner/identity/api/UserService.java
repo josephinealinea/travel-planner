@@ -3,6 +3,8 @@ package com.josephinealinea.planner.identity.api;
 import com.josephinealinea.planner.config.AppProperties;
 import com.josephinealinea.planner.geocoding.CountryTable;
 import com.josephinealinea.planner.identity.domain.PublishedPageSettings;
+import com.josephinealinea.planner.identity.domain.TierLevel;
+import com.josephinealinea.planner.identity.domain.TripPageSettings;
 import com.josephinealinea.planner.identity.domain.User;
 import com.josephinealinea.planner.identity.infra.UserRepository;
 import com.josephinealinea.planner.identity.infra.YamlUserRepository;
@@ -204,6 +206,23 @@ public class UserService {
         if (forecastExpenses != null) settings.setForecastExpenses(forecastExpenses);
         if (displayHomeCountry != null) settings.setDisplayHomeCountry(displayHomeCountry);
         if (displayBudget != null) settings.setDisplayBudget(displayBudget);
+        return users.save(user);
+    }
+
+    /**
+     * The account's trip-page settings. Null leaves a flag as it is. Turning
+     * "show whole trip" on is a ROCKSTAR feature and is refused for anyone else
+     * here, because hiding the checkbox in the page protects nothing. Turning
+     * it off is always allowed, so a downgraded account can clear it.
+     */
+    public User updateTripPageSettings(String userId, Boolean showWholeTrip, Boolean maskAmounts) {
+        User user = require(userId);
+        if (Boolean.TRUE.equals(showWholeTrip) && user.getTierLevel() != TierLevel.ROCKSTAR) {
+            throw ApiException.forbidden("error.account.rockstarOnly");
+        }
+        TripPageSettings settings = user.getTripPages();
+        if (showWholeTrip != null) settings.setShowWholeTrip(showWholeTrip);
+        if (maskAmounts != null) settings.setMaskAmounts(maskAmounts);
         return users.save(user);
     }
 

@@ -84,7 +84,14 @@
         <div class="grid grid-stats" style="margin-bottom:24px">
           <template x-for="stat in stats()" :key="stat.label">
             <div class="stat">
-              <div class="stat-value" x-text="stat.value"></div>
+              <div class="stat-value">
+                <span x-text="stat.value"></span>
+                <button type="button" class="stat-mask" x-show="stat.maskToggle && maskEnabled"
+                        @click="toggleAmounts()" :aria-pressed="amountsMasked"
+                        :aria-label="amountsMasked ? $t('overview.showAmounts') : $t('overview.hideAmounts')"
+                        :title="amountsMasked ? $t('overview.showAmounts') : $t('overview.hideAmounts')"
+                        x-text="amountsMasked ? '👁' : '👓'"></button>
+              </div>
               <div class="stat-label" x-text="stat.label"></div>
             </div>
           </template>

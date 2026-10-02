@@ -123,18 +123,33 @@
         <div id="theme-radios" class="stack-sm"></div>
       </div>
 
+      <span class="label" data-i18n="account.tripPages"></span>
+      <p class="small muted" style="margin:0 0 8px" data-i18n="account.tripPagesHint"></p>
+
+      <div class="field" id="show-whole-trip-field" hidden>
+        <label class="checkbox">
+          <input type="checkbox" id="show-whole-trip">
+          <span data-i18n="account.showWholeTrip"></span>
+        </label>
+      </div>
+
+      <div class="field">
+        <label class="checkbox">
+          <input type="checkbox" id="mask-amounts">
+          <span data-i18n="account.showAmountMasking"></span>
+        </label>
+      </div>
+
       <div class="field">
         <label class="checkbox">
           <input type="checkbox" id="show-news">
           <span data-i18n="account.showNews"></span>
         </label>
-        <p class="field-hint" data-i18n="account.showNewsHint"></p>
       </div>
 
-      <div class="field">
-        <label for="budget-page-size" data-i18n="account.paginationExpenseRecordsIn"></label>
-        <select id="budget-page-size" class="control-narrow"></select>
-        <p class="field-hint" data-i18n="account.appliesTheNextTime"></p>
+      <div class="field" style="display:flex;align-items:center;gap:12px">
+        <label for="budget-page-size" style="margin:0" data-i18n="account.paginationExpenseRecordsIn"></label>
+        <select id="budget-page-size" style="width:auto"></select>
       </div>
 
       <div class="field">
@@ -143,17 +158,6 @@
         <div id="published-page-alert" class="alert" hidden></div>
         <div id="published-page-settings" class="stack-sm"></div>
       </div>
-    </section>
-
-    <section class="card">
-      <div class="card-header"><h2 class="card-title" data-i18n="account.credits"></h2></div>
-      <ul class="small stack-sm" style="margin:0;padding-left:1.2em">
-        <li data-i18n-html="account.creditLlama"></li>
-        <li data-i18n-html="account.creditWeather"></li>
-        <li data-i18n-html="account.creditRates"></li>
-        <li data-i18n-html="account.creditAlpine"></li>
-        <li data-i18n-html="account.creditChart"></li>
-      </ul>
     </section>
 
     <section class="card">
@@ -184,6 +188,17 @@
       <div class="form-actions">
         <button type="button" class="btn btn-primary" id="save-currencies" data-i18n="account.saveCurrencies"></button>
       </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="card-title" data-i18n="account.credits"></h2></div>
+      <ul class="small stack-sm" style="margin:0;padding-left:1.2em">
+        <li data-i18n-html="account.creditLlama"></li>
+        <li data-i18n-html="account.creditWeather"></li>
+        <li data-i18n-html="account.creditRates"></li>
+        <li data-i18n-html="account.creditAlpine"></li>
+        <li data-i18n-html="account.creditChart"></li>
+      </ul>
     </section>
   </div>
 </main>
@@ -421,6 +436,28 @@
   const showNewsBox = document.querySelector('#show-news');
   showNewsBox.checked = savedShowNews();
   showNewsBox.addEventListener('change', () => saveShowNews(showNewsBox.checked));
+
+  // Trip Pages: stored on the account (not this browser). Show whole trip is a
+  // Rockstar feature: the field is not even rendered for anyone else, and the
+  // API refuses it regardless.
+  const wholeTripBox = document.querySelector('#show-whole-trip');
+  const maskBox = document.querySelector('#mask-amounts');
+  const tripPages = user.tripPages || {};
+  document.querySelector('#show-whole-trip-field').hidden = user.tierLevel !== 'ROCKSTAR';
+  wholeTripBox.checked = !!tripPages.showWholeTrip;
+  maskBox.checked = !!tripPages.maskAmounts;
+  for (const [box, key] of [[wholeTripBox, 'showWholeTrip'], [maskBox, 'maskAmounts']]) {
+    box.addEventListener('change', async () => {
+      const wanted = box.checked;
+      try {
+        await api.updateTripPages({ [key]: wanted });
+        toast.success(t('account.tripPagesSaved'));
+      } catch (error) {
+        box.checked = !wanted;
+        toast.error(error.fullMessage);
+      }
+    });
+  }
 
   // Budget rows per page — localStorage like the theme, read by the trip page
   // when it loads, so a change applies the next time a trip is opened.

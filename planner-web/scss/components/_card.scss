@@ -40,6 +40,11 @@
 }
 
 .stat-value { font-family: var(--tp-font-display); font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+.stat-mask {
+  margin-left: 6px; padding: 0 4px; border: 0; background: none; cursor: pointer;
+  font-size: 1rem; line-height: 1; vertical-align: middle;
+}
+.stat-mask:focus-visible { outline: 2px solid var(--tp-accent, currentColor); outline-offset: 2px; }
 .stat-label { margin-top: 2px; font-size: 0.8rem; color: var(--tp-muted); }
 
 .progress {

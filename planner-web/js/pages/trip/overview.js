@@ -1,5 +1,7 @@
 import { countdownLabel, daysUntil, money, category } from '../../format.js';
 import { t } from '../../i18n/index.js';
+import { setAmountsMasked } from '../../format.js';
+import { saveAmountsMasked } from '../../amount-mask.js';
 
 /**
  * The Overview tab. Everything here is derived from the already-loaded trip
@@ -19,9 +21,23 @@ export function overviewTab() {
         // silently blank — money() answers '' for undefined, so the fallback
         // below swallowed it rather than anything failing loudly.
         { label: t('overview.travelCost'),
-          value: money(this.budget.charged?.total, this.budget.totalsCurrency) || '—' },
+          value: money(this.budget.charged?.total, this.budget.totalsCurrency) || '—',
+          maskToggle: true },
         { label: t('overview.departure'), value: this.departureLabel() },
       ];
+    },
+
+    /**
+     * Hides or shows every amount. money() reads one module flag, but Alpine
+     * only re-runs an expression when reactive data it read changes, so the
+     * bundle is re-read afterwards: reload() hands every row a new object and
+     * every amount on every tab redraws.
+     */
+    async toggleAmounts() {
+      this.amountsMasked = !this.amountsMasked;
+      setAmountsMasked(this.amountsMasked);
+      saveAmountsMasked(this.amountsMasked);
+      await this.reload();
     },
 
     departureLabel() {

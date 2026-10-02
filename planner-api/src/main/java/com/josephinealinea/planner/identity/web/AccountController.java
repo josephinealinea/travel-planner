@@ -101,6 +101,17 @@ public class AccountController {
     }
 
     /**
+     * How this account's trip pages look to them. Takes effect at once; unlike
+     * the published-page settings nothing is rendered to a file.
+     */
+    @PatchMapping("/trip-pages")
+    AuthDtos.MeResponse updateTripPages(@RequestBody AuthDtos.UpdateTripPagesRequest request) {
+        return AuthDtos.MeResponse.from(
+                users.updateTripPageSettings(currentUser.userId(),
+                        request.showWholeTrip(), request.maskAmounts()));
+    }
+
+    /**
      * The single currency this account's budget totals are shown in, on every
      * trip. It has no bearing on a trip's own displayCurrency, which stays the
      * anchor its exchange-rate table is quoted against.

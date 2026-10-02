@@ -29,7 +29,9 @@ public final class AuthDtos {
             List<String> currencies,
             String displayCurrency,
             /** Published-page settings, grouped so adding the next is one field. */
-            PublishedPage publishedPage) {
+            PublishedPage publishedPage,
+            /** How the planner's trip pages look to this member. */
+            TripPages tripPages) {
 
         public static MeResponse from(User user) {
             return new MeResponse(
@@ -47,7 +49,9 @@ public final class AuthDtos {
                             user.getPublishedPage().isDestinationDays(),
                             user.getPublishedPage().isForecastExpenses(),
                             user.getPublishedPage().isDisplayHomeCountry(),
-                            user.getPublishedPage().isDisplayBudget()));
+                            user.getPublishedPage().isDisplayBudget()),
+                    new TripPages(user.getTripPages().isShowWholeTrip(),
+                            user.getTripPages().isMaskAmounts()));
         }
     }
 
@@ -65,6 +69,12 @@ public final class AuthDtos {
                                 boolean forecastExpenses,
                                 boolean displayHomeCountry,
                                 boolean displayBudget) {}
+
+    /** Flat on the wire like PublishedPage; one document in storage. */
+    public record TripPages(boolean showWholeTrip, boolean maskAmounts) {}
+
+    /** Absent fields are left as they are, so one checkbox can post alone. */
+    public record UpdateTripPagesRequest(Boolean showWholeTrip, Boolean maskAmounts) {}
 
     /** Absent fields are left as they are, so one checkbox can post alone. */
     public record UpdatePublishedPageRequest(Boolean itineraryCost,

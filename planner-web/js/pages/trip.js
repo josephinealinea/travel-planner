@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { queryParam } from '../chrome.js';
-import { dateRange, CATEGORIES } from '../format.js';
+import { dateRange, CATEGORIES, setAmountsMasked } from '../format.js';
+import { savedAmountsMasked } from '../amount-mask.js';
 import { countriesOfTrip } from '../location-picker.js';
 import { countryName, countryFlag } from '../countries.js';
 import { toast } from '../toast.js';
@@ -68,6 +69,8 @@ export function tripPage() {
     publish: { status: 'DRAFT', requests: [], personalPageUrls: [] },
     currentUserId: null,
     isOwner: false,
+    maskEnabled: false,
+    amountsMasked: false,
 
     // Trip-level editing
     editOpen: false,
@@ -86,6 +89,12 @@ export function tripPage() {
 
       const user = await currentUser();
       if (user?.currencies?.length) this.userCurrencies = user.currencies;
+      // Trip Pages settings live on the account. Masking only applies while the
+      // account setting is on, so turning it off always shows amounts again.
+      this.wholeTripEnabled = !!user?.tripPages?.showWholeTrip;
+      this.maskEnabled = !!user?.tripPages?.maskAmounts;
+      this.amountsMasked = this.maskEnabled && savedAmountsMasked();
+      setAmountsMasked(this.amountsMasked);
 
       this.tab = this.tabFromHash();
       window.addEventListener('hashchange', () => this.showTab(this.tabFromHash()));
