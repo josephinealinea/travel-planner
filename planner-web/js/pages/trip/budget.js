@@ -5,7 +5,7 @@ import { toggleLocation, locationNames, countriesOfTrip } from '../../location-p
 import { countryName, countryFlag } from '../../countries.js';
 import { toggleSharer, shareWithEveryone, sharedWithEveryone, choosePayer, chargedToggled, sharersOfTrip } from '../../member-picker.js';
 import { savedBudgetPageSize } from '../../page-size.js';
-import { t } from '../../i18n/index.js';
+import { t, th } from '../../i18n/index.js';
 import { activeCountries, touchesCountries, toggleCountry } from '../../country-filter.js';
 
 /**
@@ -556,7 +556,8 @@ export function budgetTab() {
     },
 
     /**
-     * "Rates updated Mon, 14 Sep 2026 00:02:31" — the read-only note.
+     * "Rates updated Mon, 14 Sep 2026 00:02:31 by ExchangeRate-API" — the read-only
+     * note, as HTML (bind with x-html): the credit is a link. The date is escaped.
      *
      * Keyed on the date and nothing else. It used to guard on `ratesBase` and
      * then branch on the date, which left a branch that could only ever render
@@ -571,7 +572,7 @@ export function budgetTab() {
      */
     ratesNote() {
       const date = (this.budget.ratesDate || '').replace(/ \+\d{4}$/, '');
-      return date ? t('budget.ratesUpdated', { date }) : t('budget.ratesNotFetched');
+      return date ? th('budget.ratesUpdated', { date }) : th('budget.ratesNotFetched');
     },
 
 

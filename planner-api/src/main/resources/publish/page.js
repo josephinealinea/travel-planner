@@ -375,6 +375,28 @@
       return panel;
     }
 
+    // Open-Meteo's data is CC BY 4.0, so the credit sits on the heading line,
+    // beside the title. The heading text lives in its own span because show()
+    // rewrites it, and that must not take the credit with it. data-part makes
+    // the credit hide with the weather when the Show bar filters it out.
+    var heading = panel.querySelector('.panel-heading');
+    var headingText = el('span', 'heading-text', heading.textContent);
+    heading.textContent = '';
+    heading.appendChild(headingText);
+    var credit = el('span', 'credit-inline');
+    credit.setAttribute('data-part', 'weather');
+    // "Weather data by …" beside the word Itinerary, where it has to say what
+    // the data is; just "by …" beside "Weather Forecast", which already does.
+    credit.setAttribute('data-prefix-full', t('page.credit.weather').split('{link}')[0]);
+    credit.setAttribute('data-prefix-short', t('page.credit.weatherShort').split('{link}')[0]);
+    credit.appendChild(document.createTextNode(credit.getAttribute('data-prefix-full')));
+    var creditLink = el('a', null, 'Open-Meteo.com');
+    creditLink.href = 'https://open-meteo.com/';
+    creditLink.target = '_blank';
+    creditLink.rel = 'noopener noreferrer';
+    credit.appendChild(creditLink);
+    heading.appendChild(credit);
+
     days.forEach(function (day) {
       var block = el('div', 'day');
       block.appendChild(el('h3', 'day-date', longDate(day.date)));
@@ -1090,13 +1112,18 @@
     // only half of that panel on screen. The alternative text rides on the
     // heading itself, so there is no second place listing what each key means.
     document.querySelectorAll('.panel-heading[data-heading-weather]').forEach(function (title) {
+      var text = title.querySelector('.heading-text') || title;
       if (!title.getAttribute('data-heading-default')) {
-        title.setAttribute('data-heading-default', title.textContent);
+        title.setAttribute('data-heading-default', text.textContent);
       }
       var weatherOnly = !showAll && wanted('weather') && !wanted('itinerary');
-      title.textContent = weatherOnly
+      text.textContent = weatherOnly
         ? title.getAttribute('data-heading-weather')
         : title.getAttribute('data-heading-default');
+      var credit = title.querySelector('.credit-inline');
+      if (credit && credit.firstChild) {
+        credit.firstChild.nodeValue = credit.getAttribute(weatherOnly ? 'data-prefix-short' : 'data-prefix-full');
+      }
     });
 
     // ?show= keeps a filtered view shareable, the way the main site's trip

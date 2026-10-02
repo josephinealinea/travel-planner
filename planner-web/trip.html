@@ -582,6 +582,9 @@
 
         <p class="tiny muted" x-show="weatherLoading" data-i18n="trip.lookingUpTheWeather"></p>
         <p class="tiny muted" x-show="weatherFailed" data-i18n="trip.theWeatherCouldNot"></p>
+        <!-- Open-Meteo's data is CC BY 4.0: the credit sits with the cards it
+             produced, and only while there are some. -->
+        <p class="tiny muted text-right weather-credit" x-show="filteredWeather.length" data-i18n-html="trip.weatherCredit"></p>
 
         <!-- Only when both halves are empty. With weather rows on screen the
              itinerary is not empty even with nothing planned. -->
@@ -818,7 +821,7 @@
                   <!-- Read-only: rates are fetched daily for the whole install
                        (see RatesRefresher), so this only says when they last
                        came in. -->
-                  <span class="budget-rates-note" x-text="ratesNote()"></span>
+                  <span class="budget-rates-note" x-html="ratesNote()"></span>
                 </div>
                 <div class="tiny muted" x-text="totalCaption()"></div>
                 <div class="budget-native-totals" x-show="nativeTotalsLabel"

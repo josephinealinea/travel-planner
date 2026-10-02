@@ -444,6 +444,14 @@ a { color: var(--tp-accent); }
   font-size: 0.8rem;
   text-align: center;
 }
+/* Open-Meteo credit, inside the panel heading beside the title, at the credit
+   size rather than the heading's. */
+.credit-inline a { color: var(--tp-accent); }
+.credit-inline {
+  margin-left: 0.6em;
+  font: 400 0.78rem/1.3 var(--tp-font-body);
+  color: var(--tp-muted);
+}
 .brand-footer a { color: var(--tp-accent); font-weight: 600; margin-left: 0.2em; }
 
 @media (max-width: 600px) {

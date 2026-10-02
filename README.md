@@ -13,6 +13,12 @@ The unit of work is the **checklist**. Adding a destination seeds three items fo
 it, planning one produces itinerary entries, and putting a cost on a plan
 produces a budget record.
 
+## Licences
+
+The code is MIT ([LICENSE](LICENSE)). Third-party material (the llama icon,
+Alpine.js, Chart.js, and the terms of the free data services) is credited in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 ## Add to repo
 ```bash
 git init -b main
