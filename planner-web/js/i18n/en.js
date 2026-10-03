@@ -217,6 +217,9 @@ export default {
   // ── chrome
   'chrome.account': "Account",
   'chrome.footer': "Travelling Llama — your travel buddy for planning trips.",
+  'chrome.footer.copyright': "© 2026 Josephine Alinea",
+  'chrome.footer.more': "More from",
+  'chrome.footer.siteName': "josephinealinea.dev",
   'chrome.myTrips': "My Trips",
   'chrome.signOut': "Sign out",
   'chrome.skipToMain': "Skip to main content",

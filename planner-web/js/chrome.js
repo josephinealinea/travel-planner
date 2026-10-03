@@ -63,6 +63,15 @@ export function renderChrome({ user = null, active = '', minimal = false } = {})
   if (footer) {
     footer.className = 'site-footer';
     footer.textContent = t('chrome.footer');
+    const credit = document.createElement('p');
+    credit.append(t('chrome.footer.copyright') + ' · ' + t('chrome.footer.more') + ' ');
+    const link = document.createElement('a');
+    link.href = 'https://josephinealinea.dev';
+    link.textContent = t('chrome.footer.siteName');
+    link.target = '_blank';
+    link.rel = 'noopener';
+    credit.append(link);
+    footer.append(credit);
   }
 
   // Panels are hidden at load, so unlike the theme this needs no pre-paint
